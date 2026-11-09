@@ -137,7 +137,7 @@ path. Registered for Claude Code in [`.mcp.json`](../.mcp.json). See
 memory store: automatic capture, a local SQLite worker, MCP search, and
 the Windows/WSL split that keeps Claude and OpenCode from sharing
 one store today. It is **not installed**; `AGENTS.md` +
-`docs/agent/HANDOFF.md` remain the source of truth for the next action.
+`private/HANDOFF.md` remain the source of truth for the next action.
 
 ## Consent gate and audit log
 

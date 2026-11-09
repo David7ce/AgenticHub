@@ -22,7 +22,7 @@ belong to a separate toolbox repo outside this tree.
 
 ## Before you start any task
 
-1. If the user doesn't specify a task, read [`ROADMAP.md`](ROADMAP.md) for
+1. If the user doesn't specify a task, read [`private/ROADMAP.md`](private/ROADMAP.md) for
    open items to pick up.
 2. For `agent-hub/`, read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md) and
    [`agent-hub/README.md`](agent-hub/README.md); for `repos/`, read
@@ -34,19 +34,27 @@ belong to a separate toolbox repo outside this tree.
    documentation, put it in the AI-vault; if it is project-specific, keep it
    in the project.
 
-## Keeping ROADMAP.md current
+## The `private/` folder (personal, never published)
 
-`ROADMAP.md` is **local-only** (ignored by git since 2026-11-09): it tracks
-personal projects, not this repo. Keep it on disk and keep it current; do not
-expect it in a clone.
+Everything that is this owner's and not the hub itself lives in
+[`private/`](private/), which git ignores wholesale. A fork clones an **empty**
+`private/` and a generic repo. It holds `ROADMAP.md`, the session batons
+(`HANDOFF.md`, `JOURNAL.md`), `git-backup.md` and `history/` (old handoffs and
+dispatch notes). Local **config** that code reads stays next to the code
+(`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `repos/local/`), also
+ignored, each with a tracked `*.example` or README a fork copies from.
+
+Keep anything personal, project-specific or machine-specific in `private/` or in
+a `*.local.*` file — never in a tracked file, so the public tree stays generic.
+
+### Keeping `private/ROADMAP.md` current
 
 - Something the user mentions that isn't handled immediately: add it to
-  `ROADMAP.md` rather than letting it live only in conversation.
+  `private/ROADMAP.md` rather than letting it live only in conversation.
 - A task genuinely blocked on someone/something else (not just "the user
-  hasn't done it yet") stays in `ROADMAP.md` with the blocker spelled out.
+  hasn't done it yet") stays there with the blocker spelled out.
   A one-step thing only the user can do is still their next action, not a wait.
-- When something finishes, remove it from `ROADMAP.md`; don't leave it checked
-  off and lingering.
+- When something finishes, remove it; don't leave it checked off and lingering.
 
 ## Session continuity across harnesses
 
@@ -65,11 +73,12 @@ Pattern to copy: any repository that already keeps an `AGENTS.md` with its
 read/close protocol. If a repo you work in has no `AGENTS.md`, add one there rather
 than keeping the knowledge only in chat.
 
-This workspace's own baton is [`docs/agent/HANDOFF.md`](docs/agent/HANDOFF.md)
-and [`docs/agent/JOURNAL.md`](docs/agent/JOURNAL.md) — read them at the start
-of a session and update them before finishing. Both are **local-only**
-(ignored by git since 2026-11-09): they carry personal project state, not hub
-code, so they stay on disk and out of the repository.
+This workspace's own baton is [`private/HANDOFF.md`](private/HANDOFF.md)
+and [`private/JOURNAL.md`](private/JOURNAL.md) — read them at the start
+of a session and update them before finishing. They live under `private/`
+(ignored by git): they carry personal project state, not hub code, so they stay
+on disk and out of the repository. The `docs/agent/` paths above are the
+convention each *project* repo follows; AgentHub keeps its own under `private/`.
 
 **Concurrency policy:** one writing orchestrator per working tree. Read-only
 sessions may overlap. Give simultaneous writers separate Git worktrees;

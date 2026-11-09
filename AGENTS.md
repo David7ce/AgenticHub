@@ -2,8 +2,8 @@
 
 Entry point for any AI agent working in this directory. It says what the hub
 is, how to call it, and which rules are not negotiable. The live state of a
-particular workspace lives in `../docs/agent/HANDOFF.md` when that local file
-exists; this file is the map.
+particular workspace lives in `../private/HANDOFF.md` when that local file
+exists (personal, git-ignored); this file is the map.
 
 ## What this is
 

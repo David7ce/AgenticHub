@@ -17,9 +17,9 @@ lives in each project repository, and scripts live in the toolbox.
 |---|---|
 | [`agent-hub/`](agent-hub/) | Swarm dispatcher, consent gate, MCP server, ACP adapters, routing and audit log |
 | [`repos/`](repos/) | Repository inventory and the generated Repos/Heatmap pages |
-| [`docs/agent/`](docs/agent/) | Local baton (HANDOFF and JOURNAL): personal state, ignored by git |
-| [`logs/`](logs/) | Agent audit log and final task evidence (local) |
-| `ROADMAP.md` | Open work; local-only and ignored by git |
+| [`docs/`](docs/) | Generic docs; `docs/agent/` documents the session-baton convention |
+| [`logs/`](logs/) | Agent audit log and final task evidence (local, ignored) |
+| `private/` | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and history. A fork clones it empty |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate

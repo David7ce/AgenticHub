@@ -141,7 +141,9 @@ export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright'])
 }
 
 function listCurrentDocs(root) {
-  const docs = ['AGENTS.md', 'README.md', 'ROADMAP.md', 'CLAUDE.md', 'docs/agent/HANDOFF.md', 'docs/agent/README.md'];
+  // The owner's batons (ROADMAP, HANDOFF, JOURNAL) live in private/ and are not
+  // checked here: they are personal and git-ignored, not part of the public tree.
+  const docs = ['AGENTS.md', 'README.md', 'CLAUDE.md', 'docs/agent/README.md'];
   const walk = (dir) => {
     if (!existsSync(dir)) return;
     for (const name of readdirSync(dir)) {
