@@ -6,7 +6,7 @@
 // consent.json, logs/runs.jsonl, budgets, permissions and worktrees keep
 // working exactly as they do from the command line.
 
-import { isQuotaError, otherAgent } from '../acp/router.mjs';
+import { agentChain, DEFAULT_REGISTRY, isQuotaError, readAgentEntry } from '../acp/router.mjs';
 
 // Reasoning-effort levels the hub maps onto each agent's own option (acp/effort.mjs).
 const EFFORTS = ['low', 'medium', 'high', 'max'];
@@ -491,8 +491,12 @@ export async function callTool(name, args, handlers) {
       // one, and say so, rather than reporting an exhausted pool as the answer.
       let failedOver = null;
       if (!result.ok && isQuotaError(result.error)) {
-        failedOver = otherAgent(decision.agent);
-        result = await handlers.ask({ agent: failedOver, prompt, permission, budgetUsd });
+        const registry = process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY;
+        for (const next of agentChain(readAgentEntry(registry, decision.agent), decision.agent)) {
+          failedOver = next;
+          result = await handlers.ask({ agent: next, prompt, permission, budgetUsd });
+          if (result.ok || !isQuotaError(result.error)) break;
+        }
       }
       return { text: renderRoute(decision, result, failedOver), isError: !result.ok };
     }

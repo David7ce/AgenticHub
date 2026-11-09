@@ -37,6 +37,7 @@
       }
     },
     "claude": {
+      "agentFallbacks": ["codex", "opencode"],
       "label": "Claude Agent (ACP adapter)",
       "command": "npx",
       "args": [

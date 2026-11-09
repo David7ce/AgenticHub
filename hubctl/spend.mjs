@@ -22,7 +22,7 @@ export function defaultDbPath() {
     : join(homedir(), '.local', 'share', 'opencode', 'opencode.db');
 }
 
-function dayKey(ms, utc) {
+export function dayKey(ms, utc) {
   const date = new Date(ms);
   if (utc) return date.toISOString().slice(0, 10);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -41,7 +41,7 @@ function addDays(iso, offset) {
   return date.toISOString().slice(0, 10);
 }
 
-function rangeFor({ days = 7, date = null, from = null, to = null, utc = false } = {}) {
+export function rangeFor({ days = 7, date = null, from = null, to = null, utc = false } = {}) {
   if (date) {
     const start = dayStart(date, utc);
     return { from: start, to: start + DAY_MS, fromDay: date, toDay: date };
@@ -57,7 +57,7 @@ function rangeFor({ days = 7, date = null, from = null, to = null, utc = false }
   };
 }
 
-function projectLabel(worktree, directory) {
+export function projectLabel(worktree, directory) {
   const raw = String(worktree ?? directory ?? '').replace(/\\/g, '/');
   if (!raw) return { label: 'unknown', path: null };
   // A fanout worktree (<repo>/.git/agent-worktrees/<run>) belongs to its repo.
@@ -304,7 +304,7 @@ export function renderSpend(rows, { color = true, by = ['day', 'project'] } = {}
   const grouped = groupedRows(rows, by);
   const lines = [
     paint.bold('AGENTHUB SPEND'),
-    paint.dim('tokens por proyecto y día · OpenCode exacto · Claude cost-only'),
+    paint.dim('tokens por proyecto y día · OpenCode y Codex: tokens · Claude: solo coste'),
     '',
   ];
   if (!grouped.length) {

@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
-import { PERMISSION_RANK } from '../acp/consent.mjs';
+import { PERMISSION_RANK, spentToday } from '../acp/consent.mjs';
 import { toWsl } from '../acp/paths.mjs';
 
 const DAY = 86_400_000;
@@ -93,6 +93,19 @@ export function checkGrants(consent, { now = Date.now(), exists = existsSync } =
 // Relative markdown links whose target is missing. External links, anchors
 // and mailto are ignored; so are history snapshots, which are frozen on purpose.
 const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+// Warn before the daily cap bites: at 80 % the next run may be refused.
+export function checkDailySpend(consent, spent, threshold = 0.8) {
+  const out = [];
+  for (const [name, grant] of Object.entries(consent ?? {})) {
+    const cap = grant?.limits?.maxDailyUsd;
+    if (name.startsWith('_') || !grant?.enabled || typeof cap !== 'number' || cap <= 0) continue;
+    const used = spent(name);
+    if (used >= cap) out.push(row('spend', 'fail', `${name} hit its daily cap: $${used.toFixed(2)} of $${cap}; runs are refused until tomorrow — hand off to another agent`));
+    else if (used >= cap * threshold) out.push(row('spend', 'warn', `${name} at ${Math.round((used / cap) * 100)}% of its daily cap ($${used.toFixed(2)} of $${cap})`));
+  }
+  return out;
+}
+
 export function findBrokenLinks(files, { read = (p) => readFileSync(p, 'utf8'), exists = existsSync } = {}) {
   const broken = [];
   for (const file of files) {
@@ -232,6 +245,7 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   else if (usingExample) checks.push(row('registry', 'warn', 'using agents.example.json; copy it to acp/agents.json and set your agent paths'));
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
+  if (consent) checks.push(...checkDailySpend(consent, (name) => spentToday(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {
     checks.push(...checkFrontier(catalog));

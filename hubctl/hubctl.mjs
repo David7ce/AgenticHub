@@ -27,10 +27,15 @@ import {
   watchTrees,
 } from "./live.mjs";
 import { collectReport, renderReport } from "./report.mjs";
+import { buildHandoffPrompt } from "./handoff.mjs";
+import { readCodexSpend } from "./spend-codex.mjs";
 import {
   defaultDbPath,
   forwardSpendArgs,
   mergeSpend,
+  rangeFor,
+  dayKey,
+  projectLabel,
   readClaudeSpend,
   readOpenCodeSpend,
   readOpenCodeSpendViaWsl,
@@ -572,7 +577,9 @@ async function runReport(argv) {
   const index = argv.indexOf("--days");
   const days = index === -1 ? 7 : Math.max(1, Number(argv[index + 1]) || 7);
   const text = existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "";
-  const report = collectReport(text, { days });
+  const consentAgents = Object.entries(readJson(CONSENT_PATH) ?? {}).filter(([k, v]) => !k.startsWith("_") && v?.enabled).map(([k]) => k);
+  const agents = argv.includes("--all") || !consentAgents.length ? null : new Set(consentAgents);
+  const report = collectReport(text, { days, agents });
   if (json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
@@ -672,7 +679,14 @@ async function runSpend(argv) {
     ...options,
     logPath: value("--log") || LOG_PATH,
   });
-  const result = mergeSpend(opencode, claude);
+  const utc = argv.includes("--utc");
+  const codex = readCodexSpend({
+    range: rangeFor({ ...options, utc }),
+    dayKey: (ms) => dayKey(ms, utc),
+    projectLabel,
+    project: options.project ?? null,
+  });
+  const result = mergeSpend(opencode, claude, codex);
   if (argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
@@ -796,6 +810,39 @@ function spawnHub(args, prompt) {
     child.stdin.on("error", () => {});
     child.stdin.end(prompt);
   });
+}
+
+// Relay: another agent picks up a tree because the previous pool ran out.
+async function runHandoff(argv) {
+  const target = argv[1];
+  if (!target || target.startsWith("-")) {
+    throw new Error("usage: hubctl handoff <agent> [--cwd DIR] [--note TEXT] [--from AGENT] [--dry-run] [run flags]");
+  }
+  const rest = argv.slice(2);
+  const take = (flag) => {
+    const i = rest.indexOf(flag);
+    if (i === -1) return null;
+    const v = rest[i + 1];
+    rest.splice(i, 2);
+    return v ?? null;
+  };
+  const note = take("--note") ?? "";
+  const from = take("--from") ?? "claude";
+  const dry = rest.includes("--dry-run");
+  if (dry) rest.splice(rest.indexOf("--dry-run"), 1);
+  const cwdFlag = rest.indexOf("--cwd");
+  const cwd = resolve(cwdFlag === -1 ? process.cwd() : rest[cwdFlag + 1]);
+  const prompt = buildHandoffPrompt({
+    cwd, target, from, note,
+    logText: existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "",
+  });
+  if (dry) {
+    process.stdout.write(`${prompt}
+`);
+    return;
+  }
+  const flags = cwdFlag === -1 ? ["--cwd", cwd, ...rest] : rest;
+  return runAgent(["run", target, "--prompt", prompt, ...flags]);
 }
 
 async function runAgent(argv) {
@@ -1342,6 +1389,7 @@ async function main() {
   if (command === "doctor") return runDoctor(argv);
   if (command === "models") return runModels(argv);
   if (command === "run") return runAgent(argv);
+  if (command === "handoff") return runHandoff(argv);
   if (command === "tasks") return runTasks(argv);
   if (command === "mem") return mem(argv);
   if (command === "attach") return attach(argv);
@@ -1361,6 +1409,7 @@ async function main() {
         "  doctor [--json] [--fast]         config coherence: consent vs registry, limits, expiry, doc links, OpenCode MCP",
         "  models --codex [--json]          newest Codex model per family vs models.json (informational)",
         "  run <agent> [--worktree] [--model ID]   run one agent through hub-acp",
+        "  handoff <agent> [--cwd DIR] [--note TEXT] [--dry-run]   relay this tree to another agent (quota ran out)",
         "  tasks add|list|show|run|done|block|cancel|retry   the thin work queue (hubctl tasks --help)",
         "  mem <query>                      search claude-mem",
         "  attach <session> [--agent NAME]  resume a session",

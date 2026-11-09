@@ -39,11 +39,12 @@ function percentile(sorted, fraction) {
  * Build one row per agent+model. Probes and denied/rejected calls are skipped:
  * they never did work, and counting them would make a healthy agent look busy.
  */
-export function collectReport(text, { now = Date.now(), days = 7 } = {}) {
+export function collectReport(text, { now = Date.now(), days = 7, agents = null } = {}) {
   const windowMs = Math.max(1, days) * 86_400_000;
   const rows = new Map();
   const causes = {};
   let skipped = 0;
+  let retired = 0;
 
   for (const line of String(text ?? '').split('\n')) {
     if (!line.trim()) continue;
@@ -55,6 +56,7 @@ export function collectReport(text, { now = Date.now(), days = 7 } = {}) {
     const when = Date.parse(entry.time ?? entry.ts ?? '');
     if (!Number.isFinite(when) || now - when > windowMs || when > now) continue;
     const agent = entry.agent ?? '?';
+    if (agents && !agents.has(agent)) { retired += 1; continue; }
     const model = entry.model ?? '—';
     const key = `${agent}\u0000${model}`;
     if (!rows.has(key)) {
@@ -98,6 +100,7 @@ export function collectReport(text, { now = Date.now(), days = 7 } = {}) {
     now: new Date(now).toISOString(),
     runs: out.reduce((sum, row) => sum + row.runs, 0),
     skipped,
+    retired,
     causes,
     rows: out,
   };
@@ -155,6 +158,7 @@ export function renderReport(report, { color = true, now = Date.now(), width = 1
     lines.push('', `  ${paint.bold('not ok, by cause')}  ${causes.map(([cause, count]) => `${cause} ${count}`).join(' · ')}`);
   }
   if (report.skipped) lines.push('', paint.dim(`  ${report.skipped} probe/denied/rejected line(s) skipped`));
+  if (report.retired) lines.push(paint.dim(`  ${report.retired} turn(s) from agents no longer in consent.json hidden (--all shows them)`));
   lines.push(paint.dim('  cost is what the provider reported; flat-rate pools report $0'));
   return lines.join('\n');
 }

@@ -43,7 +43,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Local registry first; a fresh clone runs with the shipped example.
-const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
+export const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
   ? join(HERE, 'agents.json')
   : join(HERE, 'agents.example.json');
 const HUB = join(HERE, 'hub-acp.mjs');
@@ -349,6 +349,15 @@ export function isQuotaError(text) {
   );
 }
 
+/**
+ * Who takes over when `agent` is out of quota. The registry entry may list
+ * `agentFallbacks` (in order); without it the old two-pool swap applies.
+ */
+export function agentChain(entry, agent) {
+  const listed = (entry?.agentFallbacks ?? []).filter((n) => typeof n === 'string' && n && n !== agent);
+  return listed.length ? [...new Set(listed)] : [otherAgent(agent)];
+}
+
 export function otherAgent(agent) {
   return agent === CHEAP_AGENT ? STRONG_AGENT : CHEAP_AGENT;
 }
@@ -526,19 +535,22 @@ function main() {
     return last;
   };
 
-  const first = tryAgent(decision.agent, chain);
-  if (first.status !== 0 && failover && isQuotaError(failureText(first))) {
-    const fallback = otherAgent(decision.agent);
-    process.stderr.write(`[router] ${decision.agent} is out of quota; retrying on ${fallback}\n`);
-    // That agent has its own chain; a model id from the first one would be
-    // meaningless here.
-    const fallbackChain = explicitModel ? [null] : modelChain(readAgentEntry(registryPath, fallback));
-    const result = tryAgent(fallback, fallbackChain);
-    emit(result);
-    process.exit(result.status);
+  let outcome = tryAgent(decision.agent, chain);
+  if (outcome.status !== 0 && failover && isQuotaError(failureText(outcome))) {
+    let from = decision.agent;
+    for (const fallback of agentChain(readAgentEntry(registryPath, decision.agent), decision.agent)) {
+      process.stderr.write(`[router] ${from} is out of quota; retrying on ${fallback}
+`);
+      // That agent has its own model chain; a model id from the first one
+      // would be meaningless here.
+      const fallbackChain = explicitModel ? [null] : modelChain(readAgentEntry(registryPath, fallback));
+      outcome = tryAgent(fallback, fallbackChain);
+      if (outcome.status === 0 || !isQuotaError(failureText(outcome))) break;
+      from = fallback;
+    }
   }
-  emit(first);
-  process.exit(first.status);
+  emit(outcome);
+  process.exit(outcome.status);
 }
 
 // Importable for tests without executing the CLI.
