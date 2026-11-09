@@ -149,4 +149,6 @@ export async function archive(conv, { run, unarchive = false }) {
   await mustRun(run, "codex", [unarchive ? "unarchive" : "archive", safeId(conv.id)], `codex ${unarchive ? "unarchive" : "archive"} ${conv.id}`);
 }
 
+export const unarchive = (conv, options) => archive(conv, { ...options, unarchive: true });
+
 export { sep };

@@ -113,19 +113,19 @@ export function opencodeFixture() {
 /** A fake provider surface for execute/backup tests. */
 export function fakeProviders(overrides = {}) {
   const calls = [];
+  const record = (name) => async (conv) => {
+    calls.push(`${name}:${conv.id}`);
+    if (overrides[conv.id] === "throw") throw new Error("boom");
+  };
   const providers = {
     opencode: {
-      async remove(conv) {
-        calls.push(conv.id);
-        if (overrides[conv.id] === "throw") throw new Error("boom");
-      },
+      remove: record("remove"),
       exportDump: async (conv) => ({ provider: "opencode", id: conv.id }),
     },
     codex: {
-      async remove(conv) {
-        calls.push(conv.id);
-        if (overrides[conv.id] === "throw") throw new Error("boom");
-      },
+      remove: record("remove"),
+      archive: record("archive"),
+      unarchive: record("unarchive"),
       exportDump: async (conv) => ({ provider: "codex", id: conv.id }),
     },
   };

@@ -17,9 +17,9 @@ import { runProcess } from "./providers/exec.mjs";
 import { applyFilters, emptyFilter, normalizeFilter } from "./core/filter.mjs";
 import { keyOf, sortConversations } from "./core/model.mjs";
 import { createSelection, selectedConversations } from "./core/selection.mjs";
-import { buildDeletePlan, describePlan } from "./core/plan.mjs";
+import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs";
 import { createBackup, removeBackup, restoreBackup } from "./core/backup.mjs";
-import { executeDeletes } from "./core/execute.mjs";
+import { executeArchive, executeDeletes } from "./core/execute.mjs";
 import { listBackups } from "./core/backup-store.mjs";
 import { PROVIDERS } from "./core/capabilities.mjs";
 
@@ -147,6 +147,39 @@ async function cmdDelete(flags) {
   };
 }
 
+async function cmdArchive(flags) {
+  const keys = typeof flags.keys === "string" ? flags.keys.split(",").filter(Boolean) : [];
+  if (keys.length === 0) throw new Error("--keys is required");
+  const { providers, conversations } = await collect({});
+  const selected = selectedConversations(createSelection(keys), conversations);
+  const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
+  const plan = buildArchivePlan(selected);
+
+  if (!flags.yes || flags["dry-run"] === true) {
+    return {
+      ok: true,
+      dryRun: true,
+      plan: {
+        summary: describeArchivePlan(plan),
+        archive: plan.items.filter((conv) => !conv.archived).map((conv) => ({ key: keyOf(conv), title: conv.title })),
+        unarchive: plan.items.filter((conv) => conv.archived).map((conv) => ({ key: keyOf(conv), title: conv.title })),
+        blocked: plan.blocked.map((row) => ({ key: keyOf(row.conv), code: row.code, message: row.message })),
+        missing,
+      },
+    };
+  }
+
+  const result = await executeArchive(plan, { providers });
+  return {
+    ok: result.failed === 0,
+    summary: describeArchivePlan(plan),
+    okCount: result.ok,
+    failedCount: result.failed,
+    blockedCount: result.blocked,
+    results: result.results,
+  };
+}
+
 function cmdBackups(flags) {
   return { ok: true, backups: listBackups(typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot) };
 }
@@ -168,6 +201,7 @@ async function main() {
     list: cmdList,
     preview: cmdPreview,
     delete: cmdDelete,
+    archive: cmdArchive,
     backups: cmdBackups,
     restore: cmdRestore,
     "backup-remove": cmdBackupRemove,

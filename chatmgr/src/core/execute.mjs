@@ -18,9 +18,10 @@ export async function runBatch(conversations, { providers, action, signal, onPro
     const adapter = providers[conv.provider];
     let outcome;
     try {
-      if (!adapter?.[action]) throw new Error(`provider ${conv.provider} has no ${action} action`);
-      await adapter[action](conv, { run: providers.run });
-      outcome = { key: keyOf(conv), provider: conv.provider, id: conv.id, status: "ok" };
+      const name = typeof action === "function" ? action(conv) : action;
+      if (!adapter?.[name]) throw new Error(`provider ${conv.provider} has no ${name} action`);
+      await adapter[name](conv, { run: providers.run });
+      outcome = { key: keyOf(conv), provider: conv.provider, id: conv.id, status: "ok", action: name };
     } catch (error) {
       outcome = {
         key: keyOf(conv),
@@ -41,8 +42,8 @@ export async function runBatch(conversations, { providers, action, signal, onPro
   };
 }
 
-export async function executeDeletes(plan, { providers, backup = null, signal, onProgress } = {}) {
-  const skipped = plan.blocked.map((row) => ({
+const skippedFrom = (plan) =>
+  plan.blocked.map((row) => ({
     key: keyOf(row.conv),
     provider: row.conv.provider,
     id: row.conv.id,
@@ -50,6 +51,9 @@ export async function executeDeletes(plan, { providers, backup = null, signal, o
     code: row.code,
     error: row.message,
   }));
+
+export async function executeDeletes(plan, { providers, backup = null, signal, onProgress } = {}) {
+  const skipped = skippedFrom(plan);
 
   if (plan.items.length === 0) {
     return { results: skipped, ok: 0, failed: 0, cancelled: 0, blocked: skipped.length, backup: null };
@@ -87,3 +91,21 @@ export async function executeDeletes(plan, { providers, backup = null, signal, o
 
 export const describeResult = (row) =>
   `${PROVIDERS[row.provider]?.label ?? row.provider} ${row.id} — ${row.status}${row.error ? `: ${row.error}` : ""}`;
+
+/**
+ * Archive/unarchive a selection. The action is chosen per row from its current
+ * archived flag, so the same key toggles in both directions.
+ */
+export async function executeArchive(plan, { providers, signal, onProgress } = {}) {
+  const skipped = skippedFrom(plan);
+  if (plan.items.length === 0) {
+    return { results: skipped, ok: 0, failed: 0, cancelled: 0, blocked: skipped.length };
+  }
+  const batch = await runBatch(plan.items, {
+    providers,
+    action: (conv) => (conv.archived ? "unarchive" : "archive"),
+    signal,
+    onProgress,
+  });
+  return { ...batch, results: [...skipped, ...batch.results], blocked: skipped.length };
+}

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 import { applyFilters, emptyFilter } from "./core/filter.mjs"
 import { keyOf } from "./core/model.mjs"
 import { formatLocalDateTime } from "./core/time.mjs"
-import { buildDeletePlan, describePlan } from "./core/plan.mjs"
+import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs"
 import { PROVIDERS, providerList } from "./core/capabilities.mjs"
 
 const CLI = fileURLToPath(new URL("./cli.mjs", import.meta.url))
@@ -165,6 +165,7 @@ export default Plugin.define({
             run: () => setFilter({ ...filter(), includeArchived: !filter().includeArchived }),
           },
           { id: "chatmgr.preview", bind: "p", run: () => void showPreview() },
+          { id: "chatmgr.archive", bind: "m", run: () => void archiveSelected() },
           { id: "chatmgr.resume", bind: "return", run: () => void resume() },
           { id: "chatmgr.delete", bind: "ctrl+d", run: () => void deleteSelected() },
           { id: "chatmgr.close", bind: "escape", run: () => context.ui.router.navigate({ type: "home" }) },
@@ -184,6 +185,7 @@ export default Plugin.define({
           "chatmgr.agent",
           "chatmgr.archived",
           "chatmgr.preview",
+          "chatmgr.archive",
           "chatmgr.resume",
           "chatmgr.delete",
           "chatmgr.close",
@@ -244,6 +246,42 @@ export default Plugin.define({
           title: `Resume ${PROVIDERS[row.provider]?.label ?? row.provider}`,
           message: `Run in a terminal:\n\n  ${hint}\n\nEach agent reopens its own transcript; nothing is converted.`,
         })
+      }
+
+      async function archiveSelected() {
+        if (busy()) return
+        const chosen = selected().size
+          ? rows().filter((row) => selected().has(keyOf(row)))
+          : [cursorRow()].filter(Boolean)
+        if (chosen.length === 0) {
+          await context.ui.dialog.alert({ title: "Nothing selected", message: "Space toggles a row; a selects all filtered rows." })
+          return
+        }
+        const plan = buildArchivePlan(chosen as Row[])
+        const keys = plan.items.map(keyOf)
+        if (keys.length === 0) {
+          await context.ui.dialog.alert({ title: "Nothing to archive", message: describeArchivePlan(plan) })
+          return
+        }
+        const confirmed = await context.ui.dialog.confirm({
+          title: `${describeArchivePlan(plan)}?`,
+          message:
+            `Only agents with a single-session archive command take part (Codex).\n` +
+            `Rows already archived are unarchived by the same action.\n` +
+            `Running and unsupported rows are skipped.`,
+          label: { confirm: "Apply", cancel: "Cancel" },
+        })
+        if (!confirmed) return
+
+        setBusy(true)
+        const result = await callCli(["archive", "--keys", keys.join(","), "--yes"])
+        setBusy(false)
+        const lines = (result.results ?? []).map((row: any) => {
+          const mark = row.status === "ok" ? "OK " : row.status === "blocked" ? "SKIP " : "FAIL "
+          return `${mark}${row.provider} ${row.id}${row.action ? ` (${row.action})` : ""}${row.error ? ` — ${row.error}` : ""}`
+        })
+        await context.ui.dialog.alert({ title: result.ok ? "Archive updated" : "Partially updated", message: lines.join("\n") })
+        await refresh()
       }
 
       async function deleteSelected() {
@@ -325,7 +363,7 @@ export default Plugin.define({
               <text fg={muted()}>No conversations match. r refreshes, x shows archived, c clears selection.</text>
             </Show>
           </box>
-          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · ctrl+d delete · f/o/b/x filters · r refresh · esc close</text>
+          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · ctrl+d delete · f/o/b/x filters · r refresh · esc close</text>
         </box>
       )
     }

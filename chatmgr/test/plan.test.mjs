@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BLOCK, buildDeletePlan, describePlan } from "../src/core/plan.mjs";
+import { BLOCK, buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "../src/core/plan.mjs";
 
 const conv = (provider, id, extra = {}) => ({
   provider,
@@ -51,4 +51,19 @@ test("describePlan names counts per agent and the blocked codes", () => {
   assert.match(text, /2 Codex/);
   assert.match(text, /1 blocked/);
   assert.match(text, /unsupported/);
+});
+
+test("archive plan only takes agents with a single-session archive command", () => {
+  const plan = buildArchivePlan([
+    conv("codex", "new"),
+    conv("codex", "old", { archived: true }),
+    conv("opencode", "idle"),
+    conv("hermes", "h"),
+    conv("codex", "busy", { running: true }),
+  ]);
+  assert.deepEqual(plan.items.map((r) => r.id), ["new", "old"]);
+  assert.equal(plan.toArchive, 1);
+  assert.equal(plan.toUnarchive, 1);
+  assert.deepEqual(plan.blocked.map((r) => r.conv.id), ["idle", "h", "busy"]);
+  assert.match(describeArchivePlan(plan), /1 archive · 1 unarchive · 3 blocked/);
 });

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { executeDeletes, runBatch } from "../src/core/execute.mjs";
-import { buildDeletePlan } from "../src/core/plan.mjs";
+import { executeArchive, executeDeletes, runBatch } from "../src/core/execute.mjs";
+import { buildArchivePlan, buildDeletePlan } from "../src/core/plan.mjs";
 import { fakeProviders, tempDir } from "./fixtures.mjs";
 import { createBackup } from "../src/core/backup.mjs";
 
@@ -23,7 +23,7 @@ test("partial failures are reported per item and do not stop the batch", async (
   const plan = buildDeletePlan([conv("codex", "a"), conv("codex", "b"), conv("opencode", "c")]);
   const result = await executeDeletes(plan, { providers });
 
-  assert.deepEqual(calls, ["a", "b", "c"]);
+  assert.deepEqual(calls, ["remove:a", "remove:b", "remove:c"]);
   assert.equal(result.ok, 2);
   assert.equal(result.failed, 1);
   const failed = result.results.find((row) => row.id === "b");
@@ -57,7 +57,7 @@ test("blocked rows never reach a provider and appear in the results", async () =
   const { providers, calls } = fakeProviders();
   const plan = buildDeletePlan([conv("codex", "a"), conv("claude", "c"), conv("codex", "d", { running: true })]);
   const result = await executeDeletes(plan, { providers });
-  assert.deepEqual(calls, ["a"]);
+  assert.deepEqual(calls, ["remove:a"]);
   assert.equal(result.blocked, 2);
   assert.deepEqual(result.results.filter((row) => row.status === "blocked").map((row) => row.id), ["c", "d"]);
 });
@@ -86,4 +86,21 @@ test("progress is reported after every item", async () => {
     onProgress: (row) => seen.push(`${row.index}/${row.total}:${row.status}`),
   });
   assert.deepEqual(seen, ["1/2:ok", "2/2:ok"]);
+});
+
+test("archive picks archive or unarchive per row and keeps going after a failure", async () => {
+  const { providers, calls } = fakeProviders({ old: "throw" });
+  const plan = buildArchivePlan([
+    conv("codex", "new"),
+    conv("codex", "old", { archived: true }),
+    conv("codex", "newer"),
+    conv("claude", "c"),
+  ]);
+  const result = await executeArchive(plan, { providers });
+  assert.deepEqual(calls, ["archive:new", "unarchive:old", "archive:newer"]);
+  assert.equal(result.ok, 2);
+  assert.equal(result.failed, 1);
+  assert.equal(result.blocked, 1);
+  assert.deepEqual(result.results.filter((row) => row.status === "ok").map((row) => row.action), ["archive", "archive"]);
+  assert.equal(result.results.find((row) => row.id === "old").status, "failed");
 });

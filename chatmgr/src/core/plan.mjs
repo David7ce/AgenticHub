@@ -60,6 +60,48 @@ function countBy(list) {
   return out;
 }
 
+/**
+ * Archiving is a capability, not a promise: only Codex can archive a single
+ * session through its CLI. A running session is not archived either, and an
+ * already-archived row is unarchived by the same action.
+ */
+export function buildArchivePlan(conversations, options = {}) {
+  const items = [];
+  const blocked = [];
+  for (const conv of conversations) {
+    const caps = PROVIDERS[conv.provider];
+    let reason = null;
+    if (!caps) reason = { code: BLOCK.UNSUPPORTED, message: `unknown provider ${conv.provider}` };
+    else if (!caps.archive) {
+      reason = {
+        code: BLOCK.UNSUPPORTED,
+        message: `${caps.label} has no single-session archive command`,
+      };
+    } else if (conv.running) reason = { code: BLOCK.RUNNING, message: "session is running right now" };
+    else if (conv.runningUnknown || caps.runtimeStatus !== "reliable") {
+      reason = { code: BLOCK.RUNNING_UNKNOWN, message: "runtime status cannot be determined reliably" };
+    }
+    if (reason) blocked.push({ conv, ...reason });
+    else items.push(conv);
+  }
+  return {
+    items,
+    blocked,
+    byProvider: countBy(items),
+    blockedByProvider: countBy(blocked.map((row) => row.conv)),
+    toArchive: items.filter((conv) => !conv.archived).length,
+    toUnarchive: items.filter((conv) => conv.archived).length,
+  };
+}
+
+export function describeArchivePlan(plan) {
+  const parts = [];
+  if (plan.toArchive) parts.push(`${plan.toArchive} archive`);
+  if (plan.toUnarchive) parts.push(`${plan.toUnarchive} unarchive`);
+  const blocked = plan.blocked.length ? ` · ${plan.blocked.length} blocked` : "";
+  return `${parts.length ? parts.join(" · ") : "nothing to archive"}${blocked}`;
+}
+
 export function describePlan(plan) {
   const parts = Object.entries(plan.byProvider).map(([id, n]) => `${n} ${PROVIDERS[id]?.label ?? id}`);
   const children = plan.descendants ? ` · ${plan.descendants} child session${plan.descendants === 1 ? "" : "s"}` : "";

@@ -41,6 +41,20 @@ test("codex deletes through the CLI with a validated id", async () => {
   await assert.rejects(() => codex.remove({ id: "x; rm -rf /" }, { run }), /unsafe session id/);
 });
 
+test("codex archive and unarchive use their own subcommands", async () => {
+  const calls = [];
+  const run = async (file, args) => {
+    calls.push([file, ...args]);
+    return { code: 0, stdout: "", stderr: "" };
+  };
+  await codex.archive({ id: "abc" }, { run });
+  await codex.unarchive({ id: "abc" }, { run });
+  assert.deepEqual(calls, [
+    ["codex", "archive", "abc"],
+    ["codex", "unarchive", "abc"],
+  ]);
+});
+
 test("codex surfaces a CLI failure instead of claiming success", async () => {
   const run = async () => ({ code: 1, stdout: "", stderr: "session not found" });
   await assert.rejects(() => codex.remove({ id: "abc" }, { run }), /failed \(exit 1\): session not found/);

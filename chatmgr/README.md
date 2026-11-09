@@ -19,6 +19,7 @@ Inside OpenCode: `Ctrl+Shift+L`, or the command palette entry
 | `a` / `c` | Select all filtered / clear selection |
 | `p` | Preview the transcript |
 | `Enter` | Resume (OpenCode opens the session; others show their own command) |
+| `m` | Archive / unarchive the selection (Codex only, reversible) |
 | `Ctrl+D` | One batch confirmation, then delete |
 | `f` `o` `b` `x` `/` | Filter by agent, exact path, before-date, archived, text |
 | `r` | Refresh |
@@ -35,6 +36,8 @@ node agent-hub/chatmgr/src/cli.mjs list --agent codex,claude --before 2026-11-01
 node agent-hub/chatmgr/src/cli.mjs preview --key codex:01a1...
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --dry-run
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --yes
+node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --dry-run
+node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --yes
 node agent-hub/chatmgr/src/cli.mjs backups
 node agent-hub/chatmgr/src/cli.mjs restore --manifest <backup>/manifest.json
 node agent-hub/chatmgr/src/cli.mjs backup-remove --dir <backup>
@@ -97,10 +100,11 @@ node --test agent-hub/chatmgr/test/filter.test.mjs agent-hub/chatmgr/test/select
   agent-hub/chatmgr/test/execute.test.mjs agent-hub/chatmgr/test/providers.test.mjs
 ```
 
-38 tests, no network and no real conversations: fixtures build a fake Codex
+41 tests, no network and no real conversations: fixtures build a fake Codex
 home, Claude home and two SQLite stores in a temp directory. Filtering (including
 the midnight boundary), selection/select-all/pruning, cancellation, partial
-failures, blocked reasons, backup/restore and every provider parser are covered.
+failures, blocked reasons, archive toggling, backup/restore and every provider
+parser are covered.
 
 No real conversation was deleted while building this.
 
