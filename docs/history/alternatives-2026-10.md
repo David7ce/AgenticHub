@@ -200,7 +200,7 @@ second login, and makes the hub a tool instead of a destination. Its limit is
 honest: Claude stays the main loop, the other models are callees, and MCP
 results are text — an image from a free model cannot come back through it.
 
-**Built the same day**: [`../mcp/`](../mcp/) implements exactly that, with
+**Built the same day**: [`../mcp/`](../../mcp/) implements exactly that, with
 `ask_agent`, `fanout`, `route` and `agents` over stdio, registered in the
 repo's `.mcp.json`. 26 tests, 7 of them end-to-end through the real consent
 gate and audit log.
