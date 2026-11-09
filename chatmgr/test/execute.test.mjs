@@ -55,7 +55,11 @@ test("an abort mid-batch finishes the current item and cancels the rest", async 
 
 test("blocked rows never reach a provider and appear in the results", async () => {
   const { providers, calls } = fakeProviders();
-  const plan = buildDeletePlan([conv("codex", "a"), conv("claude", "c"), conv("codex", "d", { running: true })]);
+  const plan = buildDeletePlan([
+    conv("codex", "a"),
+    conv("claude", "c", { running: true }),
+    conv("codex", "d", { running: true }),
+  ]);
   const result = await executeDeletes(plan, { providers });
   assert.deepEqual(calls, ["remove:a"]);
   assert.equal(result.blocked, 2);

@@ -21,12 +21,9 @@ test("deletable rows form the plan; unsupported and running are blocked", () => 
     conv("claude", "c"),
     conv("codex", "d", { running: true }),
   ]);
-  assert.deepEqual(plan.items.map((r) => r.id), ["a", "b"]);
-  assert.deepEqual(
-    plan.blocked.map((r) => [r.conv.id, r.code]),
-    [["c", BLOCK.UNSUPPORTED], ["d", BLOCK.RUNNING]],
-  );
-  assert.deepEqual(plan.byProvider, { codex: 1, opencode: 1 });
+  assert.deepEqual(plan.items.map((r) => r.id), ["a", "b", "c"]);
+  assert.deepEqual(plan.blocked.map((r) => [r.conv.id, r.code]), [["d", BLOCK.RUNNING]]);
+  assert.deepEqual(plan.byProvider, { codex: 1, opencode: 1, claude: 1 });
 });
 
 test("unknown runtime status blocks deletion even when the CLI supports it", () => {
@@ -45,12 +42,12 @@ test("describePlan names counts per agent and the blocked codes", () => {
   const plan = buildDeletePlan([
     conv("codex", "a"),
     conv("codex", "b"),
-    conv("claude", "c"),
+    conv("claude", "c", { running: true }),
   ]);
   const text = describePlan(plan);
   assert.match(text, /2 Codex/);
   assert.match(text, /1 blocked/);
-  assert.match(text, /unsupported/);
+  assert.match(text, /running/);
 });
 
 test("archive plan only takes agents with a single-session archive command", () => {

@@ -30,6 +30,7 @@ const [filter, setFilter] = createSignal(emptyFilter())
 const [status, setStatus] = createSignal("loading…")
 const [errors, setErrors] = createSignal<string[]>([])
 const [busy, setBusy] = createSignal(false)
+const [keepBackup, setKeepBackup] = createSignal(true)
 
 function callCli(args: string[]): Promise<any> {
   return new Promise((resolve) => {
@@ -166,6 +167,7 @@ export default Plugin.define({
           },
           { id: "chatmgr.preview", bind: "p", run: () => void showPreview() },
           { id: "chatmgr.archive", bind: "m", run: () => void archiveSelected() },
+          { id: "chatmgr.backup", bind: "k", run: () => { setKeepBackup(!keepBackup()); setStatus(keepBackup() ? "deletes keep a backup" : "deletes are permanent (no backup)") } },
           { id: "chatmgr.resume", bind: "return", run: () => void resume() },
           { id: "chatmgr.delete", bind: "ctrl+d", run: () => void deleteSelected() },
           { id: "chatmgr.close", bind: "escape", run: () => context.ui.router.navigate({ type: "home" }) },
@@ -186,6 +188,7 @@ export default Plugin.define({
           "chatmgr.archived",
           "chatmgr.preview",
           "chatmgr.archive",
+          "chatmgr.backup",
           "chatmgr.resume",
           "chatmgr.delete",
           "chatmgr.close",
@@ -302,7 +305,9 @@ export default Plugin.define({
           title: `Delete ${keys.length} conversation${keys.length === 1 ? "" : "s"}?`,
           message:
             `${describePlan(plan)}\n\n` +
-            `A recoverable backup is written first under agent-hub/chatmgr/backups.\n` +
+            (keepBackup()
+              ? `A recoverable backup is written first under agent-hub/chatmgr/backups.\n`
+              : `NO backup: this deletion cannot be undone.\n`) +
             `Running and unsupported rows are skipped, never forced.` +
             (plan.sideEffects.length ? `\n\nEffects:\n- ${plan.sideEffects.join("\n- ")}` : ""),
           label: { confirm: "Delete", cancel: "Cancel" },
@@ -311,7 +316,7 @@ export default Plugin.define({
 
         setBusy(true)
         setStatus(`deleting ${keys.length}…`)
-        const result = await callCli(["delete", "--keys", keys.join(","), "--yes"])
+        const result = await callCli(["delete", "--keys", keys.join(","), "--yes", ...(keepBackup() ? [] : ["--no-backup"])])
         setBusy(false)
 
         const lines = (result.results ?? []).map((row: any) => {
@@ -363,7 +368,7 @@ export default Plugin.define({
               <text fg={muted()}>No conversations match. r refreshes, x shows archived, c clears selection.</text>
             </Show>
           </box>
-          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · ctrl+d delete · f/o/b/x filters · r refresh · esc close</text>
+          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · k backup on/off · ctrl+d delete · f/o/b/x filters · r refresh · esc close</text>
         </box>
       )
     }

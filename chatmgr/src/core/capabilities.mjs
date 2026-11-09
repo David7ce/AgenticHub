@@ -7,9 +7,11 @@
  *   children. No archive command. Running state from session_v2 busy/idle.
  * - codex 0.167.0: `codex delete --force <id>`, `codex archive <id>`. A live
  *   writer holds thread-writer-locks/<id>.lock.
- * - claude 2.1.319: `claude --resume <id>`. No per-session delete; `claude
- *   purge` is project-wide and `claude rm` is background-agents only, so the
- *   manager must not delete transcripts.
+ * - claude 2.1.319: `claude --resume <id>`. It has no per-session delete
+ *   command, so deletion removes exactly the session's own
+ *   `projects/<project>/<id>.jsonl` and its `<id>/` sidecar under
+ *   ~/.claude, after a backup and a path-containment check. Runtime state is a
+ *   heuristic (jsonl mtime within ten minutes) and fails closed.
  * - hermes 0.23.0: `hermes sessions delete --yes <id>`. Archive is bulk-filter
  *   only, so single-session archive is unsupported on purpose.
  */
@@ -48,12 +50,12 @@ export const PROVIDERS = {
     preview: true,
     resume: true,
     archive: false,
-    delete: false,
-    runtimeStatus: "unknown",
+    delete: true,
+    runtimeStatus: "heuristic",
     deleteScope: "local",
     resumeHint: "claude --resume <id>",
-    unsupportedReason:
-      "Claude Code has no per-session delete command; use the /resume picker or `claude purge` for a whole project.",
+    sideEffects:
+      "removes that session's .jsonl and its <id>/ sidecar (subagent transcripts and tool output) from ~/.claude/projects; the project folder and other sessions are untouched",
   },
   hermes: {
     id: "hermes",

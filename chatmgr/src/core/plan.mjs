@@ -20,7 +20,15 @@ export function blockReason(conv, { currentKey = null } = {}) {
   if (conv.running) {
     return { code: BLOCK.RUNNING, message: "session is running right now" };
   }
-  if (conv.runningUnknown || caps.runtimeStatus !== "reliable") {
+  // "heuristic" is allowed only when the provider actually reported a boolean
+  // (Claude uses a ten-minute mtime window). Anything missing fails closed.
+  if (conv.runningUnknown || typeof conv.running !== "boolean") {
+    return {
+      code: BLOCK.RUNNING_UNKNOWN,
+      message: "runtime status cannot be determined reliably; deletion is blocked",
+    };
+  }
+  if (caps.runtimeStatus === "unknown" || caps.runtimeStatus === "none") {
     return {
       code: BLOCK.RUNNING_UNKNOWN,
       message: "runtime status cannot be determined reliably; deletion is blocked",

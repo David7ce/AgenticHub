@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync, cpSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { keyOf } from "./model.mjs";
 
@@ -53,6 +53,19 @@ export async function createBackup(conversations, { root, providers, now = Date.
       entry.copy = relative(dir, copy);
       entry.original = conv.sourcePath;
       entry.restore = "copy back to original path";
+      // Claude keeps subagent transcripts and tool output in <sessionId>/ next
+      // to the jsonl. It is part of the same session and must come back too.
+      // Re-derive the path if the row predates it, so a folder created between
+      // listing and backup is still captured before the delete.
+      const sidecarPath =
+        conv.sidecarPath ??
+        (conv.provider === "claude" ? join(dirname(conv.sourcePath), String(conv.id)) : null);
+      if (sidecarPath && existsSync(sidecarPath)) {
+        const sidecarCopy = join(dir, conv.provider, `${conv.id}-sidecar`);
+        mkdirSync(dirname(sidecarCopy), { recursive: true });
+        cpSync(sidecarPath, sidecarCopy, { recursive: true });
+        entry.sidecar = { copy: relative(dir, sidecarCopy), original: sidecarPath };
+      }
     } else {
       const adapter = providers[conv.provider];
       if (!adapter?.exportDump) {
@@ -91,8 +104,17 @@ export function restoreBackup(manifestPath) {
         manual.push({ ...item, reason: "backup copy is missing" });
         continue;
       }
+      const sidecarCopy = item.sidecar ? join(manifest.dir, item.sidecar.copy) : null;
+      if (sidecarCopy && !existsSync(sidecarCopy)) {
+        manual.push({ ...item, reason: "sidecar backup copy is missing" });
+        continue;
+      }
       mkdirSync(dirname(item.original), { recursive: true });
       copyFileSync(copy, item.original);
+      if (sidecarCopy) {
+        mkdirSync(dirname(item.sidecar.original), { recursive: true });
+        cpSync(sidecarCopy, item.sidecar.original, { recursive: true });
+      }
       restored.push(item);
     } else {
       manual.push({ ...item, reason: "dump must be imported with the provider CLI" });

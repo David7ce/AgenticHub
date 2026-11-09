@@ -60,15 +60,19 @@ test("codex surfaces a CLI failure instead of claiming success", async () => {
   await assert.rejects(() => codex.remove({ id: "abc" }, { run }), /failed \(exit 1\): session not found/);
 });
 
-test("claude reads project transcripts and refuses to delete them", async () => {
-  const { home, id } = claudeFixture();
+test("claude reads project transcripts and marks only recent ones as running", async () => {
+  const { home, id, sidecarPath } = claudeFixture();
   const rows = claude.list({ home });
   assert.equal(rows.length, 1);
   assert.equal(rows[0].id, id);
   assert.equal(rows[0].title, "Refactor the loader");
   assert.equal(rows[0].projectPath, "D:\\repo");
+  assert.equal(rows[0].running, false);
+  assert.equal(rows[0].sidecarPath, sidecarPath);
   assert.match(await claude.preview(rows[0]), /Refactored\./);
-  await assert.rejects(() => claude.remove(rows[0]), /no per-session delete/);
+
+  const recent = claude.list({ home, now: Date.now(), recentWindowMs: 48 * 60 * 60 * 1000 });
+  assert.equal(recent[0].running, true);
 });
 
 test("hermes treats a session without ended_at as running", () => {

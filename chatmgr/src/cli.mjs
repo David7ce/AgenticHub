@@ -8,6 +8,8 @@
  *                     [--archived] [--query Q] [--current-key K]
  *   node cli.mjs preview --key provider:id
  *   node cli.mjs delete --keys k1,k2 [--yes] [--dry-run] [--backup-dir D]
+ *   node cli.mjs delete ... [--no-backup] [--no-prune] [--prune-days N]
+ *   node cli.mjs prune-backups [--days N] [--yes]
  *   node cli.mjs backups | restore --manifest F | backup-remove --dir D
  */
 import { join, dirname } from "node:path";
@@ -20,7 +22,7 @@ import { createSelection, selectedConversations } from "./core/selection.mjs";
 import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs";
 import { createBackup, removeBackup, restoreBackup } from "./core/backup.mjs";
 import { executeArchive, executeDeletes } from "./core/execute.mjs";
-import { listBackups } from "./core/backup-store.mjs";
+import { listBackups, pruneBackups } from "./core/backup-store.mjs";
 import { PROVIDERS } from "./core/capabilities.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -136,7 +138,12 @@ async function cmdDelete(flags) {
       };
 
   const result = await executeDeletes(plan, { providers, backup });
+  // Old safety copies age out on their own after a backed-up delete.
+  const pruned = backup && flags["no-prune"] !== true
+    ? pruneBackups(backupRoot, { days: Number(flags["prune-days"]) || 14 })
+    : [];
   return {
+    pruned,
     ok: result.failed === 0,
     summary: describePlan(plan),
     backup: result.backup ? { dir: result.backup.dir, manifest: result.backup.manifestPath } : null,
@@ -145,6 +152,13 @@ async function cmdDelete(flags) {
     blockedCount: result.blocked,
     results: result.results,
   };
+}
+
+async function cmdPruneBackups(flags) {
+  const root = typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot;
+  const days = Number(flags.days) || 14;
+  const removed = pruneBackups(root, { days, dryRun: flags.yes !== true });
+  return { ok: true, dryRun: flags.yes !== true, days, removed };
 }
 
 async function cmdArchive(flags) {
@@ -205,6 +219,7 @@ async function main() {
     backups: cmdBackups,
     restore: cmdRestore,
     "backup-remove": cmdBackupRemove,
+    "prune-backups": cmdPruneBackups,
     providers: async () => ({ ok: true, providers: Object.values(PROVIDERS) }),
   };
   const handler = handlers[command];

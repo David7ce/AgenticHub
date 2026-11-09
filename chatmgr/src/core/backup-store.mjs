@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /** Lists backup directories that carry a manifest, newest first. */
@@ -36,4 +36,18 @@ function directorySize(dir) {
     else if (entry.isFile()) total += statSync(full).size;
   }
   return total;
+}
+
+/**
+ * Removes backup folders (only ones that carry a manifest) older than `days`.
+ * `dryRun` lists without removing. Returns the directories affected.
+ */
+export function pruneBackups(root, { days = 14, now = Date.now(), dryRun = false } = {}) {
+  const limit = now - Math.max(0, days) * 86_400_000;
+  const old = listBackups(root).filter((b) => {
+    const when = Date.parse(b.createdAt);
+    return Number.isFinite(when) && when < limit;
+  });
+  if (!dryRun) for (const b of old) rmSync(b.dir, { recursive: true, force: true });
+  return old.map((b) => b.dir);
 }

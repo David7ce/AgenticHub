@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -42,17 +42,31 @@ export function codexFixture() {
   return { home, live, archived, running };
 }
 
-/** A Claude home with one session; no archive and no supported delete. */
-export function claudeFixture() {
+/**
+ * A Claude home with one idle session and its <id>/ sidecar folder.
+ * `ageMs` sets the jsonl mtime so tests can choose idle vs recent; the default
+ * is a day old, outside the ten-minute running window.
+ */
+export function claudeFixture({ ageMs = 24 * 60 * 60 * 1000, now = Date.now() } = {}) {
   const home = tempDir("chatmgr-claude-");
   const id = "11111111-2222-4333-8444-555555555555";
-  const path = join(home, "projects", "D--repo", `${id}.jsonl`);
+  const projectDir = join(home, "projects", "D--repo");
+  const path = join(projectDir, `${id}.jsonl`);
   writeJsonl(path, [
     { type: "queue-operation", sessionId: id, timestamp: "2026-11-06T09:00:00.000Z" },
     { type: "user", sessionId: id, cwd: "D:\\repo", timestamp: "2026-11-06T09:00:01.000Z", message: { role: "user", content: [{ type: "text", text: "Refactor the loader" }] } },
     { type: "assistant", sessionId: id, cwd: "D:\\repo", timestamp: "2026-11-06T09:05:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "Refactored." }] } },
   ]);
-  return { home, id, path };
+  const stamp = new Date(now - ageMs);
+  utimesSync(path, stamp, stamp);
+
+  const sidecarPath = join(projectDir, id);
+  mkdirSync(join(sidecarPath, "subagents"), { recursive: true });
+  mkdirSync(join(sidecarPath, "tool-results"), { recursive: true });
+  writeFileSync(join(sidecarPath, "subagents", "agent-1.jsonl"), '{"type":"user"}\n', "utf8");
+  writeFileSync(join(sidecarPath, "tool-results", "result.txt"), "subagent output\n", "utf8");
+
+  return { home, id, path, projectDir, sidecarPath };
 }
 
 /** A Hermes state.db with one closed and one open session. */
