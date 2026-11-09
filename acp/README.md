@@ -36,7 +36,7 @@ the whole transport. No SDK, nothing to install.
 
 ## Use
 
-From WSL (where OpenCode lives) or Windows (where Claude lives):
+From Windows, where all three agents run natively:
 
     node agent-hub/acp/hub-acp.mjs --list
 
@@ -87,9 +87,9 @@ header and in `logs/runs.jsonl`.
 Entries can override `command`/`args` per platform, because the agents do
 not all live in the same environment:
 
-- **opencode** — `opencode acp` natively in WSL; on Windows the hub
-  spawns it through `wsl.exe` and converts the session cwd from
-  `D:\...` to `/mnt/d/...` (`pathStyle: "wsl"`).
+- **opencode** — `opencode acp` natively on Windows (`opencode.cmd acp`)
+  since 2026-11-09; the WSL launcher and its `pathStyle` were retired because
+  OpenCode 2.2.6 is installed natively.
 - **claude** — Claude Code is not itself an ACP server; the first-party
   adapter `@agentclientprotocol/claude-agent-acp` wraps the Claude Agent
   SDK. It needs Claude credentials in the environment that runs it.
@@ -236,7 +236,8 @@ support it). `env` accepts either ACP's `[{name,value}]` array or a plain
 object, which is normalized.
 
 MCP command paths are resolved **inside the agent's environment**, not the
-hub's — on Windows driving WSL OpenCode, use WSL paths there.
+hub's — use paths as that agent sees them (Windows paths when OpenCode runs
+natively; WSL paths only for agents launched inside WSL).
 
 **Baseline: none.** The hub passes no MCP servers unless `--mcp FILE` is
 given. The agents already have their own MCP configuration, so a hub-wide
@@ -309,6 +310,7 @@ until a task needs it.
 |---|---|
 | OpenCode 2.1.4 (WSL) | full turn, `ACP_OK`, ≈$0.001; MCP tool round-trip |
 | OpenCode via `wsl.exe` (hub on Windows) | full turn, `WIN_WSL_ACP_OK`; cwd `D:\Workspaces\AgentHub` → `/mnt/d/Workspaces/AgentHub` |
+| OpenCode 2.2.6 (native Windows, 2026-11-09) | probe ok; full turn `OPENCODE_NATIVO_OK`, 12.2 s; `doctor` 14 ok / 0 fail |
 | Claude adapter 0.97.0 (Windows) | **Full turn, 2026-10-27: `CLAUDE_ACP_RETEST_OK`, 12.9s, $0.2275.** The two earlier failures (23:32 `session limit · resets 12:50am`, 00:06 a 120s timeout still inside that same window) were the account's own session limit, not a transport bug — confirmed by retrying after the reset: same latency as the `hub.ps1` CLI path (11.6s), clean response. Likely self-inflicted by running several Claude-backed processes against the same account at once. |
 | Hermes 0.22.5 (Windows, histórico) | full turn, `HERMES_ACP_OK`; se retiró del registro el 2026-11-08 |
 | Fan-out: OpenCode + Hermes + Claude (Windows) | 2/3 answered in parallel (`FANOUT_OK`, 7s / 42s); Claude timed out at 120s; merged file written, exit 0 |

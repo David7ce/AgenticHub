@@ -132,7 +132,7 @@ export function checkLeftovers(inflight, locks) {
 // Parses `opencode mcp list`. Missing servers are a fail: the daily surface
 // could not reach the hub.
 export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright']) {
-  if (output == null) return [row('opencode', 'warn', 'opencode mcp list not run (WSL/OpenCode unavailable or --fast)')];
+  if (output == null) return [row('opencode', 'warn', 'opencode mcp list not run (OpenCode unavailable or --fast)')];
   const clean = String(output).replace(/\x1b\[[0-9;]*m/g, '');
   return expected.map((name) =>
     new RegExp(`✓\\s+${name}\\s+connected`).test(clean)
@@ -159,9 +159,11 @@ function listCurrentDocs(root) {
 
 function runOpencodeMcpList(root) {
   const opts = { encoding: 'utf8', timeout: 60_000, windowsHide: true };
+  // OpenCode runs natively on Windows since 2026-11-09 (opencode.cmd acp); the
+  // WSL reach-in was retired with the registry entry.
   const result = process.platform === 'win32'
-    ? spawnSync('wsl.exe', ['-e', 'bash', '-lc',
-      `cd "$(wslpath '${root}')" && ~/.opencode/bin/opencode mcp list`], opts)
+    ? spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'opencode mcp list'],
+      { ...opts, cwd: root, windowsVerbatimArguments: true })
     : spawnSync('opencode', ['mcp', 'list'], { ...opts, cwd: root });
   return result.status === 0 ? result.stdout : null;
 }

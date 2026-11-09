@@ -27,9 +27,9 @@ agents — it spawns them together and can give each its own worktree.
 - `false` — nothing confirmed. The tree may still be changing, and the tool
   result says so.
 
-`false` is not paranoia: on Windows the agent is reached through a wrapper
-(`wsl.exe -e opencode acp`) and OpenCode's work runs inside the shared
-`opencode serve` daemon, so killing the client does not necessarily stop the
+`false` is not paranoia: OpenCode's work runs inside the shared
+`opencode serve` daemon even when the hub launches it natively
+(`opencode.cmd acp`), so killing the client does not necessarily stop the
 session. Verified on 2026-11-03 — a call on one repo recorded `timeout` at
 23:27:18 and its session kept editing `figure/*.kt` at 23:34-23:35 and running
 Gradle at 23:37.

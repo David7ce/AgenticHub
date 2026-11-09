@@ -1,5 +1,5 @@
 {
-  "_note": "Agent registry for hub-acp.mjs. Every entry is an ACP *Agent* (a subprocess the hub drives as Client); Zed is not here because it is an ACP Client, not an Agent. The hub itself orchestrates -- router.mjs and fanout-acp.mjs decide what runs where; no agent in this file decomposes tasks. Commands are per-platform: on Windows the hub spawns OpenCode through WSL, where it actually lives.",
+  "_note": "Agent registry for hub-acp.mjs. Every entry is an ACP *Agent* (a subprocess the hub drives as Client); Zed is not here because it is an ACP Client, not an Agent. The hub itself orchestrates -- router.mjs and fanout-acp.mjs decide what runs where; no agent in this file decomposes tasks. Commands are per-platform: on Windows the hub runs OpenCode natively (`opencode.cmd acp`).",
   "protocolVersion": 1,
   "agents": {
     "opencode": {
@@ -10,13 +10,10 @@
       ],
       "platforms": {
         "win32": {
-          "command": "wsl.exe",
+          "command": "opencode.cmd",
           "args": [
-            "-e",
-            "opencode",
             "acp"
-          ],
-          "pathStyle": "wsl"
+          ]
         }
       },
       "defaultConfig": {

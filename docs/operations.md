@@ -6,7 +6,8 @@ STATUS: actual (2026-11-08)
 
 - **Hub y hubctl**: Windows. Ahí están Claude, los servicios loopback y las
   credenciales.
-- **OpenCode**: WSL, arrancado por el hub con `wsl.exe` cuando hace falta.
+- **OpenCode**: Windows, nativo (`opencode.cmd acp`). El hub lo lanza
+  directamente; WSL ya no interviene (cambio del 2026-11-09).
 - **MCP de OpenCode**: `opencode.json` del repo usa `cmd.exe /c node`, que
   funciona tanto desde WSL como desde Windows. Si `opencode mcp list` no dice
   `agent-hub connected`, esa es la primera cosa a revisar.
@@ -15,7 +16,7 @@ STATUS: actual (2026-11-08)
 
 **Windows Terminal con dos paneles**:
 
-1. izquierda: `wsl` → `opencode` (hablar y lanzar);
+1. izquierda: PowerShell → `opencode` (hablar y lanzar);
 2. derecha: PowerShell → `node ...\hubctl\hubctl.mjs live` (ver).
 
 No hay una app única que lance, converse y observe respetando consentimiento,
