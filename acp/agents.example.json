@@ -41,7 +41,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@agentclientprotocol/claude-agent-acp"
+        "@agentclientprotocol/claude-agent-acp@0.101.0"
       ],
       "platforms": {
         "win32": {

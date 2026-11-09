@@ -188,6 +188,32 @@ export function taskCounts(db) {
   return Object.fromEntries(rows.map((row) => [row.state, row.n]));
 }
 
+/**
+ * Read-only counts for `hubctl status`. Returns null when the queue file does
+ * not exist yet, so status never creates it as a side effect.
+ */
+export function readTaskCounts(path) {
+  try {
+    const db = new DatabaseSync(path, { readOnly: true });
+    try {
+      return taskCounts(db);
+    } finally {
+      db.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+const QUEUE_ORDER = ['queued', 'running', 'review', 'blocked'];
+
+/** One line for status: only the states that mean something is still open. */
+export function renderQueueLine(counts) {
+  if (!counts) return null;
+  const parts = QUEUE_ORDER.filter((state) => counts[state]).map((state) => `${counts[state]} ${state}`);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 function age(isoText) {
   if (!isoText) return '-';
   const ms = Date.now() - Date.parse(isoText);

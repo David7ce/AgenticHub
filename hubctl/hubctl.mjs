@@ -46,6 +46,8 @@ import {
   getTask,
   listTasks,
   openTaskDb,
+  readTaskCounts,
+  renderQueueLine,
   renderTask,
   renderTasks,
   retryTask,
@@ -219,6 +221,7 @@ export async function gatherStatus() {
 
   const runs = parseRuns(existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "");
   const isWsl = process.platform === "linux" && existsSync("/mnt/c/Windows");
+  const queue = readTaskCounts(TASKS_DB);
 
   // The bench baseline is versioned; the latest run is not. Comparing them is
   // the only way `status` can say "the agents still do what they did".
@@ -280,6 +283,7 @@ export async function gatherStatus() {
       warnings: egress.checks.filter((check) => check.level === "warn").map((check) => check.id),
     },
     inflight: readInflight(),
+    queue,
     runs,
   };
 }
@@ -399,6 +403,8 @@ export function renderStatus(status, { color = true } = {}) {
       ? paintFn.yellow(`${status.worktrees.agentCheckouts.length} agent`)
       : paintFn.green("0 agent"));
 
+  const queueText = renderQueueLine(status.queue);
+
   const egress = status.egress.ok
     ? paintFn.green("ok")
     : paintFn.yellow(`${status.egress.warnings.length} warning(s)`);
@@ -447,6 +453,7 @@ export function renderStatus(status, { color = true } = {}) {
     `${pad("memory")}${memory}`,
     `${pad("starnet")}${starnetLine}`,
     `${pad("worktrees")}${worktrees}`,
+    ...(queueText ? [`${pad("queue")}${paintFn.dim(queueText)}`] : []),
     `${pad("bench")}${bench}`,
     `${pad("egress")}${egress}`,
     `${pad("running")}${running}`,

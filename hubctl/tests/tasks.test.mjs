@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -10,6 +13,8 @@ import {
   listTasks,
   newTaskId,
   openTaskDb,
+  readTaskCounts,
+  renderQueueLine,
   renderTasks,
   retryTask,
   setTaskWorktree,
@@ -147,6 +152,27 @@ test('finishTask clears the worktree only when the key is present', () => {
 
   const cleared = finishTask(db, task.id, { state: 'done', evidence: 'diff', worktree: null });
   assert.equal(cleared.worktree, null);
+});
+
+test('readTaskCounts returns null for a missing file and counts for a real one', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tasks-'));
+  const path = join(dir, 'hub.db');
+  try {
+    assert.equal(readTaskCounts(path), null);
+    const db = openTaskDb(path);
+    addTask(db, { repo: 'D:/r', agent: 'a', prompt: 'x' });
+    db.close();
+    assert.equal(readTaskCounts(path).queued, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('renderQueueLine shows only the open states', () => {
+  assert.equal(renderQueueLine(null), null);
+  assert.equal(renderQueueLine({ done: 2 }), null);
+  assert.equal(renderQueueLine({ queued: 2, running: 1, done: 5 }), '2 queued · 1 running');
+  assert.equal(renderQueueLine({ review: 1, blocked: 1 }), '1 review · 1 blocked');
 });
 
 test('newTaskId is stable in shape and unique', () => {  const ids = new Set(Array.from({ length: 50 }, () => newTaskId()));

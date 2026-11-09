@@ -13,6 +13,7 @@ AGENTHUB 2026-11-08 19:10                    local · loopback
 agents    claude ok (61d)  opencode ok (61d)
 memory    37777 up · claude
 worktrees 1 total · 0 agent
+queue     2 queued · 1 review
 bench     15/15 baseline · not run
 egress    ok
 running   none
@@ -37,7 +38,7 @@ runs remain visible from either side; only external agents are platform-local.
 
 | Command | What it does |
 |---|---|
-| `status [--json] [--no-color]` | One-shot health snapshot |
+| `status [--json] [--no-color]` | One-shot health snapshot, including the task queue |
 | `live [--once] [--json] [--interval MS] [--no-external]` | Who is working now; `q` quits, `r` refreshes, `p` pauses |
 | `report [--days N] [--json]` | Completed turns by agent and model: OK, failures, timeouts, p50/p95, cost, and why the rest failed (quota, auth, network, config, spawn, agent-error, timeout, budget) |
 | `spend [--days N] [--date YYYY-MM-DD] [--by ...] [--json\|--csv]` | Tokens by project and day: OpenCode exact, Claude cost-only |
