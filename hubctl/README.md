@@ -20,6 +20,15 @@ running   none
 last      opencode ok 65.7s
 ```
 
+## Layout
+
+`hubctl.mjs` is the entry point: argument dispatch, the help text, and the
+re-exports other files and tests import. Shared plumbing lives in `common.mjs`
+(paths, colour, `readJson`, consent checks, `buildHubArgs`, `parseFlags`).
+There is one module per subcommand under `commands/`: `status`, `live`,
+`report`, `spend`, `doctor`, `run`, `handoff`, `tasks`, `attach`, `worktree`,
+`usage`, `bench`, `path`, `mem`.
+
 ## Run it on Windows
 
 The bridge and the claude-mem worker bind `127.0.0.1` **on Windows**. A WSL
