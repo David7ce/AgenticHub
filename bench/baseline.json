@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-30",
+  "agent": "opencode",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "tasks": 14,
+  "attempts": 15,
+  "passed": 15,
+  "tiers": {
+    "easy": { "tasks": 6, "attempts": 6, "passed": 6 },
+    "hard": { "tasks": 4, "attempts": 5, "passed": 5 },
+    "ambiguous": { "tasks": 3, "attempts": 3, "passed": 3 },
+    "construct": { "tasks": 1, "attempts": 1, "passed": 1 }
+  },
+  "variance": {
+    "date": "2026-10-31",
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "reps": 3,
+    "attempts": 12,
+    "passed": 12,
+    "perTask": {
+      "router-module": { "seconds": [57.6, 43.3, 42.6], "mean": 47.8, "tools": [25, 21, 22] },
+      "core-render-module": { "seconds": [46.5, 45.0, 59.7], "mean": 50.4, "tools": [16, 18, 22] },
+      "spec-paths-relative": { "seconds": [30.6, 28.1, 39.1], "mean": 32.6, "tools": [13, 12, 8] },
+      "construct-relative-cli": { "seconds": [70.5, 84.9, 64.7], "mean": 73.4, "tools": [24, 22, 27] }
+    },
+    "note": "Outcome is stable across repetitions; effort is not. Run-to-run time varies by roughly a third, so a single slow run is not a regression — only a lower pass count is."
+  },
+  "note": "All four tiers passed on the cheap default. A future run below this is a regression in the agent or the harness, not noise. Cost is not recorded: OpenCode Go is flat-rate and reports $0."
+}

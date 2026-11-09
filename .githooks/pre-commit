@@ -1,0 +1,14 @@
+#!/bin/sh
+# Runs the hub's fast checks before a commit. Enable once, per clone:
+#
+#   git config core.hooksPath .githooks
+#
+# The bench dry-run is skipped here on purpose: it copies the tree and takes
+# ~6 s, which is too slow for every commit. `node agent-hub/tools/check.mjs`
+# runs it, and that is what a release or a real review should use.
+# Git exports GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE to hooks, and the tests that
+# build throwaway repositories would inherit them and operate on this one
+# instead. Clear them before running anything.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+
+exec node agent-hub/tools/check.mjs --no-bench

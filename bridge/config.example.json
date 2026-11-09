@@ -1,0 +1,30 @@
+{
+  "host": "127.0.0.1",
+  "port": 3010,
+  "authTokenEnv": "AGENT_HUB_BRIDGE_TOKEN",
+  "auditLog": "../../logs/bridge.jsonl",
+  "systemPrompt": null,
+  "agents": {
+    "registry": "../acp/agents.json",
+    "cwd": "..",
+    "permission": "deny",
+    "timeoutMs": 300000,
+    "models": [
+      {
+        "id": "claude",
+        "agent": "claude",
+        "label": "Claude (existing login)"
+      },
+      {
+        "id": "opencode",
+        "agent": "opencode",
+        "label": "OpenCode (existing login)"
+      },
+      {
+        "id": "hermes",
+        "agent": "hermes",
+        "label": "Hermes (existing login)"
+      }
+    ]
+  }
+}

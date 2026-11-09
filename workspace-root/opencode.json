@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "agent-hub": {
+        "type": "local",
+        "command": [
+          "cmd.exe",
+          "/c",
+          "node",
+          "D:\\Workspaces\\AgentHub\\agent-hub\\mcp\\server.mjs"
+        ]
+      }
+    }
+  }
+}

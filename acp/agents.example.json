@@ -1,0 +1,100 @@
+{
+  "_note": "Agent registry for hub-acp.mjs. Every entry is an ACP *Agent* (a subprocess the hub drives as Client); Zed is not here because it is an ACP Client, not an Agent. The hub itself orchestrates -- router.mjs and fanout-acp.mjs decide what runs where; no agent in this file decomposes tasks. Commands are per-platform: on Windows the hub spawns OpenCode through WSL, where it actually lives.",
+  "protocolVersion": 1,
+  "agents": {
+    "opencode": {
+      "label": "OpenCode",
+      "command": "opencode",
+      "args": [
+        "acp"
+      ],
+      "platforms": {
+        "win32": {
+          "command": "wsl.exe",
+          "args": [
+            "-e",
+            "opencode",
+            "acp"
+          ],
+          "pathStyle": "wsl"
+        }
+      },
+      "defaultConfig": {
+        "model": "opencode-go/deepseek-v4.1-flash"
+      },
+      "modelFallbacks": [
+        "opencode/deepseek-v4.1-flash-free",
+        "opencode-go/claude-haiku-5-5",
+        "opencode-go/mimo-v2.5",
+        "opencode-go/beam-free"
+      ],
+      "notes": "On Windows the WSL side launches OpenCode inside Linux: point this at your own install, because opencode is usually not on the non-interactive WSL PATH (the same quirk hub.ps1 works around). The PAID OpenCode Go DeepSeek (opencode-go/deepseek-v4.1-flash) is the default and comes before the free one: the free variant is now the first fallback, so the hub only reaches it when the paid pool reports exhaustion, and the same weights cost nothing there. Order after that: claude-haiku-5-5, mimo-v2.5, then beam-free as last resort. modelFallbacks is walked by router.mjs and the MCP ask path; an explicit --model is never substituted. Allowed set otherwise unchanged (the latest DeepSeek either namespace, opencode/gpt-6-luna, minimax-m3, opencode-go/muse-spark-1.2-contributor, any -free-suffixed model). Prices per million tokens, input/output (opencode models, 2026-11-03): deepseek-v4.1-flash 0.15/0.60 (best agentic score in the catalog), claude-haiku-5-5 0.10/0.50, mimo-v2.5 0.14/0.28, beam-free 0/0.",
+      "effort": {
+        "option": "effort",
+        "values": {
+          "low": "low",
+          "medium": "default",
+          "high": "high",
+          "max": "max"
+        }
+      }
+    },
+    "claude": {
+      "label": "Claude Agent (ACP adapter)",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@agentclientprotocol/claude-agent-acp"
+      ],
+      "platforms": {
+        "win32": {
+          "command": "npx.cmd"
+        }
+      },
+      "defaultConfig": {
+        "model": "sonnet"
+      },
+      "notes": "Claude Code itself is not an ACP server; the first-party adapter wraps the Claude Agent SDK. Needs Claude credentials in the same environment that runs this entry, which in practice means the hub must run on Windows: the credentials live in %USERPROFILE%\\.claude, and the WSL-side `npx` adapter fails with `session/prompt: Authentication required (code -32000)`. The adapter exposes these model values: default (Sonnet 5), sonnet (Sonnet 5.5), haiku (Haiku 5.5), opus (Opus 5.5), fable (Fable 5.1). Use --model haiku for cheap runs and --model sonnet for coding; the plan's weekly limit still applies."
+    },
+    "starnet": {
+      "label": "StarNet (NOVA)",
+      "command": "node",
+      "args": [
+        "%LOCALAPPDATA%\\StarNet\\sidecar\\acp\\serve.js",
+        "--port=8787"
+      ],
+      "platforms": {
+        "win32": {
+          "command": "%LOCALAPPDATA%\\StarNet\\node.exe"
+        }
+      },
+      "notes": "StarNet's own ACP agent, verified 2026-10-30: initialize + session/new work when the station is running on :8787. It proxies to the station, so start skynet-desktop.exe (or the sidecar) first. Its consent entry is disabled by default: grant it in consent.json before running it."
+    },
+    "codex": {
+      "label": "Codex (ACP adapter)",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@agentclientprotocol/codex-acp@2.6.0"
+      ],
+      "platforms": {
+        "win32": {
+          "command": "npx.cmd"
+        }
+      },
+      "defaultConfig": {
+        "model": "gpt-6.1-terra"
+      },
+      "notes": "Adaptador mantenido; pin exacto. Habla ACP v1/v2 y arranca Codex App Server (depende de @openai/codex ^0.166.0; CLI local 0.167.0). Usa la auth ChatGPT existente; nunca pasar ni imprimir tokens. Sustituye a @zed-industries/codex-acp@0.16.0 (deprecado: embebe Codex 0.137 y falla con -32603 en modelos 6.x). Modelos (models_cache.json, 2026-11-08): gpt-6.1-terra defecto, gpt-6.1-sol escalado, gpt-6-luna lote; gpt-6-astra solo con --model explícito.",
+      "effort": {
+        "option": "reasoning_effort",
+        "values": {
+          "low": "low",
+          "medium": "medium",
+          "high": "high",
+          "max": "max"
+        }
+      }
+    }
+  }
+}

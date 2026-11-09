@@ -1,0 +1,270 @@
+{
+  "_note": "Catálogo de modelos del hub. No es un ranking: los tiers son una decisión local para el router (capability fit), y el coste/latencia reales salen de logs/runs.jsonl. `enabled: false` significa que el worker no está registrado o no está disponible; el modelo queda documentado para cuando lo esté. Tier `frontier` (Astra, Opus) nunca se elige automáticamente: solo con --model/--force explícito; además lleva enabled:false.",
+  "providers": {
+    "opencode-go": {
+      "label": "OpenCode Go",
+      "billing": "flat",
+      "retention": "unknown",
+      "enabled": true
+    },
+    "opencode": {
+      "label": "OpenCode free pool",
+      "billing": "free",
+      "retention": "unknown",
+      "enabled": true
+    },
+    "anthropic": {
+      "label": "Anthropic via Claude Code",
+      "billing": "subscription",
+      "retention": "unknown",
+      "enabled": true
+    },
+    "nous": {
+      "label": "Nous Portal",
+      "billing": "free",
+      "retention": "may-train",
+      "enabled": false,
+      "note": "Hermes queda como experimento manual; no se enruta."
+    },
+    "openai": {
+      "label": "OpenAI via Codex",
+      "billing": "subscription",
+      "retention": "unknown",
+      "enabled": true,
+      "note": "Vía @agentclientprotocol/codex-acp@2.6.0 (registrado 2026-11-08). Retención no verificada: no mandar material sensible."
+    },
+    "openrouter": {
+      "label": "OpenRouter",
+      "billing": "pay-per-token",
+      "retention": "unknown",
+      "enabled": false,
+      "envKey": "OPENROUTER_API_KEY",
+      "note": "Clave disponible, cartera a cero. No se hacen llamadas hasta que haya saldo y una necesidad real."
+    }
+  },
+  "models": [
+    {
+      "id": "opencode-go/deepseek-v4.1-flash",
+      "agent": "opencode",
+      "provider": "opencode-go",
+      "label": "DeepSeek V4.1 Flash",
+      "context": 200000,
+      "tier": "default",
+      "capabilities": {
+        "code": 5,
+        "review": 4,
+        "text": 4,
+        "tools": 5
+      },
+      "costPerMillion": {
+        "input": 0.15,
+        "output": 0.6
+      },
+      "retention": "unknown",
+      "enabled": true
+    },
+    {
+      "id": "opencode/deepseek-v4.1-flash-free",
+      "agent": "opencode",
+      "provider": "opencode",
+      "label": "DeepSeek V4.1 Flash (free)",
+      "context": 200000,
+      "tier": "fallback",
+      "capabilities": {
+        "code": 4,
+        "review": 3,
+        "text": 4,
+        "tools": 4
+      },
+      "costPerMillion": {
+        "input": 0,
+        "output": 0
+      },
+      "retention": "unknown",
+      "enabled": true
+    },
+    {
+      "id": "opencode-go/claude-haiku-5-5",
+      "agent": "opencode",
+      "provider": "opencode-go",
+      "label": "Claude Haiku 5.5 (OpenCode Go)",
+      "context": 200000,
+      "tier": "review",
+      "capabilities": {
+        "code": 3,
+        "review": 4,
+        "text": 4,
+        "tools": 4
+      },
+      "costPerMillion": {
+        "input": 0.1,
+        "output": 0.5
+      },
+      "retention": "unknown",
+      "enabled": true
+    },
+    {
+      "id": "sonnet",
+      "agent": "claude",
+      "provider": "anthropic",
+      "label": "Claude Sonnet (suscripción)",
+      "context": 200000,
+      "tier": "strong",
+      "capabilities": {
+        "code": 5,
+        "review": 5,
+        "text": 5,
+        "tools": 4
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": true
+    },
+    {
+      "id": "haiku",
+      "agent": "claude",
+      "provider": "anthropic",
+      "label": "Claude Haiku (suscripción)",
+      "context": 200000,
+      "tier": "review",
+      "capabilities": {
+        "code": 3,
+        "review": 4,
+        "text": 4,
+        "tools": 4
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": true
+    },
+    {
+      "id": "opus",
+      "agent": "claude",
+      "provider": "anthropic",
+      "label": "Claude Opus 5.5 (suscripción)",
+      "context": 200000,
+      "tier": "frontier",
+      "capabilities": {
+        "code": 5,
+        "review": 5,
+        "text": 5,
+        "tools": 5
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": false,
+      "note": "Trabajos excepcionales; solo con --model opus explícito."
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "agent": "codex",
+      "provider": "openai",
+      "label": "Codex GPT-6.1 Terra",
+      "context": 200000,
+      "tier": "default",
+      "capabilities": {
+        "code": 4,
+        "review": 5,
+        "text": 5,
+        "tools": 4
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": true,
+      "note": "Defecto de Codex: día a día, revisión, texto, visión."
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "agent": "codex",
+      "provider": "openai",
+      "label": "Codex GPT-6.1 Sol",
+      "context": 200000,
+      "tier": "strong",
+      "capabilities": {
+        "code": 5,
+        "review": 5,
+        "text": 5,
+        "tools": 5
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": true,
+      "note": "Escalado: coding duro, terminal, tareas largas."
+    },
+    {
+      "id": "gpt-6-luna",
+      "agent": "codex",
+      "provider": "openai",
+      "label": "Codex GPT-6 Luna",
+      "context": 200000,
+      "tier": "light",
+      "capabilities": {
+        "code": 3,
+        "review": 3,
+        "text": 4,
+        "tools": 3
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": true,
+      "note": "Volumen, extracción, resúmenes; último recurso."
+    },
+    {
+      "id": "gpt-6-astra",
+      "agent": "codex",
+      "provider": "openai",
+      "label": "Codex GPT-6 Astra",
+      "context": 200000,
+      "tier": "frontier",
+      "capabilities": {
+        "code": 5,
+        "review": 5,
+        "text": 5,
+        "tools": 5
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": false,
+      "note": "Trabajos excepcionales; solo con --model explícito."
+    },
+    {
+      "id": "nous:stepfun/step-3.7-flash:free",
+      "agent": "hermes",
+      "provider": "nous",
+      "label": "Hermes · StepFun 3.7 Flash (free)",
+      "context": 262144,
+      "tier": "free-text",
+      "capabilities": {
+        "code": 1,
+        "review": 1,
+        "text": 3,
+        "tools": 1
+      },
+      "costPerMillion": {
+        "input": 0,
+        "output": 0
+      },
+      "retention": "may-train",
+      "enabled": false,
+      "note": "Solo texto; tool use no fiable. Hermes no está registrado como worker."
+    },
+    {
+      "id": "openrouter/auto",
+      "agent": "opencode",
+      "provider": "openrouter",
+      "label": "OpenRouter Auto (futuro)",
+      "context": null,
+      "tier": "capacity",
+      "capabilities": {
+        "code": 4,
+        "review": 4,
+        "text": 4,
+        "tools": 4
+      },
+      "costPerMillion": null,
+      "retention": "unknown",
+      "enabled": false,
+      "note": "Sin saldo. La clave va en OPENROUTER_API_KEY, nunca en el repo."
+    }
+  ]
+}
