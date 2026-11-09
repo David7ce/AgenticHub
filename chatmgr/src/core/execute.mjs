@@ -8,12 +8,12 @@ import { keyOf } from "./model.mjs";
  * item and marks the rest cancelled.
  */
 export async function runBatch(conversations, { providers, action, signal, onProgress } = {}) {
-  const results = [];
-  for (let index = 0; index < conversations.length; index += 1) {
-    const conv = conversations[index];
+  const slots = new Array(conversations.length);
+  let finished = 0;
+  const runOne = async (conv, index) => {
     if (signal?.aborted) {
-      results.push({ key: keyOf(conv), provider: conv.provider, id: conv.id, status: "cancelled" });
-      continue;
+      slots[index] = { key: keyOf(conv), provider: conv.provider, id: conv.id, status: "cancelled" };
+      return;
     }
     const adapter = providers[conv.provider];
     let outcome;
@@ -31,9 +31,21 @@ export async function runBatch(conversations, { providers, action, signal, onPro
         error: String(error?.message ?? error),
       };
     }
-    results.push(outcome);
-    onProgress?.({ index: index + 1, total: conversations.length, ...outcome });
-  }
+    slots[index] = outcome;
+    finished += 1;
+    onProgress?.({ index: finished, total: conversations.length, ...outcome });
+  };
+  // Same agent: one at a time (two deletions in one store must not race).
+  // Different agents touch different stores, so they run side by side.
+  const lanes = new Map();
+  conversations.forEach((conv, index) => {
+    if (!lanes.has(conv.provider)) lanes.set(conv.provider, []);
+    lanes.get(conv.provider).push([conv, index]);
+  });
+  await Promise.all([...lanes.values()].map(async (lane) => {
+    for (const [conv, index] of lane) await runOne(conv, index);
+  }));
+  const results = slots;
   return {
     results,
     ok: results.filter((row) => row.status === "ok").length,

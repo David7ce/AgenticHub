@@ -10,7 +10,7 @@ It is a plugin, not a fork: OpenCode 2.2.6 ships the TUI plugin API this uses
 
 ## Use
 
-Inside OpenCode: `Ctrl+Shift+L`, or the command palette entry
+Inside OpenCode: `/conversations` (or `/chats`) is the dependable way; `Ctrl+Shift+L` only works in terminals that report it. Also the command palette entry
 **Conversations: OpenCode, Codex, Claude, Hermes**, or `/conversations`.
 
 | Key | Action |
@@ -21,8 +21,9 @@ Inside OpenCode: `Ctrl+Shift+L`, or the command palette entry
 | `p` | Preview the transcript |
 | `Enter` | Resume (OpenCode opens the session; others show their own command) |
 | `m` | Archive / unarchive the selection (Codex only, reversible) |
+| `t` | Show/hide automated sessions (tool-payload summarizers, auto-review guardians, hub-started runs); hidden by default |
 | `k` | Toggle backup on/off for the next delete (off = permanent, no undo) |
-| `Ctrl+D` | One batch confirmation, then delete |
+| `Ctrl+D` | One batch confirmation, then delete the marked rows (the row under the cursor if none is marked) |
 | `f` `o` `b` `x` `/` | Filter by agent, exact path, before-date, archived, text |
 | `r` | Refresh |
 | `Esc` | Leave the panel |

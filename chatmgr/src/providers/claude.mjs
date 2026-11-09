@@ -1,3 +1,4 @@
+import { automatedTitle } from "../core/automated.mjs";
 import {
   existsSync,
   lstatSync,
@@ -154,6 +155,7 @@ export function list({ home = claudeHome(), now = Date.now(), recentWindowMs = R
       const id = parsed.sessionId || fileId;
       const sidecarPath = join(dir, fileId);
       rows.push({
+        automated: automatedTitle(cleanTitle(parsed.firstUser)),
         provider: "claude",
         id,
         title: cleanTitle(parsed.firstUser),

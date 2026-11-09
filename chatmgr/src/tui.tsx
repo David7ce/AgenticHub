@@ -10,7 +10,11 @@ import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } 
 import { PROVIDERS, providerList } from "./core/capabilities.mjs"
 
 const CLI = fileURLToPath(new URL("./cli.mjs", import.meta.url))
-const PAGE = 18
+// Rows that fit: terminal height minus title, status, filters, margins, footer.
+const CHROME = 10
+const termRows = () => Math.max(6, Number(process.stdout.rows) || 30)
+const [pageSize, setPageSize] = createSignal(Math.max(5, termRows() - CHROME))
+process.stdout.on?.("resize", () => setPageSize(Math.max(5, termRows() - CHROME)))
 
 type Row = {
   provider: string
@@ -21,6 +25,7 @@ type Row = {
   archived: boolean
   running: boolean
   childCount?: number
+  automated?: boolean
 }
 
 const [rows, setRows] = createSignal<Row[]>([])
@@ -31,6 +36,9 @@ const [status, setStatus] = createSignal("loading…")
 const [errors, setErrors] = createSignal<string[]>([])
 const [busy, setBusy] = createSignal(false)
 const [keepBackup, setKeepBackup] = createSignal(true)
+// True while any dialog is on screen. The panel's own keys (Enter = resume,
+// Esc = close...) must not fire then, or they swallow the dialog's Enter/Esc.
+const [dialogOpen, setDialogOpen] = createSignal(false)
 
 function callCli(args: string[]): Promise<any> {
   return new Promise((resolve) => {
@@ -55,11 +63,12 @@ function visibleRows(): Row[] {
 
 async function refresh() {
   setStatus("loading…")
-  const result = await callCli(["list", "--json"])
+  // The panel filters locally, so it fetches everything (incl. archived and automated).
+  const result = await callCli(["list", "--json", "--archived", "--automated"])
   if (result?.conversations) {
     setRows(result.conversations)
     setErrors((result.errors ?? []).map((row: any) => `${row.provider}: ${row.error}`))
-    setStatus(`${result.shown} of ${result.total} conversations`)
+    setStatus("")
     const live = new Set(result.conversations.map(keyOf))
     setSelected((current) => new Set([...current].filter((key) => live.has(key))))
   } else {
@@ -96,6 +105,21 @@ export default Plugin.define({
     const accent = () => theme?.text?.accent ?? "cyan"
     const warning = () => theme?.text?.warning ?? "yellow"
 
+    let dialogDepth = 0
+    const dialog: any = {}
+    for (const name of ["alert", "confirm", "select", "prompt"]) {
+      dialog[name] = async (...args: any[]) => {
+        dialogDepth += 1
+        setDialogOpen(true)
+        try {
+          return await (context.ui.dialog as any)[name](...args)
+        } finally {
+          dialogDepth -= 1
+          if (dialogDepth <= 0) setDialogOpen(false)
+        }
+      }
+    }
+
     context.ui.router.register({ name: "chatmgr", render: () => <Manager /> })
 
     context.keymap.layer(() => ({
@@ -108,7 +132,7 @@ export default Plugin.define({
           group: "Chatmgr",
           bind: "ctrl+shift+l",
           palette: true,
-          slash: { name: "conversations", aliases: ["chatmgr"] },
+          slash: { name: "conversations", aliases: ["chats", "chatmgr"] },
           run: async () => {
             await refresh()
             context.ui.router.navigate({ type: "plugin", name: "chatmgr" })
@@ -124,7 +148,7 @@ export default Plugin.define({
             const lines = (result.backups ?? []).map(
               (row: any) => `${row.createdAt} · ${row.items} item(s) · ${row.manifest}`,
             )
-            await context.ui.dialog.alert({
+            await dialog.alert({
               title: "Deletion backups",
               message:
                 (lines.length ? lines.join("\n") : "No backups yet.") +
@@ -140,18 +164,18 @@ export default Plugin.define({
       const cursorRow = createMemo(() => visibleRows()[cursor()])
       const start = createMemo(() => {
         const n = visibleRows().length
-        if (n <= PAGE) return 0
-        return Math.max(0, Math.min(cursor() - Math.floor(PAGE / 2), n - PAGE))
+        if (n <= pageSize()) return 0
+        return Math.max(0, Math.min(cursor() - Math.floor(pageSize() / 2), n - pageSize()))
       })
 
-      context.keymap.layer(() => ({
+      context.keymap.layer(() => dialogOpen() ? ({ mode: "global", priority: 20, commands: [], bindings: [] }) : ({
         mode: "global",
         priority: 20,
         commands: [
           { id: "chatmgr.down", bind: "down", run: () => setCursor((v) => Math.min(v + 1, Math.max(0, visibleRows().length - 1))) },
           { id: "chatmgr.up", bind: "up", run: () => setCursor((v) => Math.max(0, v - 1)) },
-          { id: "chatmgr.pageDown", bind: "pagedown", run: () => setCursor((v) => Math.min(v + PAGE, Math.max(0, visibleRows().length - 1))) },
-          { id: "chatmgr.pageUp", bind: "pageup", run: () => setCursor((v) => Math.max(0, v - PAGE)) },
+          { id: "chatmgr.pageDown", bind: "pagedown", run: () => setCursor((v) => Math.min(v + pageSize(), Math.max(0, visibleRows().length - 1))) },
+          { id: "chatmgr.pageUp", bind: "pageup", run: () => setCursor((v) => Math.max(0, v - pageSize())) },
           { id: "chatmgr.toggle", bind: "space", run: toggleCurrent },
           { id: "chatmgr.all", bind: "a", run: selectAllFiltered },
           { id: "chatmgr.clear", bind: "c", run: () => setSelected(new Set()) },
@@ -167,6 +191,11 @@ export default Plugin.define({
           },
           { id: "chatmgr.preview", bind: "p", run: () => void showPreview() },
           { id: "chatmgr.archive", bind: "m", run: () => void archiveSelected() },
+          {
+            id: "chatmgr.automated",
+            bind: "t",
+            run: () => setFilter({ ...filter(), includeAutomated: !filter().includeAutomated }),
+          },
           { id: "chatmgr.backup", bind: "k", run: () => { setKeepBackup(!keepBackup()); setStatus(keepBackup() ? "deletes keep a backup" : "deletes are permanent (no backup)") } },
           { id: "chatmgr.resume", bind: "return", run: () => void resume() },
           { id: "chatmgr.delete", bind: "ctrl+d", run: () => void deleteSelected() },
@@ -189,6 +218,7 @@ export default Plugin.define({
           "chatmgr.preview",
           "chatmgr.archive",
           "chatmgr.backup",
+          "chatmgr.automated",
           "chatmgr.resume",
           "chatmgr.delete",
           "chatmgr.close",
@@ -204,25 +234,25 @@ export default Plugin.define({
             description: p.delete ? "delete supported" : "read-only",
           })),
         ]
-        const picked = await context.ui.dialog.select({ title: "Filter by agent", options })
+        const picked = await dialog.select({ title: "Filter by agent", options })
         if (!picked) return
         setFilter({ ...filter(), agents: picked === "all" ? null : [picked] })
       }
 
       async function editProject() {
-        const value = await context.ui.dialog.prompt({ title: "Exact project path (empty = any)", placeholder: "D:\\repo" })
+        const value = await dialog.prompt({ title: "Exact project path (empty = any)", placeholder: "D:\\repo" })
         if (value === undefined) return
         setFilter({ ...filter(), project: value.trim() || null })
       }
 
       async function editBefore() {
-        const value = await context.ui.dialog.prompt({ title: "Last activity before (YYYY-MM-DD)", placeholder: "2026-11-01" })
+        const value = await dialog.prompt({ title: "Last activity before (YYYY-MM-DD)", placeholder: "2026-11-01" })
         if (value === undefined) return
         setFilter({ ...filter(), before: value.trim() || null })
       }
 
       async function editSearch() {
-        const value = await context.ui.dialog.prompt({ title: "Search title or path", placeholder: "parser" })
+        const value = await dialog.prompt({ title: "Search title or path", placeholder: "parser" })
         if (value === undefined) return
         setFilter({ ...filter(), query: value })
       }
@@ -232,9 +262,9 @@ export default Plugin.define({
         if (!row) return
         setStatus(`preview: ${row.title}`)
         const result = await callCli(["preview", "--key", keyOf(row)])
-        setStatus(`${visibleRows().length} shown`)
-        if (result.ok) await context.ui.dialog.alert({ title: row.title, message: result.text || "(empty transcript)" })
-        else await context.ui.dialog.alert({ title: "Preview failed", message: result.error })
+        setStatus("")
+        if (result.ok) await dialog.alert({ title: row.title, message: result.text || "(empty transcript)" })
+        else await dialog.alert({ title: "Preview failed", message: result.error })
       }
 
       async function resume() {
@@ -245,7 +275,7 @@ export default Plugin.define({
           return
         }
         const hint = (PROVIDERS[row.provider]?.resumeHint ?? `resume ${row.id}`).replace("<id>", row.id)
-        await context.ui.dialog.alert({
+        await dialog.alert({
           title: `Resume ${PROVIDERS[row.provider]?.label ?? row.provider}`,
           message: `Run in a terminal:\n\n  ${hint}\n\nEach agent reopens its own transcript; nothing is converted.`,
         })
@@ -257,16 +287,16 @@ export default Plugin.define({
           ? rows().filter((row) => selected().has(keyOf(row)))
           : [cursorRow()].filter(Boolean)
         if (chosen.length === 0) {
-          await context.ui.dialog.alert({ title: "Nothing selected", message: "Space toggles a row; a selects all filtered rows." })
+          await dialog.alert({ title: "Nothing selected", message: "Space toggles a row; a selects all filtered rows." })
           return
         }
         const plan = buildArchivePlan(chosen as Row[])
         const keys = plan.items.map(keyOf)
         if (keys.length === 0) {
-          await context.ui.dialog.alert({ title: "Nothing to archive", message: describeArchivePlan(plan) })
+          await dialog.alert({ title: "Nothing to archive", message: describeArchivePlan(plan) })
           return
         }
-        const confirmed = await context.ui.dialog.confirm({
+        const confirmed = await dialog.confirm({
           title: `${describeArchivePlan(plan)}?`,
           message:
             `Only agents with a single-session archive command take part (Codex).\n` +
@@ -283,25 +313,27 @@ export default Plugin.define({
           const mark = row.status === "ok" ? "OK " : row.status === "blocked" ? "SKIP " : "FAIL "
           return `${mark}${row.provider} ${row.id}${row.action ? ` (${row.action})` : ""}${row.error ? ` — ${row.error}` : ""}`
         })
-        await context.ui.dialog.alert({ title: result.ok ? "Archive updated" : "Partially updated", message: lines.join("\n") })
+        await dialog.alert({ title: result.ok ? "Archive updated" : "Partially updated", message: lines.join("\n") })
         await refresh()
       }
 
       async function deleteSelected() {
         if (busy()) return
-        const chosen = rows().filter((row) => selected().has(keyOf(row)))
+        let chosen = rows().filter((row) => selected().has(keyOf(row)))
+        // Nothing marked with space: act on the row under the cursor.
+        if (chosen.length === 0 && cursorRow()) chosen = [cursorRow() as Row]
         if (chosen.length === 0) {
-          await context.ui.dialog.alert({ title: "Nothing selected", message: "Space toggles a row; a selects all filtered rows." })
+          await dialog.alert({ title: "Nothing to delete", message: "The list is empty." })
           return
         }
         const plan = buildDeletePlan(chosen, { currentKey: currentKey() })
         const keys = plan.items.map(keyOf)
         if (keys.length === 0) {
-          await context.ui.dialog.alert({ title: "Nothing deletable", message: describePlan(plan) })
+          await dialog.alert({ title: "Nothing deletable", message: describePlan(plan) })
           return
         }
 
-        const confirmed = await context.ui.dialog.confirm({
+        const confirmed = await dialog.confirm({
           title: `Delete ${keys.length} conversation${keys.length === 1 ? "" : "s"}?`,
           message:
             `${describePlan(plan)}\n\n` +
@@ -324,7 +356,7 @@ export default Plugin.define({
           return `${mark}${row.provider} ${row.id}${row.error ? ` — ${row.error}` : ""}`
         })
         if (result.backup) lines.push("", `Backup: ${result.backup.manifest}`)
-        await context.ui.dialog.alert({ title: result.ok ? "Deleted" : "Partially deleted", message: lines.join("\n") })
+        await dialog.alert({ title: result.ok ? "Deleted" : "Partially deleted", message: lines.join("\n") })
         setSelected(new Set())
         await refresh()
       }
@@ -336,6 +368,7 @@ export default Plugin.define({
           `path ${f.project ?? "any"}`,
           `before ${f.before ?? "any"}`,
           `archived ${f.includeArchived ? "shown" : "hidden"}`,
+          `automated ${f.includeAutomated ? "shown" : "hidden"}`,
         ]
         if (f.query) parts.push(`search ${f.query}`)
         return parts.join(" · ")
@@ -344,13 +377,13 @@ export default Plugin.define({
       return (
         <box flexDirection="column" padding={1}>
           <text fg={base()}>Conversations</text>
-          <text fg={muted()}>{status()} · {selected().size} selected</text>
+          <text fg={muted()}>{visibleRows().length} of {rows().length} conversations{rows().length > visibleRows().length ? ` (${rows().length - visibleRows().length} hidden by filters)` : ""} · {selected().size} selected{status() ? ` · ${status()}` : ""}</text>
           <text fg={muted()}>{filterLine()}</text>
           <Show when={errors().length > 0}>
             <text fg={warning()}>{errors().join(" · ")}</text>
           </Show>
           <box flexDirection="column" marginTop={1}>
-            <For each={visibleRows().slice(start(), start() + PAGE)}>
+            <For each={visibleRows().slice(start(), start() + pageSize())}>
               {(row, index) => {
                 const absolute = () => start() + index()
                 const active = () => absolute() === cursor()
@@ -368,7 +401,7 @@ export default Plugin.define({
               <text fg={muted()}>No conversations match. r refreshes, x shows archived, c clears selection.</text>
             </Show>
           </box>
-          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · k backup on/off · ctrl+d delete · f/o/b/x filters · r refresh · esc close</text>
+          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · k backup on/off · t automated · ctrl+d delete (cursor row if none selected) · f/o/b/x filters · r refresh · esc close</text>
         </box>
       )
     }

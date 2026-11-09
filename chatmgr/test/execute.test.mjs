@@ -23,7 +23,9 @@ test("partial failures are reported per item and do not stop the batch", async (
   const plan = buildDeletePlan([conv("codex", "a"), conv("codex", "b"), conv("opencode", "c")]);
   const result = await executeDeletes(plan, { providers });
 
-  assert.deepEqual(calls, ["remove:a", "remove:b", "remove:c"]);
+  // Same agent stays in order; different agents may interleave.
+  assert.ok(calls.indexOf("remove:a") < calls.indexOf("remove:b"));
+  assert.deepEqual([...calls].sort(), ["remove:a", "remove:b", "remove:c"]);
   assert.equal(result.ok, 2);
   assert.equal(result.failed, 1);
   const failed = result.results.find((row) => row.id === "b");

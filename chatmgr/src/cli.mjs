@@ -52,6 +52,7 @@ function filterFrom(flags) {
     project: typeof flags.project === "string" ? flags.project : null,
     before: typeof flags.before === "string" ? flags.before : null,
     includeArchived: flags.archived === true,
+    includeAutomated: flags.automated === true,
     query: typeof flags.query === "string" ? flags.query : "",
   });
 }
@@ -98,7 +99,7 @@ async function cmdPreview(flags) {
   const id = rest.join(":");
   const adapter = adapters[provider];
   if (!adapter) throw new Error(`unknown provider ${provider}`);
-  const { conversations } = await collect({});
+  const { conversations } = await collect({ automated: true });
   const conv = conversations.find((row) => row.provider === provider && row.id === id);
   if (!conv) throw new Error(`conversation not found: ${flags.key}`);
   const text = await adapter.preview(conv, {});
@@ -108,7 +109,7 @@ async function cmdPreview(flags) {
 async function cmdDelete(flags) {
   const keys = typeof flags.keys === "string" ? flags.keys.split(",").filter(Boolean) : [];
   if (keys.length === 0) throw new Error("--keys is required");
-  const { providers, conversations } = await collect({});
+  const { providers, conversations } = await collect({ automated: true });
   const selection = createSelection(keys);
   const selected = selectedConversations(selection, conversations);
   const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
@@ -164,7 +165,7 @@ async function cmdPruneBackups(flags) {
 async function cmdArchive(flags) {
   const keys = typeof flags.keys === "string" ? flags.keys.split(",").filter(Boolean) : [];
   if (keys.length === 0) throw new Error("--keys is required");
-  const { providers, conversations } = await collect({});
+  const { providers, conversations } = await collect({ automated: true });
   const selected = selectedConversations(createSelection(keys), conversations);
   const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
   const plan = buildArchivePlan(selected);

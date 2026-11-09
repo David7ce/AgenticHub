@@ -15,6 +15,7 @@ export const emptyFilter = () => ({
   project: null,
   before: null,
   includeArchived: false,
+  includeAutomated: false,
   query: "",
 });
 
@@ -27,6 +28,7 @@ export function normalizeFilter(input = {}) {
     project: input.project ? String(input.project) : null,
     before: input.before ? String(input.before) : null,
     includeArchived: input.includeArchived === true,
+    includeAutomated: input.includeAutomated === true,
     query: String(input.query ?? "").trim(),
   };
 }
@@ -39,6 +41,7 @@ export function cutoffOf(filter) {
 export function matches(conv, filter) {
   if (filter.agents && !filter.agents.includes(conv.provider)) return false;
   if (!filter.includeArchived && conv.archived) return false;
+  if (!filter.includeAutomated && conv.automated) return false;
   if (filter.project && normPath(conv.projectPath) !== normPath(filter.project)) return false;
   if (filter.before) {
     // Strictly before local midnight: 00:00 of that day is *not* "before" it.
