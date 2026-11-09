@@ -58,7 +58,7 @@ export function toWsl(p) {
   const value = stripTrailing(p.trim());
 
   if (style === 'windows-unc-wsl') {
-    // \\wsl.localhost\Ubuntu\home\d7\x -> /home/user/x
+    // \\wsl.localhost\Ubuntu\home\user\x -> /home/user/x
     const rest = value.replace(WSL_UNC, '').replace(/\\/g, '/');
     return rest ? posix.normalize(`/${rest.replace(/^\/+/, '')}`) : '/';
   }
@@ -76,7 +76,7 @@ export function toWsl(p) {
 /**
  * Any WSL/POSIX spelling -> the Windows spelling.
  *   /mnt/d/Workspaces/AgentHub   -> D:\Workspaces\AgentHub
- *   /home/user/x       -> \\wsl.localhost\Ubuntu\home\d7\x
+ *   /home/user/x       -> \\wsl.localhost\Ubuntu\home\user\x
  *   D:\Workspaces\AgentHub       -> unchanged
  *
  * `distro` is only needed for paths outside /mnt, where Windows has no drive

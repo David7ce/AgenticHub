@@ -169,4 +169,4 @@ AgentHub-dispatched node.
 - [DeepSeek Harness CLI modes — official `apps/cli/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)
 - [OpenCode `run` / non-interactive mode](https://opencode.ai/v2/docs/cli/commands/)
 - `starnet-comparison.md` (this repo) — StarNet `package.json`, read in full
-- [Interneto web directory — AI Tools & Services category](https://interneto.github.io/categories) — curated link collection (764 bookmarks in the AI Tools & Services category as of 2026-10-24); a starting point for finding more harness/tool candidates, not itself a claim about any specific tool
+- A curated link collection in the AI Tools & Services category — a starting point for finding more harness/tool candidates, not itself a claim about any specific tool

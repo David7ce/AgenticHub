@@ -186,14 +186,14 @@ test('Claude runs with a cwd get a project; fanout worktrees count as their repo
   const logPath = join(dir, 'runs.jsonl');
   try {
     writeFileSync(logPath, [
-      JSON.stringify({ time: '2026-11-08T10:00:00Z', agent: 'claude', model: 'sonnet', cwd: 'D:\\W\\pkg-lab', cost: { amount: 0.25 } }),
-      JSON.stringify({ time: '2026-11-08T11:00:00Z', agent: 'claude', model: 'sonnet', cwd: 'D:\\W\\pkg-lab\\.git\\agent-worktrees\\r1-claude', cost: { amount: 0.5 } }),
+      JSON.stringify({ time: '2026-11-08T10:00:00Z', agent: 'claude', model: 'sonnet', cwd: 'D:\\W\\repo', cost: { amount: 0.25 } }),
+      JSON.stringify({ time: '2026-11-08T11:00:00Z', agent: 'claude', model: 'sonnet', cwd: 'D:\\W\\repo\\.git\\agent-worktrees\\r1-claude', cost: { amount: 0.5 } }),
       JSON.stringify({ time: '2026-11-08T12:00:00Z', agent: 'claude', model: 'sonnet', cost: { amount: 1 } }),
     ].join('\n'));
     const result = readClaudeSpend({ logPath, from: '2026-11-08', to: '2026-11-08', utc: true });
     const byProject = Object.fromEntries(result.rows.map((r) => [r.project, r.costReportedUsd]));
-    assert.deepEqual(byProject, { 'pkg-lab': 0.75, unknown: 1 });
-    const only = readClaudeSpend({ logPath, from: '2026-11-08', to: '2026-11-08', utc: true, project: 'pkg-lab' });
+    assert.deepEqual(byProject, { 'repo': 0.75, unknown: 1 });
+    const only = readClaudeSpend({ logPath, from: '2026-11-08', to: '2026-11-08', utc: true, project: 'repo' });
     assert.equal(only.rows.length, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });

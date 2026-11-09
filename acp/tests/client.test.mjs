@@ -5,7 +5,7 @@ import { windowsPathToWsl, makePermissionHandler, AcpClient } from '../acp-clien
 
 test('translates a Windows drive path to the WSL mount', () => {
   assert.equal(windowsPathToWsl('D:\\Workspaces\\AgentHub'), '/mnt/d/Workspaces/AgentHub');
-  assert.equal(windowsPathToWsl('C:\\Users\\d7\\x'), '/mnt/c/Users/d7/x');
+  assert.equal(windowsPathToWsl('C:\\Users\\user\\x'), '/mnt/c/Users/user/x');
 });
 
 test('accepts forward slashes on Windows paths', () => {

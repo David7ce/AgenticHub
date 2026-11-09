@@ -30,7 +30,7 @@ agents — it spawns them together and can give each its own worktree.
 `false` is not paranoia: on Windows the agent is reached through a wrapper
 (`wsl.exe -e opencode acp`) and OpenCode's work runs inside the shared
 `opencode serve` daemon, so killing the client does not necessarily stop the
-session. Verified on 2026-11-03 — a `pkg-lab` call recorded `timeout` at
+session. Verified on 2026-11-03 — a call on one repo recorded `timeout` at
 23:27:18 and its session kept editing `figure/*.kt` at 23:34-23:35 and running
 Gradle at 23:37.
 

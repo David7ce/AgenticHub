@@ -564,7 +564,7 @@ function defaultCodexCache() {
   const local = join(homedir(), ".codex", "models_cache.json");
   if (existsSync(local)) return local;
   if (process.platform !== "win32") {
-    const win = join("/mnt/c/Users", process.env.USER || "d7", ".codex", "models_cache.json");
+    const win = join("/mnt/c/Users", process.env.USER || process.env.USERNAME || "user", ".codex", "models_cache.json");
     if (existsSync(win)) return win;
   }
   return local;

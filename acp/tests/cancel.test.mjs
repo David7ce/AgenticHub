@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 //
 // Before this, hub-acp sent the cancel and killed the wrapper 1.5 s later
 // without ever asking whether the turn had ended -- which is how a "finished"
-// run went on editing pkg-lab for ten minutes on 2026-11-03.
+// run went on editing one repo for ten minutes on 2026-11-03.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB_ACP = resolve(HERE, '..', 'hub-acp.mjs');

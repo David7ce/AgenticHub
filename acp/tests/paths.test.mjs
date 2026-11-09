@@ -79,7 +79,7 @@ test('a drive path survives Windows -> WSL -> Windows', () => {
   for (const original of [
     String.raw`D:\Workspaces\AgentHub`,
     String.raw`C:\Users\user\AppData\Local\StarNet`,
-    String.raw`D:\Workspaces\someone\Interneto\interneto-website`,
+    String.raw`D:\Workspaces\someone\Project\example-repo`,
   ]) {
     assert.equal(toWindows(toWsl(original)), original);
   }

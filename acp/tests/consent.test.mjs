@@ -38,14 +38,14 @@ test('maxPermission rejects a stronger request and accepts an equal or weaker on
 });
 
 test('writeTrees bounds allow-all only, and always allows the scratch dir', () => {
-  const limits = { writeTrees: ['D:/Work/pkg-lab'] };
-  assert.equal(checkLimits(limits, { permission: 'allow-all', cwd: 'D:/Work/pkg-lab/app' }, win).ok, true);
+  const limits = { writeTrees: ['D:/Work/repo'] };
+  assert.equal(checkLimits(limits, { permission: 'allow-all', cwd: 'D:/Work/repo/app' }, win).ok, true);
   const outside = checkLimits(limits, { permission: 'allow-all', cwd: 'D:/Work/other' }, win);
   assert.equal(outside.ok, false);
   assert.match(outside.reason, /not under limits.writeTrees/);
   assert.equal(checkLimits(limits, { permission: 'deny', cwd: 'D:/Work/other' }, win).ok, true);
   assert.equal(checkLimits(limits, { permission: 'allow-all', cwd: 'C:/Temp/hub-bench-1' }, win).ok, true);
-  assert.equal(checkLimits({ writeTrees: [] }, { permission: 'allow-all', cwd: 'D:/Work/pkg-lab' }, win).ok, false);
+  assert.equal(checkLimits({ writeTrees: [] }, { permission: 'allow-all', cwd: 'D:/Work/repo' }, win).ok, false);
 });
 
 test('maxBudgetUsd clamps a larger or missing budget and leaves a smaller one alone', () => {

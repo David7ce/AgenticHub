@@ -1,9 +1,8 @@
 # AI Agent Building Blocks — basics + best tools
 
 The six pieces every AI coding agent (Claude Code, Codex, Cursor…) is built from,
-and the best tool/resource for each. Framing from
-[interneto.github.io/blog/gen-ai-tools](https://interneto.github.io/blog/gen-ai-tools/);
-tool picks are curated from `AI_Plugins.csv`, `AI_Prompt_Skills.csv`, `AI_MCP.csv`.
+and the best tool/resource for each. Framing adapted from a public tooling
+survey; tool picks are curated from `AI_Plugins.csv`, `AI_Prompt_Skills.csv`, `AI_MCP.csv`.
 
 ## The stack, top to bottom
 
