@@ -24,6 +24,27 @@ auditoría y locks. OpenCode es la superficie de chat; `hubctl live` es el visor
 `opencode serve` levanta la web v2 si quieres navegador; la config del repo
 aplica igual.
 
+## Cola de tareas
+
+`hubctl tasks` es la cola fina: un SQLite local (`logs/hub.db`), sin daemon y sin
+grafo de dependencias. No lanza agentes por su cuenta: cada tarea pasa por
+`hub-acp`, así que consentimiento, `writeTrees`, presupuesto y auditoría siguen
+en el mismo sitio. Cada tarea corre en su propio worktree; el árbol vivo no se
+toca.
+
+```powershell
+node agent-hub/hubctl/hubctl.mjs tasks add --repo D:\repo --agent opencode --prompt-file tarea.txt
+node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
+node agent-hub/hubctl/hubctl.mjs tasks list
+node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence diff.patch
+```
+
+Estados: `queued → running → review → done`; `blocked` y `cancelled` se
+recuperan con `retry`. `review` no es `done`: cerrar exige `--evidence`. Cada
+línea de auditoría de una tarea lleva `taskId`, y el resultado completo queda en
+`logs/tasks/<id>.json`. El claim es una transacción `BEGIN IMMEDIATE`, así que dos
+terminales no cogen la misma fila.
+
 ## Si se acaba la cuota de Claude
 
 Claude Code no puede cambiar su modelo: si la cuota de Anthropic está agotada,

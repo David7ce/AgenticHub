@@ -56,6 +56,11 @@ node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
 # Parallel, with per-agent worktrees so edits cannot collide.
 node agent-hub/acp/fanout-acp.mjs --agents opencode,claude --worktree --prompt "..."
 
+# Queue work: one SQLite file, one worktree per task, the audit carries taskId.
+node agent-hub/hubctl/hubctl.mjs tasks add --repo <dir> --agent opencode --prompt "..."
+node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
+node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence <diff-or-test>
+
 # From inside a chat: the MCP tools, registered in .mcp.json (Claude Code),
 # .vscode/mcp.json (VS Code) and the global OpenCode config.
 #   ask_agent(agent, prompt) · fanout(agents, prompt) · route(prompt) · agents() · status()

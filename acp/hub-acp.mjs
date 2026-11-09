@@ -94,6 +94,7 @@ const USAGE = `usage: node hub-acp.mjs --agent NAME (--prompt TEXT | --prompt -)
   --effort LEVEL        reasoning effort: low | medium | high | max, mapped to the
                         agent's own option (registry "effort"); low is enough for
                         text and mechanical work and is several times faster
+  --task-id ID          tag the audit line and JSON result with a queue task id
   --auth METHOD         call authenticate with this methodId after initialize
   --registry FILE       alternate agents.json
   --json                machine-readable result on stdout (no streaming)
@@ -138,6 +139,7 @@ function parseArgs(argv) {
       case '--config': opts.configs.push(next()); break;
       case '--model': opts.configs.push(`model=${next()}`); break;
       case '--effort': opts.effort = next(); break;
+      case '--task-id': opts.taskId = next(); break;
       case '--auth': opts.auth = next(); break;
       case '--registry': opts.registry = next(); break;
       case '--json': opts.json = true; break;
@@ -835,6 +837,8 @@ async function main() {
     time: started,
     agent: agent.name,
     transport: 'acp',
+    // The queue task this run belongs to, when `hubctl tasks run` launched it.
+    taskId: opts.taskId ?? null,
     // Where the turn ran: lets `hubctl spend` attribute cost to a project.
     cwd: nativeCwd,
     status,
@@ -891,6 +895,7 @@ async function main() {
           ok: status === 'ok',
           status,
           agent: agent.name,
+          taskId: opts.taskId ?? null,
           sessionId,
           sessionMode,
           stopReason,

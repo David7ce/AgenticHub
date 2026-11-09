@@ -2,9 +2,10 @@
 
 STATUS: active
 
-No web UI, no daemon, no database. It reads the state that already exists —
+No web UI, no daemon. It reads the state that already exists —
 `consent.json`, `logs/runs.jsonl`, `results/inflight/`, git worktrees and the
-two loopback services — and renders it.
+two loopback services — and renders it. The one exception is the task queue:
+one small SQLite file (`logs/hub.db`) that holds what is queued and who owns it.
 
 ```
 AGENTHUB 2026-11-08 19:10                    local · loopback
@@ -42,6 +43,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `spend [--days N] [--date YYYY-MM-DD] [--by ...] [--json\|--csv]` | Tokens by project and day: OpenCode exact, Claude cost-only |
 | `doctor [--json] [--fast]` | Config coherence: registry vs consent, enforced `limits`, expiry, prose-vs-enforced budget, broken relative links in current docs, stale inflight/locks, `opencode mcp list` (`--fast` skips it). Exit 1 on any `fail` |
 | `run <agent> [--worktree]` | One agent through `hub-acp`; consent checked first |
+| `tasks add\|list\|show\|run\|done\|block\|cancel\|retry` | The thin work queue (see below) |
 | `mem <query>` | `claude-mem search` |
 | `attach <session>` | Resume; infers the agent from `runs.jsonl` |
 | `path <path>` | Both Windows and WSL spellings |
@@ -61,6 +63,39 @@ node agent-hub/hubctl/hubctl.mjs attach ses_abc123 --prompt "Continue"
 `--worktree` is given, keeps it if the agent left changes, and removes it
 otherwise. `attach` matches the full session id or a unique prefix against the
 run log, so `--agent` is optional.
+
+## tasks — the thin work queue
+
+One SQLite file, one worker loop, no dependency graph. It never launches an
+agent itself: every run goes through `hub-acp`, so consent, `writeTrees`, budget
+and the audit line stay in one place. Each task gets a worktree; the live tree is
+never written.
+
+```powershell
+# queue a bounded change
+node agent-hub/hubctl/hubctl.mjs tasks add --repo D:\repo --agent opencode `
+  --title "fix the parser" --prompt-file task.txt --budget 0.5
+
+# work it: claim -> worktree -> hub-acp -> review
+node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
+node agent-hub/hubctl/hubctl.mjs tasks list
+
+# accept it: done needs evidence, never the agent's own word
+node agent-hub/hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b --evidence path\to\diff.patch
+```
+
+- States: `queued` → `running` → `review` → `done`; `blocked` and `cancelled`
+  are recoverable with `retry`.
+- The claim is one `BEGIN IMMEDIATE` transaction, so two terminals running
+  `tasks run` never take the same row.
+- A finished run lands in `review`, not `done`. `done` refuses without
+  `--evidence` (a diff, a test run, or the review that accepted it).
+- Every audit line from a queued run carries `taskId`, so `runs.jsonl` can be
+  grouped per task. The full result and the agent's stderr are kept under
+  `logs/tasks/<id>.json`.
+- `AGENT_HUB_TASKS_DB` overrides the database path (tests and scratch queues).
+- A worktree with changes is kept and named in `tasks list`; a clean one is
+  removed.
 
 ## spend — tokens by project and day
 
@@ -91,9 +126,10 @@ Global OpenCode config now launches the Windows hub with
 OpenCode can reach the hub from any repository. Codex CLI has the same MCP
 server; use `codex exec --approve-for-me` for non-interactive MCP calls.
 
-The OpenCode database lives in the WSL home
-(`~/.local/share/opencode/opencode.db`). From Windows, `spend` asks WSL to read
-it (`wsl.exe … hubctl.mjs spend --opencode-only`) and merges the rows: SQLite
+The OpenCode database is read from the local home first
+(`~/.local/share/opencode/opencode.db`; on Windows
+`C:\Users\<you>\.local\share\opencode\opencode.db`). If that file is missing,
+`spend` falls back to the WSL copy through `wsl.exe` and merges the rows: SQLite
 cannot open a live WAL database across `\\wsl.localhost` ("database is
 locked"), and `immutable=1` would skip the pages still in `-wal`.
 `OPENCODE_DB`/`--db` override the path on either side.
