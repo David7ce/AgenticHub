@@ -40,6 +40,7 @@ focus and invalidate clicks. Code/build work may still overlap on separate trees
 | `acp/`                  | ACP v1 client, registry (`agents.json`, copied from `agents.example.json`), consent gate, router, fan-out, path policy |
 | `mcp/`                  | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`)                 |
 | `hubctl/`               | Read-only status/live/report/spend/path/run/mem/attach                               |
+| `chatmgr/`              | OpenCode TUI plugin: one list for OpenCode/Codex/Claude/Hermes conversations, filtered batch delete with backup |
 | `models.json`           | Catálogo local: proveedores, tiers, coste, retención y capacidades                   |
 | `bench/`                | The internal benchmark and its versioned baseline                                   |
 | `bridge/`               | VS Code BYOK endpoint — dormant: kept for VS Code Chat's browser/DOM context |

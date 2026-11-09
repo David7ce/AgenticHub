@@ -4,7 +4,7 @@
 //   node agent-hub/tools/check.mjs            # tests + bench dry-run
 //   node agent-hub/tools/check.mjs --no-bench # tests only
 //
-// The repo has no CI (no remote), so this is the guard: 117 tests that make no
+// The repo has no CI (no remote), so this is the guard: every test that makes no
 // model calls, plus the bench's dry run, which proves every task is still
 // broken before an agent is asked to fix it. Exit 0 only if both pass.
 
@@ -23,6 +23,7 @@ const TEST_DIRS = [
   'agent-hub/tools/tests',
   'agent-hub/hubctl/tests',
   'agent-hub/mcp/tests',
+  'agent-hub/chatmgr/test',
 ];
 
 // `node --test <dir>` is not supported on this Node, so the files are listed.
