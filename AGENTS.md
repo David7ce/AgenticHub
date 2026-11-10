@@ -65,8 +65,9 @@ node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence <diff-or-test>
 node agent-hub/tools/check.mjs
 ```
 
-The repo has no CI (no remote). `.githooks/pre-commit` runs the checks on every
-commit; enable it once per clone with `git config core.hooksPath .githooks`.
+There is no CI workflow (the GitHub remote exists, but nothing runs on push).
+`.githooks/pre-commit` runs the checks on every commit; enable it once per clone
+with `git config core.hooksPath .githooks`.
 
 `hubctl status` is the health snapshot; `hubctl live` is "who is working now"
 (inflight heartbeat, tree locks, file activity, external agent processes; `--once

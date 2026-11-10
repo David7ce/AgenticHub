@@ -68,7 +68,8 @@ files must use `--worktree`: **one writer per tree**.
 
 Every call — including denied ones — is checked against `consent.json` first: the
 agent must be `enabled`, `overseerAck`-ed and unexpired, and the request must fit
-its `limits` (`maxPermission`, `writeTrees`, `maxBudgetUsd`, `maxDailyUsd`).
+its `limits` (`maxPermission`, `writeTrees`, `maxBudgetUsd`, `maxDailyUsd`, and
+`maxDailyTokens` for flat subscriptions such as Codex).
 Otherwise nothing runs. Every attempt appends one JSON line to `logs/runs.jsonl`
 (rotated past 10 MB). Revoke an agent by setting `enabled` to `false`.
 
