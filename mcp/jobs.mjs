@@ -131,8 +131,11 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
     } catch {}
     let timer;
     const timedOut = new Promise((resolve) => {
+      // Deliberately not unref'd: this timer is the only thing that can answer
+      // the race below. Unref'd, Node 22 can consider the loop done while
+      // `cancel()` is still awaiting a job that never settles, and the caller
+      // gets "Promise resolution is still pending" instead of ack:false.
       timer = setTimeout(() => resolve(false), waitMs);
-      timer.unref?.();
     });
     const acknowledged = await Promise.race([
       Promise.resolve(job.settled).then(() => true, () => true),

@@ -35,14 +35,28 @@ const TEST_FILES = TEST_DIRS.flatMap((dir) =>
 
 const noBench = process.argv.includes('--no-bench');
 
+// The failing subtest plus a few lines of its YAML detail, not the last 60
+// lines of TAP (which are the tests that passed after it).
+function failureDetail(output) {
+  const lines = String(output ?? '').trim().split('\n');
+  const picked = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^\s*not ok \d+/.test(lines[i]) || /^# fail [1-9]/.test(lines[i])) {
+      picked.push(...lines.slice(i, i + 16));
+    }
+  }
+  if (picked.length) return picked.slice(0, 120).join('\n');
+  return lines.slice(-60).join('\n');
+}
+
 function run(label, args, cwd = ROOT) {
   const started = Date.now();
   const result = spawnSync(process.execPath, args, { cwd, encoding: 'utf8' });
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   const ok = result.status === 0;
-  // Enough of the reporter output to name the failing test: six lines only
-  // ever showed the tally, which made CI failures unactionable.
-  const tail = ok ? '' : (result.stderr || result.stdout || '').trim().split('\n').slice(-60).join('\n');
+  // A tail is not enough: TAP lists every passing subtest after the failure.
+  // Print the `not ok` block itself, and fall back to the tail for a crash.
+  const tail = ok ? '' : failureDetail(`${result.stderr || ''}\n${result.stdout || ''}`);
   process.stdout.write(`${ok ? 'ok  ' : 'FAIL'} ${label} (${seconds}s)\n`);
   if (tail) process.stdout.write(tail + '\n');
   return ok;
