@@ -272,13 +272,13 @@ export function groupedRows(rows, by) {
       groups.set(key, {
         ...group,
         runs: 0, input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0,
-        costReportedUsd: 0,
+        costReportedUsd: 0, costEstimatedUsd: 0,
         coverage: row.coverage,
       });
     }
     const group = groups.get(key);
     group.runs += row.runs;
-    for (const field of ['input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'costReportedUsd']) {
+    for (const field of ['input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'costReportedUsd', 'costEstimatedUsd']) {
       group[field] += row[field] ?? 0;
     }
     if (row.coverage === 'tokens+cost') group.coverage = 'tokens+cost';
@@ -293,7 +293,8 @@ function n(value) {
   return Number(value ?? 0).toLocaleString('en-US');
 }
 
-function money(value) {
+function money(value, estimated = 0) {
+  if (!Number(value) && Number(estimated) > 0) return `~$${Number(estimated).toFixed(4)}`;
   return `$${Number(value ?? 0).toFixed(4)}`;
 }
 
@@ -320,7 +321,7 @@ export function renderSpend(rows, { color = true, by = ['day', 'project'] } = {}
       row.date, String(row.project ?? '—').slice(0, widths[1]), row.agent ?? '—',
       String(row.model ?? '—').slice(0, widths[3]), row.runs,
       n(row.input), n(row.output), n(row.reasoning), n(row.cacheRead), n(row.cacheWrite),
-      money(row.costReportedUsd),
+      money(row.costReportedUsd, row.costEstimatedUsd),
     ]));
   }
   lines.push('', paint.dim('cacheR/cacheW van aparte: no se suman al input. Go reporta $0; el coste es el del proveedor.'));

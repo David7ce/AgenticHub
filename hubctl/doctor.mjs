@@ -93,6 +93,20 @@ export function checkGrants(consent, { now = Date.now(), exists = existsSync } =
 // Relative markdown links whose target is missing. External links, anchors
 // and mailto are ignored; so are history snapshots, which are frozen on purpose.
 const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+// A dollar cap on an agent whose runs report no cost can never trigger.
+export function checkUnpricedCaps(consent, catalog) {
+  const out = [];
+  for (const [name, grant] of Object.entries(consent ?? {})) {
+    if (name.startsWith('_') || !grant?.enabled || typeof grant?.limits?.maxDailyUsd !== 'number') continue;
+    const models = (catalog?.models ?? []).filter((m) => m.agent === name && m.enabled !== false);
+    if (name === 'claude' || !models.length) continue;
+    if (!models.some((m) => m.costPerMillion && typeof m.costPerMillion === 'object')) {
+      out.push(row('spend', 'warn', `${name} has a $${grant.limits.maxDailyUsd}/day cap but no model price in models.json (costPerMillion): the cap cannot trigger and spend shows tokens only`));
+    }
+  }
+  return out;
+}
+
 // Warn before the daily cap bites: at 80 % the next run may be refused.
 export function checkDailySpend(consent, spent, threshold = 0.8) {
   const out = [];
@@ -246,6 +260,7 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
   if (consent) checks.push(...checkDailySpend(consent, (name) => spentToday(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
+  if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {
     checks.push(...checkFrontier(catalog));

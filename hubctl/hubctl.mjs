@@ -24,6 +24,7 @@ import { runHandoff } from "./commands/handoff.mjs";
 import { runTasks } from "./commands/tasks.mjs";
 import { attach } from "./commands/attach.mjs";
 import { runWorktree } from "./commands/worktree.mjs";
+import { runClean } from "./commands/clean.mjs";
 import { runUsage } from "./commands/usage.mjs";
 import { runBench } from "./commands/bench.mjs";
 import { runPath } from "./commands/path.mjs";
@@ -57,6 +58,7 @@ async function main() {
   if (command === "bench") return runBench(argv.slice(1));
   if (command === "usage") return runUsage(argv.slice(1));
   if (command === "worktree") return runWorktree(argv.slice(1));
+  if (command === "clean") return runClean(argv.slice(1));
   if (command === "-h" || command === "--help" || command === "help") {
     process.stdout.write(
       [
@@ -75,6 +77,7 @@ async function main() {
         "  path <path> [--json]             both spellings of one path (Windows/WSL)",
         "  bench [args...]                  run the benchmark (passes --dry-run, --reps, --model through)",
         "  usage [--days N] [--json]        estimated allowance spent, per Go model, plus the Claude window",
+        "  clean [--yes] [--days N]         tidy clean worktrees and old chatmgr backups (dry run without --yes)",
         "  worktree [--prune] [--force]     list agent worktrees; --prune removes the clean ones",
         "",
       ].join("\n"),

@@ -58,6 +58,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `path <path>` | Both Windows and WSL spellings |
 | `bench [args...]` | Run the benchmark |
 | `usage [--days N]` | Estimated allowance spent |
+| `clean [--yes] [--days N]` | Tidy what agents leave behind: clean worktrees and chatmgr backups older than N days (default 14). Dry run without `--yes`; never touches a worktree with changes |
 | `worktree [--prune]` | List or prune agent checkouts |
 
 Examples:
@@ -120,7 +121,7 @@ node agent-hub/hubctl/hubctl.mjs spend --days 30 --json
 - **Claude**: cost-only from `logs/runs.jsonl`. Records since 2026-11-08 carry
   `cwd`, so they get a project (fanout worktrees count as their repo); older
   ones stay `unknown`.
-- **Codex**: not included yet; the rollout parser is the next phase.
+- **Codex**: tokens from its rollouts (`~/.codex/sessions`). Dollars appear as `~$x` only for models whose `costPerMillion` (`{input, output, cacheRead}`) is filled in `models.json`; no price is ever invented. `doctor` warns while a dollar cap has no price behind it.
 - `cacheRead`/`cacheWrite` stay in their own columns: they are not added to
   input, and cache reads dominate the raw totals.
 - `--by day,project,agent,model` accepts any subset; default is day+project.

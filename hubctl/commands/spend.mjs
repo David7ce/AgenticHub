@@ -6,6 +6,7 @@
  * missing, by re-invoking this entry point on the other side.
  */
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { toWsl } from "../../acp/paths.mjs";
 import {
   defaultDbPath,
@@ -20,8 +21,8 @@ import {
   renderSpend,
   toCsv,
 } from "../spend.mjs";
-import { readCodexSpend } from "../spend-codex.mjs";
-import { HUBCTL_ENTRY, LOG_PATH, useColor } from "../common.mjs";
+import { priceOf, readCodexSpend } from "../spend-codex.mjs";
+import { HUB, HUBCTL_ENTRY, LOG_PATH, readJson, useColor } from "../common.mjs";
 
 export async function runSpend(argv) {
   const value = (flag, fallback = null) => {
@@ -56,11 +57,17 @@ export async function runSpend(argv) {
     logPath: value("--log") || LOG_PATH,
   });
   const utc = argv.includes("--utc");
+  // Prices come from models.json (costPerMillion); a model without one is never priced.
+  const prices = {};
+  for (const m of readJson(join(HUB, "models.json"))?.models ?? []) {
+    if (m.agent === "codex" && priceOf(m)) prices[m.id] = priceOf(m);
+  }
   const codex = readCodexSpend({
     range: rangeFor({ ...options, utc }),
     dayKey: (ms) => dayKey(ms, utc),
     projectLabel,
     project: options.project ?? null,
+    prices,
   });
   const result = mergeSpend(opencode, claude, codex);
   if (argv.includes("--json")) {

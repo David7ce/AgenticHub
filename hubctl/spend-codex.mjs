@@ -40,7 +40,16 @@ export function parseRollout(text) {
   return { cwd, model: model ?? '—', usage: last, at: lastAt };
 }
 
-export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), range, dayKey, projectLabel, project = null } = {}) {
+/** USD per million tokens from a models.json entry; null when no price is published/filled in. */
+export function priceOf(entry) {
+  const p = entry?.costPerMillion;
+  if (!p || typeof p !== 'object') return null;
+  const input = Number(p.input), output = Number(p.output);
+  if (!Number.isFinite(input) || !Number.isFinite(output)) return null;
+  return { input, output, cacheRead: Number.isFinite(Number(p.cacheRead)) ? Number(p.cacheRead) : input };
+}
+
+export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), range, dayKey, projectLabel, project = null, prices = {} } = {}) {
   const groups = new Map();
   for (const { full, mtime } of walk(root)) {
     if (range && mtime < range.from) continue;
@@ -54,7 +63,7 @@ export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), r
       groups.set(key, {
         date: day, project: where.label, projectPath: where.path, agent: 'codex', model: s.model,
         provider: 'openai', runs: 0, input: 0, output: 0, reasoning: 0,
-        cacheRead: 0, cacheWrite: 0, costReportedUsd: 0, coverage: 'tokens-only',
+        cacheRead: 0, cacheWrite: 0, costReportedUsd: 0, costEstimatedUsd: 0, coverage: 'tokens-only',
       });
     }
     const g = groups.get(key);
@@ -66,6 +75,11 @@ export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), r
     g.reasoning += u.reasoning_output_tokens ?? 0;
     g.cacheRead += u.cached_input_tokens ?? 0;
     g.cacheWrite += u.cache_write_input_tokens ?? 0;
+    const price = prices[s.model];
+    if (price) {
+      const fresh = Math.max(0, (u.input_tokens ?? 0) - (u.cached_input_tokens ?? 0));
+      g.costEstimatedUsd += (fresh * price.input + (u.cached_input_tokens ?? 0) * price.cacheRead + ((u.output_tokens ?? 0)) * price.output) / 1e6;
+    }
   }
   return { ok: true, rows: [...groups.values()], range: range ?? null };
 }
