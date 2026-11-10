@@ -38,6 +38,34 @@ export function tailLines(text, count = TAIL_LINES) {
   return String(text ?? "").replace(/\r\n/g, "\n").trimEnd().split("\n").slice(-count).join("\n");
 }
 
+/** Strict CLI parsing: a typo must fail before a directory gets tested. */
+export function parseVerifyArgs(argv, { cwd = process.cwd() } = {}) {
+  let asJson = false;
+  let command = null;
+  let timeout = DEFAULT_TIMEOUT_MS;
+  let dir = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--json") {
+      asJson = true;
+    } else if (arg === "--cmd") {
+      command = argv[++i];
+      if (!command) throw new Error("--cmd needs a command");
+    } else if (arg === "--timeout") {
+      const value = Number(argv[++i]);
+      if (!Number.isFinite(value) || value <= 0) throw new Error("--timeout needs a positive number of milliseconds");
+      timeout = value;
+    } else if (arg.startsWith("--")) {
+      throw new Error(`unknown option: ${arg}`);
+    } else if (dir) {
+      throw new Error(`unexpected argument: ${arg}`);
+    } else {
+      dir = arg;
+    }
+  }
+  return { asJson, command, timeout, dir: resolve(dir ?? cwd) };
+}
+
 function detect(dir) {
   const names = readdirSync(dir);
   return detectVerifyCommand({
@@ -49,22 +77,9 @@ function detect(dir) {
 }
 
 export async function runVerify(argv) {
-  const asJson = argv.includes("--json");
-  const cmdIndex = argv.indexOf("--cmd");
-  const timeoutIndex = argv.indexOf("--timeout");
-  const timeout = timeoutIndex === -1 ? DEFAULT_TIMEOUT_MS : Number(argv[timeoutIndex + 1]);
-  if (!Number.isFinite(timeout) || timeout <= 0) throw new Error("--timeout needs a positive number of milliseconds");
-
-  // First positional that is not the value of --cmd / --timeout.
-  const consumed = new Set([
-    cmdIndex === -1 ? null : cmdIndex + 1,
-    timeoutIndex === -1 ? null : timeoutIndex + 1,
-  ]);
-  const positional = argv.find((arg, index) => !arg.startsWith("--") && !consumed.has(index));
-  const dir = resolve(positional ?? process.cwd());
+  const { asJson, command: explicit, timeout, dir } = parseVerifyArgs(argv);
   if (!existsSync(dir)) throw new Error(`no such directory: ${dir}`);
 
-  const explicit = cmdIndex === -1 ? null : argv[cmdIndex + 1];
   const detected = explicit ? { command: explicit, why: "--cmd" } : detect(dir);
   if (!detected) {
     throw new Error(

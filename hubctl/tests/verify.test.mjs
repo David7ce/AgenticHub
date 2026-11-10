@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { detectVerifyCommand, tailLines } from '../commands/verify.mjs';
+import { detectVerifyCommand, parseVerifyArgs, tailLines } from '../commands/verify.mjs';
 
 test('verify detection follows the repo shape, with package.json first', () => {
   const pkg = { command: 'npm test', why: 'package.json scripts.test' };
@@ -18,6 +18,17 @@ test('verify detection follows the repo shape, with package.json first', () => {
   assert.equal(detectVerifyCommand({ names: ['App.sln'] }).command, 'dotnet test');
   assert.equal(detectVerifyCommand({ names: ['Cargo.toml'] }).command, 'cargo test');
   assert.equal(detectVerifyCommand({ names: ['README.md'] }), null);
+});
+
+test('verify arguments are strict and --cmd never becomes the directory', () => {
+  const args = parseVerifyArgs(['--json', '--cmd', 'npm test', 'D:/repo', '--timeout', '5000']);
+  assert.equal(args.asJson, true);
+  assert.equal(args.command, 'npm test');
+  assert.equal(args.timeout, 5000);
+  assert.ok(args.dir.endsWith('repo'));
+  assert.throws(() => parseVerifyArgs(['--cmd']), /needs a command/);
+  assert.throws(() => parseVerifyArgs(['--nope']), /unknown option/);
+  assert.throws(() => parseVerifyArgs(['a', 'b']), /unexpected argument/);
 });
 
 test('tailLines keeps the last lines and normalises CRLF', () => {
