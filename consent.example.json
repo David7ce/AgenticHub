@@ -41,13 +41,5 @@
       "maxBudgetUsd": 1,
       "maxDailyUsd": 3
     }
-  },
-  "starnet": {
-    "enabled": false,
-    "overseerAck": false,
-    "grantedBy": null,
-    "grantedAt": null,
-    "expires": "2027-01-01T00:00:00Z",
-    "scope": "Optional ACP station. Disabled: registered but not granted."
   }
 }

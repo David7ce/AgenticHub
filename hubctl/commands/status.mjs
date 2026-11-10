@@ -16,7 +16,6 @@ import {
   LOG_PATH,
   MAX_RUNS,
   ROOT,
-  STARNET_URL,
   TASKS_DB,
   bold,
   dim,
@@ -89,7 +88,6 @@ export function pickLatestBench(candidates, baseline) {
 
 export async function gatherStatus() {
   const consent = summarizeConsent(readJson(CONSENT_PATH));
-  const starnet = await probe(STARNET_URL, "/api/health");
   const git = spawnSync("git", ["-C", ROOT, "worktree", "list", "--porcelain"], {
     encoding: "utf8",
     windowsHide: true,
@@ -122,15 +120,7 @@ export async function gatherStatus() {
 
   return {
     now: new Date().toISOString(),
-    hint:
-      isWsl && !starnet.up
-        ? "run hubctl on Windows: WSL cannot reach Windows loopback services"
-        : null,
     agents: consent,
-    starnet: {
-      up: starnet.up,
-      port: new URL(STARNET_URL).port,
-    },
     worktrees,
     bench: {
       baseline: baseline?.passed ?? null,
@@ -223,10 +213,6 @@ export function renderStatus(status, { color = true } = {}) {
         .join("  ")
     : paintFn.dim("none");
 
-  const starnetLine = status.starnet.up
-    ? paintFn.green(`${status.starnet.port} up`)
-    : paintFn.dim(`${status.starnet.port} down`);
-
   // A run on a different model is not a regression against the baseline, so it
   // says which model it was instead of just a number.
   const shortModel = (id) => String(id).split("/").pop();
@@ -301,7 +287,6 @@ export function renderStatus(status, { color = true } = {}) {
       paintFn.dim("                    local · loopback"),
     "",
     `${pad("agents")}${agents}`,
-    `${pad("starnet")}${starnetLine}`,
     `${pad("worktrees")}${worktrees}`,
     ...(queueText ? [`${pad("queue")}${paintFn.dim(queueText)}`] : []),
     `${pad("bench")}${bench}`,
@@ -309,7 +294,6 @@ export function renderStatus(status, { color = true } = {}) {
     `${pad("running")}${running}`,
     `${pad("last")}${runs}`,
   ];
-  if (status.hint) lines.push("", paintFn.dim(status.hint));
   return lines.join("\n");
 }
 

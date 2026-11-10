@@ -20,7 +20,7 @@ is what that surface calls.
 ```
 OpenCode ── MCP "agent-hub" ──> consent.json ──> runs.jsonl
    │                                              │
-   └── Claude Agent / Go models                   └── claude · opencode · starnet
+   └── Claude / Codex / Go models                 └── claude · opencode · codex
 ```
 
 ## The one rule
@@ -102,7 +102,6 @@ discards work).
 - A run that is still going has no audit line yet; it appears as
   `results/inflight/<pid>.json` and in `hubctl status`'s `running` line. Never
   write to a tree that line names.
-- `starnet` is registered **without** a grant on purpose.
 - Never widen a grant to make a test pass. Ask.
 
 ## Models
@@ -114,7 +113,7 @@ discards work).
 | Review                 | `opencode-go/claude-haiku-5-5`                   |
 | Hard work              | Claude Code `sonnet` (max) — weekly quota        |
 | Review / cheap second | `opencode-go/claude-haiku-5-5` or Claude `haiku` |
-| Codex default          | `gpt-6.1-terra` (Sol escalation, Luna bulk) via `@agentclientprotocol/codex-acp@2.6.0`; probe pending |
+| Codex default          | `gpt-6.1-terra` (Sol escalation, Luna bulk) via `@agentclientprotocol/codex-acp@2.6.0`; probado 2026-11-09 |
 | Exceptional, explicit  | Codex `gpt-6-astra`, Claude `opus`; never routed automatically (`tier: frontier`) |
 | Hermes                 | manual experiment only; free text, no tool use   |
 | Emergency / capacity   | OpenRouter, disabled until credit                |

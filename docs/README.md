@@ -26,15 +26,12 @@ código; si contradice `AGENTS.md`, manda `AGENTS.md`.
 
 ## Histórico
 
-Movido a [`history/`](history/) para no confundirlo con la especificación
-actual: alternativas evaluadas, guía de harnesses, el contrato del antiguo
-centro de control, la comparación con StarNet, la estrategia original y el
-los dispatch locales del 2026-11-08.
+Las decisiones antiguas (alternativas evaluadas, comparativas, el centro de
+control original) se borraron del árbol; siguen en el historial de git.
 
 ## Regla de mantenimiento
 
 - Un documento actual no repite el contenido de otro: enlaza.
-- Lo histórico no se borra mientras sea la única evidencia de una decisión;
-  se mueve a `history/`.
+- Lo histórico no se guarda en el árbol: vive en el historial de git.
 - Los resultados de bench viven en `bench/`; los `results/` crudos no son
   documentación.

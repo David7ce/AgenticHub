@@ -157,7 +157,6 @@ trees · 1 locked
 external · 0
   none from this side of the WSL/Windows boundary
 recent · 5
-services  starnet down
 ```
 
 - **runs** — `results/inflight/<pid>.json`: agent, tree, model, tool count,

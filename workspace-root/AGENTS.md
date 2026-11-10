@@ -58,8 +58,8 @@ a `*.local.*` file — never in a tracked file, so the public tree stays generic
 
 ## Session continuity across harnesses
 
-Chat history is **not** shared between Claude Code, Hermes, OpenCode and
-StarNet. A session that dies mid-task leaves its context in a harness-specific
+Chat history is **not** shared between Claude Code, Codex and
+OpenCode. A session that dies mid-task leaves its context in a harness-specific
 transcript that the next harness cannot read. Each project repo carries its own
 baton instead:
 

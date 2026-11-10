@@ -22,14 +22,11 @@ Claude Code (OpenCode, Kilo) or need a translation layer for Anthropic's
 `tool_use` (an `ANTHROPIC_BASE_URL` gateway). This is the cheap third option:
 keep the surface, give it a tool that reaches the rest of the fleet.
 
-See [`../docs/history/alternatives-2026-10.md`](../docs/history/alternatives-2026-10.md) for
-what was compared and rejected.
-
 ## Tools
 
 | Tool | What it does | Costs a model call |
 |---|---|---|
-| `ask_agent` | One registered agent (`claude`, `opencode`, `starnet`) answers a prompt. Optional `model`, `cwd`, `permission`, `timeoutMs`, `budgetUsd` (default 3; cancels the turn past it), and `background: true` returns a job id instead of waiting. | yes |
+| `ask_agent` | One registered agent (`claude`, `opencode`, `codex`) answers a prompt. Optional `model`, `cwd`, `permission`, `timeoutMs`, `budgetUsd` (default 3; cancels the turn past it), and `background: true` returns a job id instead of waiting. | yes |
 | `job_status` | State, elapsed, model, cwd and last tool of a background delegation. | no |
 | `job_result` | The answer of a background delegation, rendered as `ask_agent` would have returned it. A job also saves it under `results/` (a foreground ask does not), so the answer survives a chat that closes before it finishes. | no |
 | `job_cancel` | Stop a background delegation. Waits (bounded) for the process to exit and says whether it did — an unacknowledged cancel means the tree may still be changing. | no |

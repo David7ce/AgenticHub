@@ -32,8 +32,6 @@ Codex and carries its conversation; those harnesses cannot hand off onward.
 
 ## Where a loopback model provider works
 
-This is the part that affects `agent-hub/bridge/`.
-
 - **Local sessions** can use a BYOK model provider such as our Custom Endpoint.
   This is the default, supported path. The bridge's agent mode uses the
   Claude/OpenCode logins that already exist on the machine, so no API key is

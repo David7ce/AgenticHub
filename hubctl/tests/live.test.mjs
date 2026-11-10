@@ -63,10 +63,9 @@ test('renderLive prints every section and omits ANSI when colour is off', () => 
     external: [{ pid: 9, name: 'codex.exe', cmd: 'codex exec' }],
     trees: [{ cwd: 'D:\\w', changes: 3, watching: true, lastChangeMs: 4000 }],
     runs: [{ time: '2026-11-08T18:59:00Z', agent: 'claude', status: 'ok', durationMs: 4000, model: 'sonnet' }],
-    services: { starnet: false },
   };
   const text = renderLive(model, { color: false, width: 100 });
-  for (const heading of ['AGENTHUB LIVE', 'runs', 'trees', 'external', 'recent', 'services']) {
+  for (const heading of ['AGENTHUB LIVE', 'runs', 'trees', 'external', 'recent']) {
     assert.match(text, new RegExp(heading));
   }
   assert.doesNotMatch(text, /\x1b\[/);

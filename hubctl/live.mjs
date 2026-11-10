@@ -143,9 +143,6 @@ export function buildLiveModel({
     external,
     trees,
     runs: status.runs ?? [],
-    services: {
-      starnet: status.starnet?.up ?? null,
-    },
   };
 }
 
@@ -221,9 +218,5 @@ export function renderLive(model, { color = true, width = 110 } = {}) {
     lines.push((run.status === 'ok' ? paint.green(head) : paint.yellow(head)) +
       (run.model ? paint.dim(`  ${clip(run.model.split('/').pop(), 20)}`) : ''));
   }
-  const services = Object.entries(model.services)
-    .map(([name, up]) => `${name} ${up == null ? '?' : up ? 'up' : 'down'}`)
-    .join('  ·  ');
-  lines.push('', paint.dim(`services  ${services}`));
   return lines.join('\n');
 }

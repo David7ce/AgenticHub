@@ -54,20 +54,6 @@
       },
       "notes": "Claude Code itself is not an ACP server; the first-party adapter wraps the Claude Agent SDK. Needs Claude credentials in the same environment that runs this entry, which in practice means the hub must run on Windows: the credentials live in %USERPROFILE%\\.claude, and the WSL-side `npx` adapter fails with `session/prompt: Authentication required (code -32000)`. The adapter exposes these model values: default (Sonnet 5), sonnet (Sonnet 5.5), haiku (Haiku 5.5), opus (Opus 5.5), fable (Fable 5.1). Use --model haiku for cheap runs and --model sonnet for coding; the plan's weekly limit still applies."
     },
-    "starnet": {
-      "label": "StarNet (NOVA)",
-      "command": "node",
-      "args": [
-        "%LOCALAPPDATA%\\StarNet\\sidecar\\acp\\serve.js",
-        "--port=8787"
-      ],
-      "platforms": {
-        "win32": {
-          "command": "%LOCALAPPDATA%\\StarNet\\node.exe"
-        }
-      },
-      "notes": "StarNet's own ACP agent, verified 2026-10-30: initialize + session/new work when the station is running on :8787. It proxies to the station, so start skynet-desktop.exe (or the sidecar) first. Its consent entry is disabled by default: grant it in consent.json before running it."
-    },
     "codex": {
       "label": "Codex (ACP adapter)",
       "command": "npx",

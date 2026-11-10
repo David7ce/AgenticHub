@@ -21,7 +21,6 @@ export const CONSENT_PATH = join(HUB, "consent.json");
 export const TASKS_DB = process.env.AGENT_HUB_TASKS_DB
   ? resolve(process.env.AGENT_HUB_TASKS_DB)
   : join(ROOT, "logs", "hub.db");
-export const STARNET_URL = process.env.STARNET_URL ?? "http://127.0.0.1:8787";
 export const INFLIGHT_DIR = process.env.AGENT_HUB_INFLIGHT
   ? resolve(process.env.AGENT_HUB_INFLIGHT)
   : join(HUB, "results", "inflight");

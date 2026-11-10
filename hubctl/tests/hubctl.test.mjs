@@ -60,7 +60,6 @@ const status = {
   now: "2026-10-30T01:24:00.000Z",
   hint: null,
   agents: [{ name: "claude", status: "ok", daysLeft: 24 }],
-  starnet: { up: true, port: "8787" },
   worktrees: { total: 2, agentCheckouts: [{ path: "/repo/.git/agent-worktrees/x" }] },
   bench: { baseline: 15, attempts: 15, latest: { passed: 15, attempts: 15, stamp: "2026-10-30" } },
   egress: { ok: true, warnings: [] },
@@ -70,21 +69,9 @@ const status = {
 test("renderStatus shows every plane", () => {
   const text = renderStatus(status, { color: false });
   assert.match(text, /claude ok/);
-  assert.match(text, /8787 up/);
   assert.match(text, /2 total · 1 agent/);
   assert.match(text, /15\/15 baseline · last ok/);
   assert.match(text, /claude ok 4\.8s/);
-});
-
-test("renderStatus prints the WSL hint when loopback probes fail", () => {
-  const text = renderStatus(
-    {
-      ...status,
-      hint: "run hubctl on Windows: WSL cannot reach Windows loopback services",
-    },
-    { color: false },
-  );
-  assert.match(text, /WSL cannot reach Windows loopback services/);
 });
 
 test("buildHubArgs maps flags to hub-acp", () => {
@@ -154,7 +141,6 @@ test("a bench run on another model is labelled with that model", () => {
     now: "2026-11-04T00:00:00Z",
     hint: null,
     agents: [{ name: "opencode", status: "ok", daysLeft: 28 }],
-    starnet: { up: false, port: "8787" },
     worktrees: { total: 1, agentCheckouts: [] },
     egress: { ok: true, warnings: [] },
     inflight: [],
@@ -184,7 +170,6 @@ test("a clean run over the same tasks is 'last ok' even with a different attempt
     now: "2026-11-04T00:00:00Z",
     hint: null,
     agents: [{ name: "opencode", status: "ok", daysLeft: 28 }],
-    starnet: { up: false, port: "8787" },
     worktrees: { total: 1, agentCheckouts: [] },
     egress: { ok: true, warnings: [] },
     inflight: [],
