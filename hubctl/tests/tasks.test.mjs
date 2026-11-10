@@ -27,7 +27,7 @@ function fresh() {
 test('addTask stores a queued task with a generated id', () => {
   const db = fresh();
   const task = addTask(db, { repo: 'D:/repo', agent: 'opencode', prompt: 'do the thing' });
-  assert.match(task.id, /^t-\d{8}-\d{6}-[0-9a-f]{4}$/);
+  assert.match(task.id, /^t-\d{8}-\d{6}-[0-9a-f]{8}$/);
   assert.equal(task.state, 'queued');
   assert.equal(task.title, 'do the thing');
   assert.equal(task.attempts, 0);
@@ -175,6 +175,9 @@ test('renderQueueLine shows only the open states', () => {
   assert.equal(renderQueueLine({ review: 1, blocked: 1 }), '1 review · 1 blocked');
 });
 
-test('newTaskId is stable in shape and unique', () => {  const ids = new Set(Array.from({ length: 50 }, () => newTaskId()));
-  assert.equal(ids.size, 50);
+test('newTaskId is stable in shape and unique', () => {
+  // Same second on purpose: this is the case that used to collide at ~1.6 %.
+  const fixed = new Date('2026-11-10T12:00:00');
+  const ids = new Set(Array.from({ length: 500 }, () => newTaskId(fixed)));
+  assert.equal(ids.size, 500);
 });

@@ -160,6 +160,20 @@ export function checkLinks(root, files, deps) {
   return broken.map(({ file, target }) => row('docs', 'warn', `${relative(root, file).replace(/\\/g, '/')} → ${target}`));
 }
 
+// The only automated guard is the pre-commit hook, and it does nothing until
+// this clone sets core.hooksPath. A clone without it believes it is tested
+// because the docs say so.
+export function checkHooks(root, { hooksPath = null, exists = existsSync } = {}) {
+  if (hooksPath === '.githooks') {
+    return [exists(join(root, '.githooks', 'pre-commit'))
+      ? row('hooks', 'ok', 'core.hooksPath=.githooks; pre-commit runs the checks')
+      : row('hooks', 'warn', 'core.hooksPath=.githooks but .githooks/pre-commit is missing')];
+  }
+  return [row('hooks', 'warn', hooksPath
+    ? `core.hooksPath is ${hooksPath}, not .githooks: the pre-commit checks do not run`
+    : 'core.hooksPath is not set: the pre-commit checks do not run (git config core.hooksPath .githooks)')];
+}
+
 export function checkLeftovers(inflight, locks) {
   const out = [];
   for (const run of inflight) {
@@ -321,18 +335,24 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {
     checks.push(...checkFrontier(catalog));
-    if (registry?.agents?.codex) checks.push(...checkCodexModels(catalog, codexCache));
+    // --fast (hubctl brief/wrap) skips the cache comparison on purpose: passing a
+    // null cache used to turn "not looked at" into a permanent warning.
+    if (!fast && registry?.agents?.codex) checks.push(...checkCodexModels(catalog, codexCache));
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
+  checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));
   const handoff = handoffInputs(root);
   if (handoff) checks.push(...checkHandoffFresh(handoff));
   // OpenCode starts its MCP servers lazily; on a loaded machine the first listing
   // can say "not connected" for a server that is a moment from ready. Look twice
-  // before reporting a failure.
-  let mcpChecks = checkOpencodeMcp(fast ? null : runOpencodeMcpList(root));
-  if (!fast && mcpChecks.some((c) => c.level === 'fail')) mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
-  checks.push(...mcpChecks);
+  // before reporting a failure. --fast does not query OpenCode at all, so it must
+  // not report that query as a warning either.
+  if (!fast) {
+    let mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
+    if (mcpChecks.some((c) => c.level === 'fail')) mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
+    checks.push(...mcpChecks);
+  }
   const counts = { ok: 0, warn: 0, fail: 0 };
   for (const check of checks) counts[check.level] += 1;
   return { now: new Date().toISOString(), ok: counts.fail === 0, counts, checks };

@@ -61,7 +61,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `path <path>` | Both Windows and WSL spellings |
 | `bench [args...]` | Run the benchmark |
 | `usage [--days N]` | Estimated allowance spent |
-| `clean [--yes] [--days N]` | Tidy what agents leave behind: clean worktrees and chatmgr backups older than N days (default 14). Dry run without `--yes`; never touches a worktree with changes |
+| `clean [--yes] [--days N]` | Tidy what agents leave behind: clean worktrees, chatmgr backups older than N days (default 14), and inflight records whose process is gone. Dry run without `--yes`; never touches a worktree with changes |
 | `worktree [--prune]` | List or prune agent checkouts |
 
 Examples:
@@ -94,7 +94,7 @@ node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
 node agent-hub/hubctl/hubctl.mjs tasks list
 
 # accept it: done needs evidence, never the agent's own word
-node agent-hub/hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b --evidence path\to\diff.patch
+node agent-hub/hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidence path\to\diff.patch
 ```
 
 - States: `queued` → `running` → `review` → `done`; `blocked` and `cancelled`

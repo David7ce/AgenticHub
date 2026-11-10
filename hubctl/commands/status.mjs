@@ -181,7 +181,7 @@ export function readInflight(dir = INFLIGHT_DIR) {
     // do not emit session updates while they work.
     const runningTool = /\(running\)$/.test(String(record.lastTool ?? ""));
     const stalled = silentMs != null && silentMs > stallMs && !runningTool;
-    rows.push({ ...record, ageMs, silentMs, stalled, alive });
+    rows.push({ ...record, file: join(dir, name), ageMs, silentMs, stalled, alive });
   }
   // Newest first, like runs: the one that just started is the interesting one.
   return rows.sort((a, b) => (a.ageMs ?? 0) - (b.ageMs ?? 0));

@@ -54,7 +54,10 @@ export function newTaskId(date = new Date()) {
   const stamp =
     `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}-` +
     `${p(date.getHours())}${p(date.getMinutes())}${p(date.getSeconds())}`;
-  const rand = Math.random().toString(16).slice(2, 6).padEnd(4, '0');
+  // 8 hex chars, not 4: the stamp only has second resolution, and 16 bits of
+  // randomness collided for ~1.6 % of 50-id batches generated in the same
+  // second (measured), which is both a flaky test and a possible UNIQUE clash.
+  const rand = Math.random().toString(16).slice(2, 10).padEnd(8, '0');
   return `t-${stamp}-${rand}`;
 }
 

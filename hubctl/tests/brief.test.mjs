@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { gatherBrief, parseWatchList, pendingSection, renderBrief, MAX_LINES } from "../commands/brief.mjs";
+import { gatherBrief, parseWatchList, pendingSection, renderBrief, summarizePending, MAX_LINES } from "../commands/brief.mjs";
 
 const doctorOk = { ok: true, counts: { ok: 14, warn: 1, fail: 0 }, checks: [
   { level: "ok", check: "consent", detail: "fine" },
@@ -27,7 +27,7 @@ test("parseWatchList skips comments and resolves relative paths", () => {
 test("gatherBrief + renderBrief stay within the line budget and report dirty repos", () => {
   const root = mkdtempSync(join(tmpdir(), "brief-"));
   mkdirSync(join(root, "working"));
-  const pending = Array.from({ length: 80 }, (_, i) => `item ${i}`).join("\n");
+  const pending = Array.from({ length: 80 }, (_, i) => `- item ${i}`).join("\n");
   writeFileSync(join(root, "working", "HANDOFF.md"), `## Pendiente\n${pending}\n`);
   const log = join(root, "runs.jsonl");
   const today = new Date().toISOString();
@@ -51,7 +51,20 @@ test("gatherBrief + renderBrief stay within the line budget and report dirty rep
   assert.match(text, /warn links: one broken link/);
   assert.match(text, /AgentHub \(3\)/);
   assert.match(text, /claude \$0\.25/);
-  assert.match(text, /líneas más en HANDOFF/);
+  assert.match(text, /puntos más en HANDOFF/);
+});
+
+test("summarizePending joins wrapped bullets, drops link targets and keeps one sentence", () => {
+  const out = summarizePending([
+    "0. **Uno (2026-11-10)**: primera frase larga con [`link`](ruta.md) y `code`.",
+    "   Continuación que no debe salir.",
+    "desfasado, y esto tampoco debe empezar un punto.",
+    "",
+    "- **Dos** — solo una frase",
+  ]);
+  assert.equal(out.length, 2);
+  assert.equal(out[0], "**Uno (2026-11-10)**: primera frase larga con link y code.");
+  assert.equal(out[1], "**Dos** — solo una frase");
 });
 
 test("brief on a real git repo counts uncommitted files", () => {

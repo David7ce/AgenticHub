@@ -75,7 +75,8 @@ with `git config core.hooksPath .githooks`.
 `hubctl spend` / `usage` show cost (Go reports 0, so its tokens are priced against
 the published table; Codex tokens come from its rollouts, priced with the catalogue's
 estimates; Claude's cost comes from the audit log). `hubctl clean` is a dry-run tidy
-of clean worktrees and old backups. `hubctl path <p>` prints both spellings of a path.
+of clean worktrees, old backups and orphaned inflight records. `hubctl path <p>`
+prints both spellings of a path.
 
 ## Consent and audit — the contract
 

@@ -40,6 +40,46 @@ export function pendingSection(markdown) {
   return body;
 }
 
+const BULLET = /^\s{0,2}(?:[-*+]|\d+[a-zA-Z]?[.)])\s+/;
+// Hard-wrapped paragraphs in HANDOFF continue either indented or at column 0
+// starting lowercase (or a closing bracket), so indentation alone is not enough.
+const CONTINUES = /^\s{2,}|^[a-záéíóúñü,;:)\]]/u;
+
+function firstSentence(text, width) {
+  const match = text.match(/^(.{20,}?\.)\s+(?=[A-ZÁÉÍÓÚÑ0-9])/u);
+  const sentence = match ? match[1] : text;
+  if (sentence.length <= width) return sentence;
+  const cut = sentence.slice(0, width - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 40 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
+/**
+ * One line per pending item: wrapped continuation lines are joined, links keep
+ * their text, inline code loses its backticks, and only the first sentence is
+ * kept. A raw clip cut bullets mid-word ("...aviso de …") and made the one
+ * section a new session actually reads unreadable.
+ */
+export function summarizePending(lines, { width = MAX_WIDTH } = {}) {
+  const items = [];
+  for (const raw of lines) {
+    const line = String(raw ?? "");
+    if (!line.trim()) continue;
+    // A deeper indent, or a lowercase wrap at column 0, continues the item above.
+    if (!items.length || BULLET.test(line) || !CONTINUES.test(line)) items.push(line.trim());
+    else items[items.length - 1] += ` ${line.trim()}`;
+  }
+  return items.map((text) => firstSentence(
+    text
+      .replace(BULLET, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/`/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    width,
+  ));
+}
+
 export function gitDirty(dir) {
   if (!existsSync(dir)) return { dir, name: basename(dir), missing: true, changed: 0 };
   const result = spawnSync("git", ["-C", dir, "status", "--porcelain"], { encoding: "utf8", windowsHide: true });
@@ -132,9 +172,10 @@ export function renderBrief(brief) {
   } else if (brief.pending.length) {
     lines.push("pendiente (working/HANDOFF.md):");
     const room = Math.max(0, MAX_LINES - lines.length);
-    const shown = brief.pending.slice(0, room > 1 ? room - 1 : 0);
-    for (const line of shown) lines.push(clip(`  ${line}`));
-    if (shown.length < brief.pending.length) lines.push(`  … ${brief.pending.length - shown.length} líneas más en HANDOFF.md`);
+    const items = summarizePending(brief.pending);
+    const shown = items.slice(0, room > 1 ? room - 1 : 0);
+    for (const item of shown) lines.push(clip(`  • ${item}`));
+    if (shown.length < items.length) lines.push(`  … ${items.length - shown.length} puntos más en HANDOFF.md`);
   }
   return lines.slice(0, MAX_LINES).join("\n");
 }

@@ -7,6 +7,7 @@ import {
   checkFrontier,
   checkGrants,
   checkHandoffFresh,
+  checkHooks,
   checkLeftovers,
   checkOpencodeMcp,
   checkRegistryConsent,
@@ -74,6 +75,14 @@ test('stale inflight files and locks are flagged; live or unknown ones are not',
   );
   assert.equal(rows.length, 2);
   assert.equal(checkLeftovers([], [])[0].level, 'ok');
+});
+
+test('the pre-commit guard is only ok when hooksPath points at a present hook', () => {
+  const exists = (p) => p.replace(/\\/g, '/').endsWith('/.githooks/pre-commit');
+  assert.equal(checkHooks('/r', { hooksPath: '.githooks', exists })[0].level, 'ok');
+  assert.equal(checkHooks('/r', { hooksPath: null, exists })[0].level, 'warn');
+  assert.match(checkHooks('/r', { hooksPath: 'hooks', exists })[0].detail, /not \.githooks/);
+  assert.equal(checkHooks('/r', { hooksPath: '.githooks', exists: () => false })[0].level, 'warn');
 });
 
 test('opencode mcp list output is parsed per server, and skipping is a warn', () => {
