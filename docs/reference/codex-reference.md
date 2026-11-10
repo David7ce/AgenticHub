@@ -11,50 +11,50 @@ disagrees with `codex --help`, the help wins.
 
 ## Run it
 
-| Goal | Command |
-|---|---|
-| Interactive session | `codex` (optionally `codex "first prompt"`) |
-| One prompt, no UI | `codex exec "prompt"` (alias `codex e`); `-` reads the prompt from stdin |
-| Machine-readable events | `codex exec --json "prompt"` (JSONL on stdout) |
-| Final answer shaped as JSON | `codex exec --output-schema schema.json "prompt"` |
-| Code review of the current repo | `codex review` or `codex exec review` |
-| Continue an earlier session | `codex resume` (picker) or `codex resume --last` |
-| Branch an earlier session | `codex fork` / `codex fork --last` |
-| Health of the install, config, auth | `codex doctor` |
-| Update | `codex update` |
+| Goal                                | Command                                                                  |
+|-------------------------------------|--------------------------------------------------------------------------|
+| Interactive session                 | `codex` (optionally `codex "first prompt"`)                              |
+| One prompt, no UI                   | `codex exec "prompt"` (alias `codex e`); `-` reads the prompt from stdin |
+| Machine-readable events             | `codex exec --json "prompt"` (JSONL on stdout)                           |
+| Final answer shaped as JSON         | `codex exec --output-schema schema.json "prompt"`                        |
+| Code review of the current repo     | `codex review` or `codex exec review`                                    |
+| Continue an earlier session         | `codex resume` (picker) or `codex resume --last`                         |
+| Branch an earlier session           | `codex fork` / `codex fork --last`                                       |
+| Health of the install, config, auth | `codex doctor`                                                           |
+| Update                              | `codex update`                                                           |
 
 ## Subcommands worth knowing
 
-| Subcommand | What it does |
-|---|---|
-| `exec` | Non-interactive run; the one scripts use |
-| `review` | Non-interactive code review |
-| `resume`, `fork` | Reopen or branch a saved session |
-| `archive`, `unarchive` | Hide or restore a saved session by id or name |
-| `delete` | Permanently delete a saved session (`--force` skips the prompt) |
-| `queue` | Queue a message for an existing session |
-| `apply` | Apply the latest diff Codex produced as a `git apply` |
-| `mcp` | Manage the external MCP servers Codex can call |
-| `sandbox` | Run a command inside Codex's own sandbox |
-| `features` | Inspect feature flags |
-| `login`, `logout` | Authentication |
+| Subcommand             | What it does                                                    |
+|------------------------|-----------------------------------------------------------------|
+| `exec`                 | Non-interactive run; the one scripts use                        |
+| `review`               | Non-interactive code review                                     |
+| `resume`, `fork`       | Reopen or branch a saved session                                |
+| `archive`, `unarchive` | Hide or restore a saved session by id or name                   |
+| `delete`               | Permanently delete a saved session (`--force` skips the prompt) |
+| `queue`                | Queue a message for an existing session                         |
+| `apply`                | Apply the latest diff Codex produced as a `git apply`           |
+| `mcp`                  | Manage the external MCP servers Codex can call                  |
+| `sandbox`              | Run a command inside Codex's own sandbox                        |
+| `features`             | Inspect feature flags                                           |
+| `login`, `logout`      | Authentication                                                  |
 
 ## Flags that matter
 
-| Flag | Meaning |
-|---|---|
-| `-m, --model` | Model for this run |
-| `-C, --cd DIR` | Working root for the agent |
-| `--add-dir DIR` | Extra directory that is writable next to the workspace |
-| `-s, --sandbox` | `read-only`, `workspace-write` or `danger-full-access` |
-| `-a, --ask-for-approval` | `on-request` (the model decides when to ask) or `never` |
-| `-c, --config key=value` | Override any `config.toml` value for this run (TOML syntax, dotted paths) |
-| `-p, --profile NAME` | Layer `$CODEX_HOME/NAME.config.toml` over the base config |
-| `--worktree` | Run in a new managed git worktree |
-| `--ephemeral` | Do not persist the session files |
-| `--ignore-user-config` | Do not load `config.toml` (auth still uses `CODEX_HOME`) |
-| `--skip-git-repo-check` | Allow running outside a git repository |
-| `--search` | Enable live web search |
+| Flag                                         | Meaning                                                                         |
+|----------------------------------------------|---------------------------------------------------------------------------------|
+| `-m, --model`                                | Model for this run                                                              |
+| `-C, --cd DIR`                               | Working root for the agent                                                      |
+| `--add-dir DIR`                              | Extra directory that is writable next to the workspace                          |
+| `-s, --sandbox`                              | `read-only`, `workspace-write` or `danger-full-access`                          |
+| `-a, --ask-for-approval`                     | `on-request` (the model decides when to ask) or `never`                         |
+| `-c, --config key=value`                     | Override any `config.toml` value for this run (TOML syntax, dotted paths)       |
+| `-p, --profile NAME`                         | Layer `$CODEX_HOME/NAME.config.toml` over the base config                       |
+| `--worktree`                                 | Run in a new managed git worktree                                               |
+| `--ephemeral`                                | Do not persist the session files                                                |
+| `--ignore-user-config`                       | Do not load `config.toml` (auth still uses `CODEX_HOME`)                        |
+| `--skip-git-repo-check`                      | Allow running outside a git repository                                          |
+| `--search`                                   | Enable live web search                                                          |
 | `--dangerously-bypass-approvals-and-sandbox` | No prompts and no sandbox. Only inside an environment that is already sandboxed |
 
 ## Sandbox and approvals
@@ -105,11 +105,11 @@ there. A session that is open holds a lock in `thread-writer-locks/`.
 Codex ships several tiers. This workspace's catalogue
 ([`../agent-hub/models.json`](../agent-hub/models.json)) names them by role:
 
-| Role | Tier |
-|---|---|
-| Default, everyday | a mid tier (Terra) |
-| Hard coding, long tasks | a strong tier (Sol) |
-| Bulk, cheap | a light tier (Luna) |
+| Role                       | Tier                    |
+|----------------------------|-------------------------|
+| Default, everyday          | a mid tier (Terra)      |
+| Hard coding, long tasks    | a strong tier (Sol)     |
+| Bulk, cheap                | a light tier (Luna)     |
 | Exceptional, explicit only | a frontier tier (Astra) |
 
 Prices in the catalogue are **estimates**, labelled as such, used only to size

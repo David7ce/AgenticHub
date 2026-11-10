@@ -10,47 +10,47 @@ Checked against the installed CLI (`opencode --help`, `opencode run --help`) on
 
 ## Run it
 
-| Goal | Command |
-|---|---|
-| Interactive UI in a folder | `opencode [directory]` |
-| One message, no UI | `opencode run "message"` |
-| Machine-readable output | `opencode run --format json "message"` |
-| Continue the last session | `opencode -c` / `opencode run -c "next message"` |
-| A specific session | `opencode -s SESSION_ID` |
-| Branch before continuing | `opencode run -s SESSION_ID --fork "message"` |
-| A session in its own git worktree | `opencode run -w [name] "message"` |
-| Minimal interface | `opencode mini` |
-| Update | `opencode upgrade` |
+| Goal                              | Command                                          |
+|-----------------------------------|--------------------------------------------------|
+| Interactive UI in a folder        | `opencode [directory]`                           |
+| One message, no UI                | `opencode run "message"`                         |
+| Machine-readable output           | `opencode run --format json "message"`           |
+| Continue the last session         | `opencode -c` / `opencode run -c "next message"` |
+| A specific session                | `opencode -s SESSION_ID`                         |
+| Branch before continuing          | `opencode run -s SESSION_ID --fork "message"`    |
+| A session in its own git worktree | `opencode run -w [name] "message"`               |
+| Minimal interface                 | `opencode mini`                                  |
+| Update                            | `opencode upgrade`                               |
 
 ## `opencode run` flags
 
-| Flag | Meaning |
-|---|---|
-| `-m, --model provider/model#variant` | Model for this run |
-| `--agent NAME` | Which OpenCode agent to use |
-| `-f, --file PATH` | Attach a file to the message |
-| `--title TEXT` | Session title |
-| `--archived` | Create the session archived so it stays out of lists (scripted runs) |
-| `--thinking` | Show thinking blocks |
-| `--auto` | Auto-approve permissions that are not explicitly denied |
-| `--standalone` | Use a private server instead of the background service |
-| `--server URL` | Connect to a given server instead of the background service |
+| Flag                                 | Meaning                                                              |
+|--------------------------------------|----------------------------------------------------------------------|
+| `-m, --model provider/model#variant` | Model for this run                                                   |
+| `--agent NAME`                       | Which OpenCode agent to use                                          |
+| `-f, --file PATH`                    | Attach a file to the message                                         |
+| `--title TEXT`                       | Session title                                                        |
+| `--archived`                         | Create the session archived so it stays out of lists (scripted runs) |
+| `--thinking`                         | Show thinking blocks                                                 |
+| `--auto`                             | Auto-approve permissions that are not explicitly denied              |
+| `--standalone`                       | Use a private server instead of the background service               |
+| `--server URL`                       | Connect to a given server instead of the background service          |
 
 `--auto` is the unattended switch; it still honours explicit denials.
 
 ## Subcommands worth knowing
 
-| Subcommand | What it does |
-|---|---|
-| `acp` | Start an Agent Client Protocol server (how the hub talks to it) |
-| `models` | List every model available to you |
-| `session list \| delete \| export \| import` | Manage sessions; `delete` also removes child sessions |
-| `mcp` | Manage MCP servers (`opencode mcp list` shows what is connected) |
-| `plugin` | Manage plugins, including TUI plugins |
-| `auth` | Manage integrations and credentials |
-| `stats` | Shareable usage statistics (tokens per model) |
-| `service`, `reload` | The background server, and re-reading configuration |
-| `serve`, `pair` | The API/web server and one-time links to connect a browser or app |
+| Subcommand                                   | What it does                                                      |
+|----------------------------------------------|-------------------------------------------------------------------|
+| `acp`                                        | Start an Agent Client Protocol server (how the hub talks to it)   |
+| `models`                                     | List every model available to you                                 |
+| `session list \| delete \| export \| import` | Manage sessions; `delete` also removes child sessions             |
+| `mcp`                                        | Manage MCP servers (`opencode mcp list` shows what is connected)  |
+| `plugin`                                     | Manage plugins, including TUI plugins                             |
+| `auth`                                       | Manage integrations and credentials                               |
+| `stats`                                      | Shareable usage statistics (tokens per model)                     |
+| `service`, `reload`                          | The background server, and re-reading configuration               |
+| `serve`, `pair`                              | The API/web server and one-time links to connect a browser or app |
 
 ## Models
 
