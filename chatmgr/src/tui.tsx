@@ -35,7 +35,7 @@ const [filter, setFilter] = createSignal(emptyFilter())
 const [status, setStatus] = createSignal("loading…")
 const [errors, setErrors] = createSignal<string[]>([])
 const [busy, setBusy] = createSignal(false)
-const [keepBackup, setKeepBackup] = createSignal(true)
+const [keepBackup, setKeepBackup] = createSignal(false)
 // True while any dialog is on screen. The panel's own keys (Enter = resume,
 // Esc = close...) must not fire then, or they swallow the dialog's Enter/Esc.
 const [dialogOpen, setDialogOpen] = createSignal(false)
@@ -64,7 +64,7 @@ function visibleRows(): Row[] {
 async function refresh() {
   setStatus("loading…")
   // The panel filters locally, so it fetches everything (incl. archived and automated).
-  const result = await callCli(["list", "--json", "--archived", "--automated"])
+  const result = await callCli(["list", "--json"])
   if (result?.conversations) {
     setRows(result.conversations)
     setErrors((result.errors ?? []).map((row: any) => `${row.provider}: ${row.error}`))
@@ -196,7 +196,7 @@ export default Plugin.define({
             bind: "t",
             run: () => setFilter({ ...filter(), includeAutomated: !filter().includeAutomated }),
           },
-          { id: "chatmgr.backup", bind: "k", run: () => { setKeepBackup(!keepBackup()); setStatus(keepBackup() ? "deletes keep a backup" : "deletes are permanent (no backup)") } },
+          { id: "chatmgr.backup", bind: "k", run: () => { setKeepBackup(!keepBackup()); setStatus(keepBackup() ? "next deletes keep a backup" : "deletes are permanent (no backup)") } },
           { id: "chatmgr.resume", bind: "return", run: () => void resume() },
           { id: "chatmgr.delete", bind: "ctrl+d", run: () => void deleteSelected() },
           { id: "chatmgr.close", bind: "escape", run: () => context.ui.router.navigate({ type: "home" }) },
@@ -348,7 +348,7 @@ export default Plugin.define({
 
         setBusy(true)
         setStatus(`deleting ${keys.length}…`)
-        const result = await callCli(["delete", "--keys", keys.join(","), "--yes", ...(keepBackup() ? [] : ["--no-backup"])])
+        const result = await callCli(["delete", "--keys", keys.join(","), "--yes", ...(keepBackup() ? ["--backup"] : [])])
         setBusy(false)
 
         const lines = (result.results ?? []).map((row: any) => {

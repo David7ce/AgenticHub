@@ -21,8 +21,8 @@ Inside OpenCode: `/conversations` (or `/chats`) is the dependable way; `Ctrl+Shi
 | `p` | Preview the transcript |
 | `Enter` | Resume (OpenCode opens the session; others show their own command) |
 | `m` | Archive / unarchive the selection (Codex only, reversible) |
-| `t` | Show/hide automated sessions (tool-payload summarizers, auto-review guardians, hub-started runs); hidden by default |
-| `k` | Toggle backup on/off for the next delete (off = permanent, no undo) |
+| `t` | Show/hide automated sessions (tool-payload summarizers, auto-review guardians, hub-started runs); **shown by default**, `t` hides them |
+| `k` | Toggle a safety backup for the next delete (default **off**: deletes are direct and permanent) |
 | `Ctrl+D` | One batch confirmation, then delete the marked rows (the row under the cursor if none is marked) |
 | `f` `o` `b` `x` `/` | Filter by agent, exact path, before-date, archived, text |
 | `r` | Refresh |
@@ -35,12 +35,12 @@ The panel calls `src/cli.mjs`, so every action is also available headless:
 
 ```powershell
 node agent-hub/chatmgr/src/cli.mjs list --json
-node agent-hub/chatmgr/src/cli.mjs list --agent codex,claude --before 2026-11-01 --archived
+node agent-hub/chatmgr/src/cli.mjs list --agent codex,claude --before 2026-11-01 [--no-archived] [--no-automated]
 node agent-hub/chatmgr/src/cli.mjs preview --key codex:01a1...
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --dry-run
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --yes
-node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X --yes --no-backup   # permanent
-node agent-hub/chatmgr/src/cli.mjs prune-backups --days 14 [--yes]            # dry run without --yes
+node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X --yes --backup      # opt in to a backup copy
+node agent-hub/chatmgr/src/cli.mjs prune-backups --days 14 [--yes]            # only when you run it; dry run without --yes
 node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --dry-run
 node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --yes
 node agent-hub/chatmgr/src/cli.mjs backups
@@ -81,7 +81,7 @@ backup-before-mutation rule applies, and the backup includes the sidecar.
   one project folder, with filenames matching the session id. `..`, symlinks,
   junctions and any path outside that root are rejected before removal; only
   the two verified paths are removed, never a glob or a project folder.
-- **Backup before mutation (default; `--no-backup` or `k` turns it off).** Backups older than 14 days are pruned after a backed-up delete (`--no-prune`, `--prune-days N`). Every batch writes
+- **Backup is opt-in (`--backup`, or `k` in the panel).** By default a delete is direct and permanent. With a backup, every batch writes
   `backups/<timestamp>/manifest.json` plus a copy of each file-backed
   transcript and its sidecar folder (Claude), or a JSON dump for
   database-backed agents. If the backup fails, nothing is deleted.

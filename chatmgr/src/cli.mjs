@@ -8,7 +8,7 @@
  *                     [--archived] [--query Q] [--current-key K]
  *   node cli.mjs preview --key provider:id
  *   node cli.mjs delete --keys k1,k2 [--yes] [--dry-run] [--backup-dir D]
- *   node cli.mjs delete ... [--no-backup] [--no-prune] [--prune-days N]
+ *   node cli.mjs delete ... [--backup]
  *   node cli.mjs prune-backups [--days N] [--yes]
  *   node cli.mjs backups | restore --manifest F | backup-remove --dir D
  */
@@ -51,8 +51,9 @@ function filterFrom(flags) {
     agents: typeof flags.agent === "string" ? flags.agent.split(",") : null,
     project: typeof flags.project === "string" ? flags.project : null,
     before: typeof flags.before === "string" ? flags.before : null,
-    includeArchived: flags.archived === true,
-    includeAutomated: flags.automated === true,
+    // Nothing is hidden unless asked: --no-archived / --no-automated.
+    includeArchived: flags["no-archived"] !== true,
+    includeAutomated: flags["no-automated"] !== true,
     query: typeof flags.query === "string" ? flags.query : "",
   });
 }
@@ -99,7 +100,7 @@ async function cmdPreview(flags) {
   const id = rest.join(":");
   const adapter = adapters[provider];
   if (!adapter) throw new Error(`unknown provider ${provider}`);
-  const { conversations } = await collect({ automated: true });
+  const { conversations } = await collect({});
   const conv = conversations.find((row) => row.provider === provider && row.id === id);
   if (!conv) throw new Error(`conversation not found: ${flags.key}`);
   const text = await adapter.preview(conv, {});
@@ -109,7 +110,7 @@ async function cmdPreview(flags) {
 async function cmdDelete(flags) {
   const keys = typeof flags.keys === "string" ? flags.keys.split(",").filter(Boolean) : [];
   if (keys.length === 0) throw new Error("--keys is required");
-  const { providers, conversations } = await collect({ automated: true });
+  const { providers, conversations } = await collect({});
   const selection = createSelection(keys);
   const selected = selectedConversations(selection, conversations);
   const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
@@ -132,19 +133,15 @@ async function cmdDelete(flags) {
   }
 
   const backupRoot = typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot;
-  const backup = flags["no-backup"] === true
+  // No backup unless asked (--backup): the owner prefers direct deletion.
+  const backup = flags.backup !== true
     ? null
     : {
         create: (items) => createBackup(items, { root: backupRoot, providers }),
       };
 
   const result = await executeDeletes(plan, { providers, backup });
-  // Old safety copies age out on their own after a backed-up delete.
-  const pruned = backup && flags["no-prune"] !== true
-    ? pruneBackups(backupRoot, { days: Number(flags["prune-days"]) || 14 })
-    : [];
   return {
-    pruned,
     ok: result.failed === 0,
     summary: describePlan(plan),
     backup: result.backup ? { dir: result.backup.dir, manifest: result.backup.manifestPath } : null,
@@ -157,7 +154,7 @@ async function cmdDelete(flags) {
 
 async function cmdPruneBackups(flags) {
   const root = typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot;
-  const days = Number(flags.days) || 14;
+  const days = Number.isFinite(Number(flags.days)) && flags.days !== undefined ? Number(flags.days) : 14;
   const removed = pruneBackups(root, { days, dryRun: flags.yes !== true });
   return { ok: true, dryRun: flags.yes !== true, days, removed };
 }
@@ -165,7 +162,7 @@ async function cmdPruneBackups(flags) {
 async function cmdArchive(flags) {
   const keys = typeof flags.keys === "string" ? flags.keys.split(",").filter(Boolean) : [];
   if (keys.length === 0) throw new Error("--keys is required");
-  const { providers, conversations } = await collect({ automated: true });
+  const { providers, conversations } = await collect({});
   const selected = selectedConversations(createSelection(keys), conversations);
   const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
   const plan = buildArchivePlan(selected);

@@ -14,8 +14,8 @@ export const emptyFilter = () => ({
   agents: null,
   project: null,
   before: null,
-  includeArchived: false,
-  includeAutomated: false,
+  includeArchived: true,
+  includeAutomated: true,
   query: "",
 });
 
@@ -27,8 +27,8 @@ export function normalizeFilter(input = {}) {
     agents,
     project: input.project ? String(input.project) : null,
     before: input.before ? String(input.before) : null,
-    includeArchived: input.includeArchived === true,
-    includeAutomated: input.includeAutomated === true,
+    includeArchived: input.includeArchived !== false,
+    includeAutomated: input.includeAutomated !== false,
     query: String(input.query ?? "").trim(),
   };
 }

@@ -17,11 +17,11 @@ test("before date means before local midnight, not before UTC midnight", () => {
   assert.equal(formatLocalDate(cutoff), "2026-11-08");
   assert.equal(new Date(cutoff).getHours(), 0);
 
-  const before = applyFilters(rows, { ...emptyFilter(), before: "2026-11-08" });
+  const before = applyFilters(rows, { includeArchived: false, ...emptyFilter(), includeArchived: false, before: "2026-11-08" });
   // 2026-11-08 00:00:00 is exactly midnight, so it is NOT before it.
   assert.deepEqual(before.map((r) => r.id).sort(), ["c"]);
 
-  const onTheNinth = applyFilters(rows, { ...emptyFilter(), before: "2026-11-09" });
+  const onTheNinth = applyFilters(rows, { includeArchived: false, ...emptyFilter(), includeArchived: false, before: "2026-11-09" });
   assert.deepEqual(onTheNinth.map((r) => r.id).sort(), ["a", "c"]);
 });
 
@@ -32,6 +32,7 @@ test("rejects impossible dates instead of guessing", () => {
 
 test("filters combine with AND: agent, exact project path, activity window", () => {
   const filtered = applyFilters(rows, {
+    includeArchived: false,
     agents: ["codex"],
     project: "d:/REPO/",
     before: "2026-11-09",
@@ -40,22 +41,23 @@ test("filters combine with AND: agent, exact project path, activity window", () 
 });
 
 test("exact project path does not match a sibling or a parent", () => {
-  assert.deepEqual(applyFilters(rows, { project: "D:\\rep" }).map((r) => r.id), []);
-  assert.deepEqual(applyFilters(rows, { project: "D:\\Other" }).map((r) => r.id), ["c"]);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, project: "D:\\rep" }).map((r) => r.id), []);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, project: "D:\\Other" }).map((r) => r.id), ["c"]);
   // trailing separator and case are folded
-  assert.deepEqual(applyFilters(rows, { project: "d:\\repo\\" }).map((r) => r.id).sort(), ["a", "d"]);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, project: "d:\\repo\\" }).map((r) => r.id).sort(), ["a", "d"]);
 });
 
-test("archived rows are hidden unless asked for", () => {
-  assert.deepEqual(applyFilters(rows, {}).map((r) => r.id).sort(), ["a", "c", "d"]);
-  assert.deepEqual(applyFilters(rows, { includeArchived: true }).map((r) => r.id).sort(), ["a", "b", "c", "d"]);
-  const archivedOnly = applyFilters(rows, { includeArchived: true, before: "2026-11-08" });
+test("archived rows can be hidden; nothing is hidden by default", () => {
+  assert.deepEqual(applyFilters(rows, {}).length, 4);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false }).map((r) => r.id).sort(), ["a", "c", "d"]);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, includeArchived: true }).map((r) => r.id).sort(), ["a", "b", "c", "d"]);
+  const archivedOnly = applyFilters(rows, { includeArchived: false, includeArchived: true, before: "2026-11-08" });
   assert.deepEqual(archivedOnly.map((r) => r.id).sort(), ["c"]);
 });
 
 test("free text searches title and path, case-insensitively", () => {
-  assert.deepEqual(applyFilters(rows, { query: "parser" }).map((r) => r.id).sort(), ["a"]);
-  assert.deepEqual(applyFilters(rows, { query: "d:\\repo" }).map((r) => r.id).sort(), ["a", "d"]);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, query: "parser" }).map((r) => r.id).sort(), ["a"]);
+  assert.deepEqual(applyFilters(rows, { includeArchived: false, query: "d:\\repo" }).map((r) => r.id).sort(), ["a", "d"]);
 });
 
 test("normalizeFilter turns an empty agent list into no filter", () => {

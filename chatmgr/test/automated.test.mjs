@@ -13,8 +13,8 @@ test("automated sessions are recognised", () => {
   assert.ok(!automatedCodexMeta(null));
 });
 
-test("automated rows are hidden unless asked for", () => {
+test("automated rows are shown by default and can be hidden", () => {
   const rows = [{ provider: "codex", id: "a", automated: true }, { provider: "codex", id: "b", automated: false }];
-  assert.deepEqual(applyFilters(rows, emptyFilter()).map((r) => r.id), ["b"]);
-  assert.equal(applyFilters(rows, { ...emptyFilter(), includeAutomated: true }).length, 2);
+  assert.equal(applyFilters(rows, emptyFilter()).length, 2);
+  assert.deepEqual(applyFilters(rows, { ...emptyFilter(), includeAutomated: false }).map((r) => r.id), ["b"]);
 });
