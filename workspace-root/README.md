@@ -13,13 +13,13 @@ lives in each project repository, and scripts live in the toolbox.
 
 ## Layout
 
-| Path | What it is |
-|---|---|
-| [`agent-hub/`](agent-hub/) | Swarm dispatcher, consent gate, MCP server, ACP adapters, routing and audit log |
-| [`repos/`](repos/) | Repository inventory and the generated Repos/Heatmap pages |
-| [`docs/`](docs/) | Generic docs; `docs/agent/` documents the session-baton convention |
-| [`logs/`](logs/) | Agent audit log and final task evidence (local, ignored) |
-| `working/` | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and history. A fork clones it empty |
+| Path                       | What it is                                                                                                                              |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| [`agent-hub/`](agent-hub/) | Swarm dispatcher, consent gate, MCP server, ACP adapters, routing and audit log                                                         |
+| [`repos/`](repos/)         | Repository inventory and the generated Repos/Heatmap pages                                                                              |
+| [`docs/`](docs/)           | Generic docs; `docs/agent/` documents the session-baton convention                                                                      |
+| [`logs/`](logs/)           | Agent audit log and final task evidence (local, ignored)                                                                                |
+| `working/`                 | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and history. A fork clones it empty |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate
@@ -54,10 +54,10 @@ habits.
 ## Platform
 
 The documentation works on any OS. The repository toolkit requires Node.js and
-Git; the agent hub also requires configured worker executables, and its
-PowerShell wrappers and WSL adapters have platform-specific prerequisites. See
-[workspace configuration](docs/workspace-configuration.md) and
-[history preservation](docs/history-preservation.md) before a squash.
+Git; the agent hub also requires configured agent executables (Claude Code,
+OpenCode, Codex), whose adapters have platform-specific prerequisites. See
+[workspace configuration](docs/workspace-configuration.md); the docs index
+([`docs/`](docs/README.md)) starts with a guide to working with the agents.
 
 ## For agents
 
@@ -68,8 +68,8 @@ current, and when to stop and ask.
 ## See it in action
 
 - [`agent-hub/`](agent-hub/) — a working swarm: one prompt fanned out to Claude
-  Code, OpenCode and Hermes as headless workers, with routing, a consent gate,
-  an MCP server and an audit log.
+  Code, OpenCode and Codex over ACP, with routing, quota failover, a consent
+  gate with enforced limits, an MCP server and an audit log.
 - `repos/` — a live inventory of every repository under `D:\Workspaces`,
   regenerated from the filesystem rather than hand-maintained.
 - Toolbox examples (a separate repo): desktop setup,

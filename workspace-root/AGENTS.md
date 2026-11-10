@@ -1,147 +1,103 @@
 # Operating instructions for AI agents working in this directory
 
-This file is for you, the agent — Claude Code or otherwise. If you're a
-human, see [`README.md`](README.md) instead.
+For you, the agent — Claude Code, Codex, OpenCode or any other. If you are a
+human, read [`README.md`](README.md) and [`docs/agent-guide.md`](docs/agent-guide.md).
 
 ## What this directory is
 
-AgentHub is the **control room** for two things:
+AgentHub is the **control room** for this machine's agent workspace:
 
-- [`agent-hub/`](agent-hub/) — the local swarm: dispatcher, consent gate,
-  MCP server, ACP adapters, routing and audit log.
-- [`repos/`](repos/) — the inventory of repositories under `D:\Workspaces`
-  and the generated repos/heatmap pages.
+- [`agent-hub/`](agent-hub/) — the local swarm: ACP dispatcher, consent gate, MCP
+  server, `hubctl` control room, conversation manager, routing and audit log.
+- [`repos/`](repos/) — the inventory of repositories under `D:\Workspaces` and the
+  generated repos/heatmap pages.
 
-It is not a general documentation workspace. General domain documentation,
-AI working habits and durable research notes live in the external vault:
+It is not a general documentation workspace. General notes and research live in the
+external vault (`D:\Knowledge\Vault\Markdown-vault\AI-vault\`); project state lives
+in each project repo; scripts and installers live in the toolbox repo.
 
-`D:\Knowledge\Vault\Markdown-vault\AI-vault\`
+## Before you start
 
-Project state belongs to each project repository. Scripts and installers
-belong to a separate toolbox repo outside this tree.
+1. No task given? Read [`working/ROADMAP.md`](working/ROADMAP.md) for open items.
+2. Touching `agent-hub/`: read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md). Touching
+   `repos/`: read [`repos/README.md`](repos/README.md).
+3. Touching a project repo: read **its** `AGENTS.md` and `docs/agent/HANDOFF.md`
+   first, and update the handoff before you finish.
+4. Do not recreate `categories/` here. General docs go to the vault; project docs
+   stay with the project.
 
-## Before you start any task
+## `working/` — personal, never published
 
-1. If the user doesn't specify a task, read [`working/ROADMAP.md`](working/ROADMAP.md) for
-   open items to pick up.
-2. For `agent-hub/`, read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md) and
-   [`agent-hub/README.md`](agent-hub/README.md); for `repos/`, read
-   [`repos/README.md`](repos/README.md).
-3. If the task touches a project repo under `D:\Workspaces`, read that repo's
-   `AGENTS.md` and `docs/agent/HANDOFF.md` **first**, and update them before
-   you finish (see "Session continuity").
-4. Do not recreate `categories/` here. If a task produces general
-   documentation, put it in the AI-vault; if it is project-specific, keep it
-   in the project.
-
-## The `working/` folder (personal, never published)
-
-Everything that is this owner's and not the hub itself lives in
-[`working/`](working/), which git ignores wholesale. A fork clones an **empty**
-`working/` and a generic repo. It holds `ROADMAP.md`, the session batons
-(`HANDOFF.md`, `JOURNAL.md`), `git-backup.md` and `history/` (old handoffs and
-dispatch notes). Local **config** that code reads stays next to the code
+Everything that is the owner's and not the hub itself lives in
+[`working/`](working/), which git ignores wholesale: `ROADMAP.md`, the session
+batons (`HANDOFF.md`, `JOURNAL.md`), `git-backup.md`, `history/`. A fork clones it
+empty. Local **config** that code reads stays next to the code
 (`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `repos/local/`), also
-ignored, each with a tracked `*.example` or README a fork copies from.
+ignored, each with a tracked `*.example` or README to copy from. Keep anything
+personal or machine-specific in `working/` or a `*.local.*` file — never in a
+tracked file.
 
-Keep anything personal, project-specific or machine-specific in `working/` or in
-a `*.local.*` file — never in a tracked file, so the public tree stays generic.
+Keep `working/ROADMAP.md` current: add what the user mentions and you cannot do now,
+keep a blocked item with its blocker spelled out, and delete finished items instead
+of leaving them checked off.
 
-### Keeping `working/ROADMAP.md` current
+## Session continuity
 
-- Something the user mentions that isn't handled immediately: add it to
-  `working/ROADMAP.md` rather than letting it live only in conversation.
-- A task genuinely blocked on someone/something else (not just "the user
-  hasn't done it yet") stays there with the blocker spelled out.
-  A one-step thing only the user can do is still their next action, not a wait.
-- When something finishes, remove it; don't leave it checked off and lingering.
+Chat history is **not** shared between harnesses; a session that dies mid-task
+leaves a transcript the next harness cannot read. So the state goes in files:
 
-## Session continuity across harnesses
+- A **project repo** keeps `AGENTS.md` (entry point), `docs/agent/HANDOFF.md`
+  (current state, uncommitted work, exact next step) and `docs/agent/JOURNAL.md`
+  (append-only, newest first). If a repo has no `AGENTS.md`, add one.
+- **This workspace's** baton is `working/HANDOFF.md` and `working/JOURNAL.md`: read
+  them at the start, update them before finishing. They stay out of git.
 
-Chat history is **not** shared between Claude Code, Codex and
-OpenCode. A session that dies mid-task leaves its context in a harness-specific
-transcript that the next harness cannot read. Each project repo carries its own
-baton instead:
-
-- `AGENTS.md` — entry point and read/close protocol, for every harness.
-- `docs/agent/HANDOFF.md` — current state, uncommitted work and exact next step.
-- `docs/agent/JOURNAL.md` — append-only history, newest first.
-- `tools/agent-state.mjs` — optional mechanical check; its baseline lives in
-  `.git/`, not in the repo, so it cannot go stale by being committed.
-
-Pattern to copy: any repository that already keeps an `AGENTS.md` with its
-read/close protocol. If a repo you work in has no `AGENTS.md`, add one there rather
-than keeping the knowledge only in chat.
-
-This workspace's own baton is [`working/HANDOFF.md`](working/HANDOFF.md)
-and [`working/JOURNAL.md`](working/JOURNAL.md) — read them at the start
-of a session and update them before finishing. They live under `working/`
-(ignored by git): they carry personal project state, not hub code, so they stay
-on disk and out of the repository. The `docs/agent/` paths above are the
-convention each *project* repo follows; AgentHub keeps its own under `working/`.
-
-**Concurrency policy:** one writing orchestrator per working tree. Read-only
-sessions may overlap. Give simultaneous writers separate Git worktrees;
-hub-managed ACP writers reject a conflicting claim unless the caller explicitly
-passes `--allow-concurrent-write`. The override does not isolate edits.
-Apply this even when planned edits look disjoint: shared commits and handoff
-files can still collide. Never absorb another session's pending work into a
-commit without naming it.
+**One writing orchestrator per working tree.** Read-only sessions may overlap. Give
+simultaneous writers separate git worktrees; hub-managed writers reject a
+conflicting claim unless the caller passes `--allow-concurrent-write`, which does
+not isolate edits. Apply this even when planned edits look disjoint. Never absorb
+another session's pending work into a commit without naming it.
 
 ## While working
 
-- **`agent-hub/` is infrastructure.** The dispatcher (`acp/`),
-  consent gate, MCP server and orchestration docs live here as a sibling of
-  `repos/`, `docs/` and `logs/`. Don't move it into a task folder.
-- **`repos/` has source and generated halves.** Edit `cli.mjs`, `src/` or
-  `test/`; rebuild `dist/` with `node repos/cli.mjs build` and
-  `node repos/cli.mjs heatmap`. Never hand-edit `dist/`.
-- **`docs/agent/` is the workspace baton.** Keep it current; preserve rather
-  than rewrite historical entries.
-- **`logs/` is local, never versioned** (except its README). `runs.jsonl` is the
-  audit log; run evidence goes there named by task and date, and the final
-  evidence goes to the project repo.
-- **Every subdirectory gets a README** stating what it is and what platform or
-  tool it assumes, when that matters.
-- **Verify before documenting.** Run the command, read the file, open the page
-  or inspect the log. If an earlier claim turns out wrong, correct it.
-- **General docs go to the AI-vault; project docs stay with the project;
-  scripts go to the toolbox.** AgentHub is not a dumping ground.
-
-## Conventions
-
-- `repos/dist/*` is generated output. Regenerate it; never edit it by hand.
-- `logs/runs.jsonl` is the agent audit log. Append-only.
+- `agent-hub/` is infrastructure; do not move it into a task folder.
+- `repos/dist/` is generated: edit `cli.mjs`, `src/` or `test/`, rebuild with
+  `node repos/cli.mjs build` and `node repos/cli.mjs heatmap`, never hand-edit `dist/`.
+- `logs/` is local and never versioned (except its README). `logs/runs.jsonl` is the
+  append-only audit log; run evidence goes there named by task and date, and the
+  final evidence goes to the project repo.
+- Every subdirectory gets a README saying what it is and which platform or tool it
+  assumes, when that matters.
+- **Verify before documenting.** Run the command, read the file, open the page. If an
+  earlier claim turns out wrong, correct it.
 - Keep machine-affecting changes and their rollback in the owning project or
-  toolbox task, not in AgentHub.
-- Credentials, tokens and `.env*` values never enter a document, commit, log or
-  prompt.
+  toolbox task, not here.
 
-## Hard-won constraints for this control room
+## Hard constraints for this control room
 
-- **Do not bypass the consent gate.** Agents run only when `enabled`,
-  `overseerAck` and expiry all allow it; the audit log is not optional.
+- **Do not bypass the consent gate.** Agents run only when `enabled`, `overseerAck`
+  and expiry allow it, and within the grant's `limits`. Never widen a grant to make
+  something work — ask.
 - **One writer per tree.** Check `running`/`inflight` and the handoff before
   dispatching; do not edit a worker tree while its ACP run is active.
-- **Do not merge or reset a worker repository** to make a dispatch succeed.
-  Report the state and ask.
-- Constraints for other domains (hardware, RGB, OMR, animation, desktop setup)
-  live with their documentation in the AI-vault and the toolbox; do not
-  relearn them here.
+- **Do not merge or reset a worker repository** to make a dispatch succeed. Report
+  the state and ask.
+- Constraints for other domains (hardware, RGB, OMR, animation, desktop setup) live
+  with their docs in the vault and the toolbox; do not relearn them here.
 
 ## Permissions
 
-Act autonomously on routine work. Still stop and ask before anything genuinely
-destructive or hard to reverse, and before any action outside this directory
-tree that affects the wider system, a remote service, or another person.
+Act autonomously on routine work. Stop and ask before anything destructive or hard to
+reverse, and before any action outside this tree that affects the wider system, a
+remote service, or another person.
 
-**Secrets never enter a transcript.** `.claude/settings.json` and the global
-OpenCode config both deny reading `.env*` (`.env.example` excepted), because a
-token that reaches a model's context has left the machine. If a task genuinely
-needs a credential, read it inside a process and pass it on — never print it,
-never paste it into a prompt.
+**Secrets never enter a transcript.** Credentials, tokens and `.env*` values never go
+into a document, commit, log or prompt. Both `.claude/settings.json` and the global
+OpenCode config deny reading `.env*` (`.env.example` excepted), because a token that
+reaches a model's context has left the machine. If a task needs a credential, read it
+inside a process and pass it on — never print it.
 
-**Model choice follows what the session touches.** Public repos and anything
-without credentials may use any model, including ones that train on request
-data. A session that could read `.env`, tokens or another tool's memory store stays on
+**Model choice follows what the session touches.** Public repos and anything without
+credentials may use any model, including ones that train on request data. A session
+that could read `.env`, tokens or another tool's memory store stays on
 zero-retention models.
