@@ -22,6 +22,18 @@ Claude Code (OpenCode, Kilo) or need a translation layer for Anthropic's
 `tool_use` (an `ANTHROPIC_BASE_URL` gateway). This is the cheap third option:
 keep the surface, give it a tool that reaches the rest of the fleet.
 
+## Files
+
+| File | What it is |
+|---|---|
+| `server.mjs` | The stdio loop, the handlers and the per-tree queue |
+| `hub-process.mjs` | Running the hub's own scripts: paths, timeouts, spawn, tree-kill |
+| `core.mjs` | Protocol constants, tool dispatch and JSON-RPC handling (no I/O) |
+| `tools.mjs` | The tool catalogue: names, descriptions, JSON schemas |
+| `validate.mjs` | Argument validation |
+| `render.mjs` | Results as the text the chat shows |
+| `jobs.mjs` | Background jobs |
+
 ## Tools
 
 | Tool | What it does | Costs a model call |

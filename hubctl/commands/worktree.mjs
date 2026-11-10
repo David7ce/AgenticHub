@@ -6,7 +6,7 @@
  */
 import { statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { removeWorktree, repoInfo, worktreeHasChanges } from "../../acp/fanout-acp.mjs";
+import { removeWorktree, repoInfo, worktreeHasChanges } from "../../acp/worktree.mjs";
 import { ROOT } from "../common.mjs";
 import { countWorktrees } from "./status.mjs";
 

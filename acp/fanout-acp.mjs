@@ -15,12 +15,21 @@
 // Exit: 0 if at least one agent answered, 2 if every agent timed out,
 // 1 otherwise. Same statuses as hub-acp.mjs.
 
+
 import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { rotateIfNeeded } from './log-rotation.mjs';
+
+
+import { createWorktree, removeWorktree, repoInfo, worktreePath, worktreeHasChanges } from './worktree.mjs';
+import { SYNTH_MAX_PROMPT_CHARS, baseResult, buildSynthesisPrompt, renderMarkdown } from './fanout-render.mjs';
+
+// Kept importable from here: tests and older callers use these names.
+export { safeAgentName, worktreePath, repoInfo, createWorktree, worktreeHasChanges, removeWorktree } from './worktree.mjs';
+export { buildSynthesisPrompt, renderMarkdown } from './fanout-render.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB = join(HERE, 'hub-acp.mjs');
@@ -33,9 +42,6 @@ const LOG_PATH = process.env.AGENT_HUB_LOG
   ? resolve(process.env.AGENT_HUB_LOG)
   : resolve(HERE, '..', '..', 'logs', 'runs.jsonl');
 const MAX_PROMPT_CHARS = 4000;
-// The synthesis call carries several answers, so it needs a larger ceiling
-// than a user prompt. hub-acp.mjs accepts --max-prompt-chars for this.
-const SYNTH_MAX_PROMPT_CHARS = 24_000;
 
 const USAGE = `usage: node fanout-acp.mjs --agents NAME[,NAME...] (--prompt TEXT | --prompt -) [options]
 
@@ -165,89 +171,6 @@ function killTree(child) {
   }
 }
 
-function clip(text, max) {
-  return text.length > max ? text.slice(0, max) + '...[truncated]' : text;
-}
-
-// --- isolated worktrees ----------------------------------------------------
-// Fan-out workers share a working tree by default, so two editors can
-// overwrite each other's files. `--worktree` gives each agent its own
-// checkout under the repository's git dir: invisible to the working tree,
-// removed with the repo, and never committed. A worktree is kept only when
-// the agent left changes behind; clean ones are removed after the run.
-
-export function safeAgentName(agent) {
-  return String(agent).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'agent';
-}
-
-export function worktreePath(commonDir, runStamp, agent) {
-  return join(commonDir, 'agent-worktrees', `${runStamp}-${safeAgentName(agent)}`);
-}
-
-function git(args, cwd) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
-  return {
-    ok: result.status === 0,
-    out: (result.stdout ?? '').trim(),
-    err: (result.stderr ?? '').trim(),
-  };
-}
-
-/**
- * Repo root plus the shared git dir. `--git-common-dir` keeps this correct
- * when the hub itself is running inside a linked worktree.
- */
-export function repoInfo(cwd) {
-  const top = git(['rev-parse', '--show-toplevel'], cwd);
-  if (!top.ok || !top.out) return null;
-  const common = git(['rev-parse', '--git-common-dir'], cwd);
-  const commonDir = common.ok && common.out ? resolve(cwd, common.out) : join(top.out, '.git');
-  return { root: top.out, commonDir };
-}
-
-export function createWorktree(repoRoot, path) {
-  mkdirSync(dirname(path), { recursive: true });
-  const result = git(['worktree', 'add', '--detach', path, 'HEAD'], repoRoot);
-  if (!result.ok) throw new Error(result.err || result.out || 'git worktree add failed');
-  return path;
-}
-
-/** True when the worktree has changes that must not be discarded. */
-export function worktreeHasChanges(path) {
-  const result = git(['status', '--porcelain'], path);
-  return !result.ok || result.out.length > 0;
-}
-
-export function removeWorktree(repoRoot, path) {
-  return git(['worktree', 'remove', '--force', path], repoRoot).ok;
-}
-
-/**
- * Build the merge prompt for `--synthesize`. Returns null when there is
- * nothing to merge (< 2 non-empty answers). Exported for tests.
- */
-export function buildSynthesisPrompt({ prompt, results, maxChars = SYNTH_MAX_PROMPT_CHARS }) {
-  const usable = results.filter((r) => r.text?.trim());
-  if (usable.length < 2) return null;
-
-  const header =
-    `You are merging ${usable.length} independent answers to the same task. ` +
-    `Produce one coherent answer for the user.\n\n` +
-    `TASK:\n${prompt.trim()}\n\n` +
-    `RULES:\n` +
-    `- Keep concrete facts, code, commands and file paths.\n` +
-    `- Surface material disagreements between the answers instead of silently choosing one.\n` +
-    `- Do not invent details that are not in the task or the answers.\n` +
-    `- Do not describe the merge process itself unless it matters.\n\n`;
-
-  // Leave room for the per-answer labels and truncation markers.
-  const perAnswer = Math.max(400, Math.floor((maxChars - header.length - 200) / usable.length));
-  const blocks = usable
-    .map((r) => `--- ANSWER FROM ${r.agent} ---\n${clip(r.text.trim(), perAnswer)}`)
-    .join('\n\n');
-
-  return (header + blocks).slice(0, maxChars);
-}
 
 function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, label = agent, cwd = null }) {
   return new Promise((resolvePromise) => {
@@ -372,83 +295,6 @@ function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, 
   });
 }
 
-function baseResult(fields) {
-  return {
-    agent: fields.agent,
-    ok: fields.status === 'ok',
-    status: fields.status,
-    sessionId: fields.sessionId ?? null,
-    stopReason: fields.stopReason ?? null,
-    durationMs: fields.durationMs,
-    startedAt: fields.startedAt,
-    cost: fields.cost ?? null,
-    text: fields.text ?? '',
-    error: fields.error ?? null,
-    exitCode: fields.exitCode ?? 1,
-    stderr: fields.stderr ?? '',
-  };
-}
-
-function formatCost(cost) {
-  return cost?.amount != null ? `$${Number(cost.amount).toFixed(4)}` : '—';
-}
-
-export function renderMarkdown({ prompt, results, synthesis = null, stamp: runStamp }) {
-  const rows = results.map(
-    (r) =>
-      `| ${r.agent} | ${r.status} | ${r.stopReason ?? '—'} | ` +
-      `${(r.durationMs / 1000).toFixed(1)}s | ${formatCost(r.cost)} |`,
-  );
-  const sections = results.map((r) => {
-    const body = r.text.trim()
-      ? r.text.trim()
-      : r.error
-        ? `_No answer._\n\n\`${r.error.replace(/`/g, "'")}\``
-        : '_No answer._';
-    return `## ${r.agent} — ${r.status} — ${(r.durationMs / 1000).toFixed(1)}s\n\n${body}\n`;
-  });
-
-  const synthesisSection = synthesis
-    ? `## Synthesis — ${synthesis.agent} — ${synthesis.status} — ${(synthesis.durationMs / 1000).toFixed(1)}s\n\n${
-        synthesis.text.trim()
-          ? synthesis.text.trim()
-          : `_No synthesis._${synthesis.error ? `\n\n\`${synthesis.error.replace(/`/g, "'")}\`` : ''}`
-      }\n`
-    : null;
-
-  // A prompt may itself contain backticks or tildes; size the fence so it
-  // cannot be closed early.
-  const fenceLen = Math.max(3, ...(prompt.match(/~+/g) ?? []).map((run) => run.length + 1));
-  const fence = '~'.repeat(fenceLen);
-
-  const parts = [
-    `# ACP fan-out ${runStamp}`,
-    '',
-    `${fence}text`,
-    prompt.trim(),
-    fence,
-    '',
-    '| Agent | Status | Stop | Time | Cost |',
-    '|-------|--------|------|------|------|',
-    ...rows,
-    '',
-  ];
-  if (synthesisSection) parts.push(synthesisSection, '');
-  parts.push(...sections);
-
-  const kept = results.filter((r) => r.worktreeKept && r.worktree);
-  if (kept.length) {
-    parts.push(
-      '## Kept worktrees',
-      '',
-      'These agents changed files, so their checkouts were left in place:',
-      '',
-      ...kept.map((r) => `- **${r.agent}**: \`${r.worktree}\``),
-      '',
-    );
-  }
-  return parts.join('\n');
-}
 
 function writeLog(record) {
   mkdirSync(dirname(LOG_PATH), { recursive: true });

@@ -8,7 +8,7 @@ import {
   repoInfo,
   worktreeHasChanges,
   worktreePath,
-} from "../../acp/fanout-acp.mjs";
+} from "../../acp/worktree.mjs";
 import {
   buildHubArgs,
   parseFlags,

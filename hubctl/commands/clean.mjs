@@ -9,7 +9,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { removeWorktree, repoInfo, worktreeHasChanges } from "../../acp/fanout-acp.mjs";
+import { removeWorktree, repoInfo, worktreeHasChanges } from "../../acp/worktree.mjs";
 import { pruneBackups } from "../../chatmgr/src/core/backup-store.mjs";
 import { HUB, ROOT } from "../common.mjs";
 import { countWorktrees } from "./status.mjs";
