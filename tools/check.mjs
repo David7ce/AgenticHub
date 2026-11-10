@@ -40,7 +40,9 @@ function run(label, args, cwd = ROOT) {
   const result = spawnSync(process.execPath, args, { cwd, encoding: 'utf8' });
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   const ok = result.status === 0;
-  const tail = ok ? '' : (result.stderr || result.stdout || '').trim().split('\n').slice(-6).join('\n');
+  // Enough of the reporter output to name the failing test: six lines only
+  // ever showed the tally, which made CI failures unactionable.
+  const tail = ok ? '' : (result.stderr || result.stdout || '').trim().split('\n').slice(-60).join('\n');
   process.stdout.write(`${ok ? 'ok  ' : 'FAIL'} ${label} (${seconds}s)\n`);
   if (tail) process.stdout.write(tail + '\n');
   return ok;

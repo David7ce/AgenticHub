@@ -19,6 +19,31 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
+
+// Windows keeps handles on a fresh tree for a moment after the agent exits, and
+// antivirus scans it at the same time. A single rmSync turned that into a fatal
+// harness error after a passing task, so retry and, if it still fails, keep the
+// copy and carry on: the task result is valid, the leftover is noise.
+function removeTree(dir) {
+  const remove = () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  try {
+    remove();
+    return true;
+  } catch (error) {
+    // Node's `force` does not clear the read-only attribute that git sets on
+    // some files; PowerShell's Remove-Item -Force does, and attrib reproduces
+    // that without depending on PowerShell.
+    if (process.platform === 'win32') {
+      spawnSync('attrib', ['-R', '-H', '/S', '/D', dir], { windowsHide: true });
+      try {
+        remove();
+        return true;
+      } catch { /* report below */ }
+    }
+    process.stderr.write(`[bench] could not remove ${dir} (${error.code ?? error.message}); kept\n`);
+    return false;
+  }
+}
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -423,7 +448,7 @@ async function main() {
         process.stderr.write(`[bench] ${task.id}: harness error — ${error.message}\n`);
       } finally {
         records.push(record);
-        if (!opts.keep) rmSync(dir, { recursive: true, force: true });
+        if (!opts.keep) removeTree(dir);
       }
     }
   }

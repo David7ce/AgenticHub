@@ -84,6 +84,15 @@ node agent-hub/bench/collab.mjs --real --write
 Raw per-attempt JSONL stays in `agent-hub/results/bench/` (gitignored); this
 report is the durable result.
 
+## Full suite, 2026-11-10
+
+`node agent-hub/bench/run.mjs --agent claude --model sonnet` — **14/14 in 602.7 s,
+$2.38** (one attempt per task; raw rows in
+`agent-hub/results/bench/2026-11-10T20-22-38-651-claude.jsonl`). Same pass count as
+the OpenCode baseline and the repeated Codex/OpenCode runs. Claude is slower and
+paid, which is the routing rule working as intended: escalate on scope or
+consequence, not by default.
+
 ## Codex via codex-acp 2.6.0 (2026-11-08)
 
 Probe: ACP v1, adapter 2.6.0; `session/new` offers gpt-6.1-terra (default), gpt-6.1-sol,
