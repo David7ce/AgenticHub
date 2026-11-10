@@ -40,7 +40,7 @@ export function pendingSection(markdown) {
   return body;
 }
 
-function gitDirty(dir) {
+export function gitDirty(dir) {
   if (!existsSync(dir)) return { dir, name: basename(dir), missing: true, changed: 0 };
   const result = spawnSync("git", ["-C", dir, "status", "--porcelain"], { encoding: "utf8", windowsHide: true });
   if (result.status !== 0) return { dir, name: basename(dir), missing: true, changed: 0 };
