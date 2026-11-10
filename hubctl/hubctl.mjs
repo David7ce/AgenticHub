@@ -43,7 +43,7 @@ export {
   renderStatus,
 } from "./commands/status.mjs";
 export { ageLabel, planPrune } from "./commands/worktree.mjs";
-export { estimateGo, humanTokens } from "./commands/usage.mjs";
+export { estimateGo, humanTokens, opencodeStatsCommand } from "./commands/usage.mjs";
 
 async function main() {
   const argv = process.argv.slice(2);

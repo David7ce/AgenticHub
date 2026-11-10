@@ -108,9 +108,9 @@ node agent-hub/hubctl/hubctl.mjs doctor          # coherencia de config; empieza
 - `report`: OK/fallos/timeouts, p50/p95, coste y último run, más los fallos por
   causa (`quota`, `auth`, `network`, `config`, `spawn`, `agent-error`,
   `timeout`, `budget`), porque cada una se arregla distinto.
-- `spend`: tokens por proyecto y día. OpenCode es exacto leyendo la DB de WSL;
-  desde Windows se la pide a WSL automáticamente. `OPENCODE_DB`/`--db` la
-  sobrescriben. Claude es cost-only; los runs desde 2026-11-08 llevan `cwd` y
+- `spend`: tokens por proyecto y día. OpenCode es exacto leyendo su DB local;
+  si en Windows no está, se la pide a la copia de WSL automáticamente.
+  `OPENCODE_DB`/`--db` la sobrescriben. Claude es cost-only; los runs desde 2026-11-08 llevan `cwd` y
   salen con proyecto, los anteriores quedan `unknown`. Codex queda para la
   siguiente fase.
 - `logs/runs.jsonl`: auditoría completa; no se edita.

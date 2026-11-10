@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { estimateGo, humanTokens } from '../hubctl.mjs';
+import { estimateGo, humanTokens, opencodeStatsCommand } from '../hubctl.mjs';
 
 // The usage estimate is the only local way to see how much of the Go allowance
 // is gone: the provider reports cost 0 for flat-rate models. These pin the
@@ -31,6 +31,16 @@ test('a free model reports a null limit instead of a percentage', () => {
 
 test('a model with no price entry returns null rather than guessing', () => {
   assert.equal(estimateGo(entry('some-unknown-model', 1_000_000, 1_000_000)), null);
+});
+
+test('OpenCode stats is read natively on Windows, not through WSL', () => {
+  const win = opencodeStatsCommand({ platform: 'win32', comspec: 'cmd.exe', days: 7 });
+  assert.equal(win.command, 'cmd.exe');
+  assert.ok(!win.args.some((arg) => String(arg).includes('wsl')));
+  assert.match(win.args.at(-1), /^"opencode" stats --days 7 --cost --models --json$/);
+  const linux = opencodeStatsCommand({ platform: 'linux', days: 1 });
+  assert.equal(linux.command, 'opencode');
+  assert.deepEqual(linux.args, ['stats', '--days', '1', '--cost', '--models', '--json']);
 });
 
 test('token counts are formatted for the table', () => {

@@ -50,13 +50,29 @@ const GO_PRICES = {
 // table so a session that used one is visible, not silently accepted.
 const TRAINS_ON_DATA = new Set(["muse-spark-1.2-contributor", "muse-spark-1.3-contributor", "iceman-contributor-free"]);
 
-function opencodeStats(days) {
-  const bin = process.env.OPENCODE_BIN || "opencode";
+// OpenCode runs natively on Windows since 2026-11-09. The old `wsl.exe -e
+// opencode` reach-in outlived the migration and reported "unavailable" while
+// the CLI itself worked; cmd resolves the opencode.cmd shim.
+export function opencodeStatsCommand({
+  bin = process.env.OPENCODE_BIN || "opencode",
+  days = 30,
+  platform = process.platform,
+  comspec = process.env.ComSpec || "cmd.exe",
+} = {}) {
   const args = ["stats", "--days", String(days), "--cost", "--models", "--json"];
-  const result =
-    process.platform === "win32"
-      ? spawnSync("wsl.exe", ["-e", bin, ...args], { encoding: "utf8", windowsHide: true })
-      : spawnSync(bin, args, { encoding: "utf8" });
+  if (platform === "win32") {
+    return { command: comspec, args: ["/d", "/s", "/c", `"${bin}" ${args.join(" ")}`] };
+  }
+  return { command: bin, args };
+}
+
+function opencodeStats(days) {
+  const { command, args } = opencodeStatsCommand({ days });
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    windowsHide: true,
+    ...(process.platform === "win32" ? { windowsVerbatimArguments: true } : {}),
+  });
   if (result.status !== 0 || !result.stdout) return null;
   try {
     return JSON.parse(result.stdout);

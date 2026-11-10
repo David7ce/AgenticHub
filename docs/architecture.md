@@ -21,18 +21,18 @@ Windows
                                   ┌──────▼────────┐
                                   │  hub-acp      │  ACP Client
                                   └──┬───────┬────┘
-                    wsl.exe          │       │  npx.cmd / exe
+                    cmd.exe / exe    │       │  npx.cmd / exe
                          ┌───────────▼─┐   ┌─▼──────────────┐
                          │ OpenCode    │   │ Claude, etc.   │
-                         │ (WSL)       │   │ (Windows)      │
+                         │ (Windows)   │   │ (Windows)      │
                          └─────────────┘   └────────────────┘
 ```
 
 El hub canónico corre en **Windows** porque ahí viven las credenciales de
-Claude/Codex y los servicios loopback. OpenCode
-sigue en WSL y se lanza con `wsl.exe`; su MCP se arranca desde
+Claude/Codex y los servicios loopback. OpenCode corre nativo en Windows desde
+2026-11-09 (antes se lanzaba con `wsl.exe`); su MCP se arranca desde
 [`../../opencode.json`](../../opencode.json) con `cmd.exe /c node
-D:\...\server.mjs`, una forma que funciona desde WSL y desde Windows.
+D:\...\server.mjs`.
 
 Un proceso no puede ver los PIDs del otro lado. Los **runs del hub** sí se ven
 desde ambos lados porque `results/inflight/` es un fichero; los **agentes
