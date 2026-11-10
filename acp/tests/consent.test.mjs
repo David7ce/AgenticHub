@@ -125,3 +125,13 @@ test('spentToday sums this agent\'s reported cost on the local day only', () => 
   assert.equal(spentToday('a', log, now), 1.75);
   assert.equal(spentToday('a', join(dir, 'missing.jsonl'), now), 0);
 });
+
+test('maxDailyTokens denies once the day\'s tokens reach the cap, and ignores dollars', () => {
+  const limits = { maxDailyTokens: 1_000_000 };
+  assert.equal(checkLimits(limits, { spentTokensToday: 999_999 }, win).ok, true);
+  const atCap = checkLimits(limits, { spentTokensToday: 1_000_000 }, win);
+  assert.equal(atCap.ok, false);
+  assert.match(atCap.reason, /daily token cap reached/);
+  // No token figure in the request means nothing counted yet, never a denial.
+  assert.equal(checkLimits(limits, {}, win).ok, true);
+});

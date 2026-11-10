@@ -26,18 +26,35 @@ function codexPrices(modelsPath) {
   return prices;
 }
 
-/** Estimated USD spent today by hub-started Codex sessions. */
-export function estimatedCodexToday({ now = new Date(), root, modelsPath = join(HERE, '..', 'models.json') } = {}) {
+function codexRowsToday({ now = new Date(), root, modelsPath = join(HERE, '..', 'models.json') } = {}) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const result = readCodexSpend({
+  return readCodexSpend({
     ...(root ? { root } : {}),
     range: { from: start, to: start + 86_400_000 },
     dayKey: () => 'today',
     projectLabel: () => ({ label: '*', path: null }),
     prices: codexPrices(modelsPath),
     originator: HUB_ORIGINATOR,
-  });
-  return result.rows.reduce((sum, row) => sum + (row.costEstimatedUsd ?? 0), 0);
+  }).rows;
+}
+
+/** Estimated USD spent today by hub-started Codex sessions. */
+export function estimatedCodexToday(opts = {}) {
+  return codexRowsToday(opts).reduce((sum, row) => sum + (row.costEstimatedUsd ?? 0), 0);
+}
+
+/**
+ * Tokens used today by hub-started Codex sessions: fresh input plus output
+ * (reasoning is already inside output, cached reads are not counted). This is
+ * what a flat subscription actually rations, so `limits.maxDailyTokens` caps it.
+ */
+export function codexTokensToday(opts = {}) {
+  return codexRowsToday(opts).reduce((sum, row) => sum + (row.input ?? 0) + (row.output ?? 0), 0);
+}
+
+/** Tokens today for agents that report them through rollouts (Codex); 0 for the rest. */
+export function spentTokensToday(agentName, opts = {}) {
+  return agentName === 'codex' ? codexTokensToday(opts) : 0;
 }
 
 /** Reported cost from the audit log plus the Codex estimate. */

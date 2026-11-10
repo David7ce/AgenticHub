@@ -39,7 +39,7 @@
       "maxPermission": "allow-reads",
       "writeTrees": [],
       "maxBudgetUsd": 1,
-      "maxDailyUsd": 3
+      "maxDailyTokens": 2000000
     }
   }
 }

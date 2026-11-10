@@ -103,6 +103,13 @@ export function checkLimits(limits, request = {}, { scratch = tmpdir(), platform
       why = `what is left of today's ${limits.maxDailyUsd} (${cap})`;
     }
   }
+  // A flat subscription has no dollar price to cap; its rationed unit is tokens.
+  if (typeof limits.maxDailyTokens === 'number' && Number.isFinite(limits.maxDailyTokens)) {
+    const used = Number(request.spentTokensToday) || 0;
+    if (used >= limits.maxDailyTokens) {
+      return { ok: false, reason: `daily token cap reached (${used} of ${limits.maxDailyTokens} tokens used today)` };
+    }
+  }
   if (cap !== Infinity && (request.budget === undefined || request.budget > cap)) {
     result.budget = cap;
     if (request.budget !== undefined) result.note = `budget ${request.budget} clamped to ${why}`;

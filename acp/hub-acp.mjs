@@ -24,7 +24,7 @@ import {
   windowsPathToWsl,
 } from './acp-client.mjs';
 import { CONSENT_PATH, testConsent as testConsentShared } from './consent.mjs';
-import { spentTodayAll } from './spend-estimate.mjs';
+import { spentTodayAll, spentTokensToday } from './spend-estimate.mjs';
 import { effortConfig } from './effort.mjs';
 import { acquireTreeLock, releaseTreeLock } from './tree-lock.mjs';
 
@@ -98,6 +98,7 @@ async function main() {
     cwd: resolve(opts.cwd ?? process.cwd()),
     budget: opts.budget,
     spentToday: spentTodayAll(agent.name, LOG_PATH),
+    spentTokensToday: spentTokensToday(agent.name),
   });
   if (!consent.ok) {
     writeLog({

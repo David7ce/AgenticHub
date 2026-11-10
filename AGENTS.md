@@ -79,7 +79,7 @@ of clean worktrees and old backups. `hubctl path <p>` prints both spellings of a
 ## Consent and audit — the contract
 
 - `consent.json` is the gate: `enabled`, `overseerAck`, unexpired `expires`, and
-  `limits` (`maxPermission`, `writeTrees`, `maxBudgetUsd`, `maxDailyUsd`) checked
+  `limits` (`maxPermission`, `writeTrees`, `maxBudgetUsd`, `maxDailyUsd`, and for flat subscriptions like Codex `maxDailyTokens`) checked
   against the exact request. No grant, no run — including `--probe`. It is local and
   ignored: copy `consent.example.json` and edit it. Never widen a grant to make
   something work. Ask.

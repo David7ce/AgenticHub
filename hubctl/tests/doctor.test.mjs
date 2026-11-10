@@ -149,3 +149,12 @@ test('handoff freshness warns on a stale file or a vanished commit hash', () => 
   assert.match(gone[0].detail, /bee1234f/);
   assert.deepEqual(checkHandoffFresh({ handoffMtimeMs: null }), []);
 });
+
+test('daily token cap warns at 80 % and fails at the cap; an unpriced token-capped agent is not flagged', async () => {
+  const { checkDailyTokens, checkUnpricedCaps } = await import('../doctor.mjs');
+  const consent = { codex: { enabled: true, limits: { maxDailyTokens: 1_000_000, maxDailyUsd: 3 } } };
+  assert.deepEqual(checkDailyTokens(consent, () => 500_000), []);
+  assert.equal(checkDailyTokens(consent, () => 850_000)[0].level, 'warn');
+  assert.equal(checkDailyTokens(consent, () => 1_000_000)[0].level, 'fail');
+  assert.deepEqual(checkUnpricedCaps(consent, { models: [{ agent: 'codex', enabled: true }] }), []);
+});

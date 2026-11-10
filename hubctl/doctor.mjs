@@ -12,7 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
-import { spentTodayAll } from '../acp/spend-estimate.mjs';
+import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
 
 const DAY = 86_400_000;
@@ -99,11 +99,26 @@ export function checkUnpricedCaps(consent, catalog) {
   const out = [];
   for (const [name, grant] of Object.entries(consent ?? {})) {
     if (name.startsWith('_') || !grant?.enabled || typeof grant?.limits?.maxDailyUsd !== 'number') continue;
+    if (typeof grant.limits.maxDailyTokens === 'number') continue; // tokens are the real cap
     const models = (catalog?.models ?? []).filter((m) => m.agent === name && m.enabled !== false);
     if (name === 'claude' || !models.length) continue;
     if (!models.some((m) => m.costPerMillion && typeof m.costPerMillion === 'object')) {
       out.push(row('spend', 'warn', `${name} has a $${grant.limits.maxDailyUsd}/day cap but no model price in models.json (costPerMillion): the cap cannot trigger and spend shows tokens only`));
     }
+  }
+  return out;
+}
+
+// Same early warning for the token cap used with flat subscriptions (Codex).
+export function checkDailyTokens(consent, used, threshold = 0.8) {
+  const out = [];
+  for (const [name, grant] of Object.entries(consent ?? {})) {
+    const cap = grant?.limits?.maxDailyTokens;
+    if (name.startsWith('_') || !grant?.enabled || typeof cap !== 'number' || cap <= 0) continue;
+    const n = used(name);
+    const fmt = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`);
+    if (n >= cap) out.push(row('tokens', 'fail', `${name} hit its daily token cap: ${fmt(n)} of ${fmt(cap)}; runs are refused until tomorrow — hand off to another agent`));
+    else if (n >= cap * threshold) out.push(row('tokens', 'warn', `${name} at ${Math.round((n / cap) * 100)}% of its daily token cap (${fmt(n)} of ${fmt(cap)})`));
   }
   return out;
 }
@@ -301,6 +316,7 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
   if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
+  if (consent) checks.push(...checkDailyTokens(consent, (name) => spentTokensToday(name)));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {
