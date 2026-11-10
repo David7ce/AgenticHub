@@ -1,3 +1,4 @@
+import { automatedPath, automatedTitle } from "../core/automated.mjs";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -49,6 +50,7 @@ export function list({ dbPath = sessionDb() } = {}) {
       id: row.id,
       title: cleanTitle(row.title) || "(untitled)",
       projectPath: row.directory || "",
+      automated: automatedTitle(row.title) || automatedPath(row.directory),
       lastActivity: toMs(row.time_updated) || toMs(row.time_created),
       archived: row.time_archived != null,
       // A session is live while it was marked busy and has not gone idle again.

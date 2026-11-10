@@ -1,4 +1,4 @@
-import { automatedCodexMeta } from "../core/automated.mjs";
+import { automatedCodexMeta, automatedPath } from "../core/automated.mjs";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
@@ -100,7 +100,7 @@ export function list({ home = codexHome() } = {}) {
         provider: "codex",
         id: meta.id,
         title: index.get(meta.id) || cleanTitle(parsed.firstUser) || "(untitled)",
-        automated: automatedCodexMeta(meta),
+        automated: automatedCodexMeta(meta) || automatedPath(meta?.cwd),
         projectPath: meta.cwd || "",
         lastActivity: toMs(stat.mtimeMs),
         archived,

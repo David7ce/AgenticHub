@@ -21,7 +21,7 @@ Inside OpenCode: `/conversations` (or `/chats`) is the dependable way; `Ctrl+Shi
 | `p` | Preview the transcript |
 | `Enter` | Resume (OpenCode opens the session; others show their own command) |
 | `m` | Archive / unarchive the selection (Codex only, reversible) |
-| `t` | Show/hide automated sessions (tool-payload summarizers, auto-review guardians, hub-started runs); **shown by default**, `t` hides them |
+| `t` | Show/hide automated sessions (tool-payload summarizers, auto-review guardians, hub-started runs, and anything run in the hub's `hub-bench-*` / `hub-failover-*` scratch checkouts under the temp folder); **shown by default**, `t` hides them |
 | `k` | Toggle a safety backup for the next delete (default **off**: deletes are direct and permanent) |
 | `Ctrl+D` | One batch confirmation, then delete the marked rows (the row under the cursor if none is marked) |
 | `f` `o` `b` `x` `/` | Filter by agent, exact path, before-date, archived, text |

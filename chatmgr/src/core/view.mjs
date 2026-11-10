@@ -19,3 +19,14 @@ export function counterText({ visible, total, selected, status = "" }) {
   const hidden = total > visible ? ` (${total - visible} hidden by filters)` : "";
   return `${visible} of ${total} conversations${hidden} · ${selected} selected${status ? ` · ${status}` : ""}`;
 }
+
+/**
+ * One list row, flattened and cut to the terminal width. A row that wraps takes two
+ * lines, so the page overflows the screen and the layout squeezes the header away
+ * (the counter line vanished that way).
+ */
+export function fitLine(text, columns, { margin = 4, min = 30, fallback = 100 } = {}) {
+  const width = Math.max(min, (Number(columns) > 0 ? Number(columns) : fallback) - margin);
+  const flat = String(text).replace(/\s+/g, " ").trim();
+  return flat.length > width ? `${flat.slice(0, width - 1)}…` : flat;
+}

@@ -22,3 +22,15 @@ test("the counter shows what is visible and says what is hidden", () => {
   assert.equal(counterText({ visible: 2, total: 3, selected: 0 }), "2 of 3 conversations (1 hidden by filters) · 0 selected");
   assert.equal(counterText({ visible: 3, total: 3, selected: 1, status: "deleting 1…" }), "3 of 3 conversations · 1 selected · deleting 1…");
 });
+
+import { fitLine } from "../src/core/view.mjs";
+
+test("a long row is cut to one terminal line and never contains a line break", () => {
+  const long = "OpenCode  2026-11-10 02:00  Restore\nfanout " + "x".repeat(300);
+  const line = fitLine(long, 120);
+  assert.ok(line.length <= 116);
+  assert.ok(line.endsWith("…"));
+  assert.ok(!line.includes("\n"));
+  assert.equal(fitLine("short", 120), "short");
+  assert.ok(fitLine("a".repeat(500), undefined).length <= 96);
+});

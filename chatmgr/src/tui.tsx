@@ -8,12 +8,16 @@ import { keyOf } from "./core/model.mjs"
 import { formatLocalDateTime } from "./core/time.mjs"
 import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs"
 import { PROVIDERS, providerList } from "./core/capabilities.mjs"
-import { counterText, deleteTargets, pageSizeFor } from "./core/view.mjs"
+import { counterText, deleteTargets, fitLine, pageSizeFor } from "./core/view.mjs"
 
 const CLI = fileURLToPath(new URL("./cli.mjs", import.meta.url))
 // Rows that fit: terminal height minus title, status, filters, margins, footer.
 const [pageSize, setPageSize] = createSignal(pageSizeFor(process.stdout.rows))
-process.stdout.on?.("resize", () => setPageSize(pageSizeFor(process.stdout.rows)))
+const [termColumns, setTermColumns] = createSignal(Number(process.stdout.columns) || 100)
+process.stdout.on?.("resize", () => {
+  setPageSize(pageSizeFor(process.stdout.rows))
+  setTermColumns(Number(process.stdout.columns) || 100)
+})
 
 type Row = {
   provider: string
@@ -359,6 +363,8 @@ export default Plugin.define({
         await refresh()
       }
 
+      const counter = () => counterText({ visible: visibleRows().length, total: rows().length, selected: selected().size, status: status() })
+
       const filterLine = () => {
         const f = filter()
         const parts = [
@@ -375,7 +381,7 @@ export default Plugin.define({
       return (
         <box flexDirection="column" padding={1}>
           <text fg={base()}>Conversations</text>
-          <text fg={muted()}>{counterText({ visible: visibleRows().length, total: rows().length, selected: selected().size, status: status() })}</text>
+          <text fg={muted()}>{counter()}</text>
           <text fg={muted()}>{filterLine()}</text>
           <Show when={errors().length > 0}>
             <text fg={warning()}>{errors().join(" · ")}</text>
@@ -390,7 +396,7 @@ export default Plugin.define({
                 const flags = `${row.archived ? "arch" : "    "} ${row.running ? "run" : "   "}`
                 return (
                   <text fg={active() ? accent() : checked() ? base() : muted()}>
-                    {active() ? ">" : " "} {checked() ? "[x]" : "[ ]"} {agent} {formatLocalDateTime(row.lastActivity)} {flags} {row.title} · {row.projectPath}
+                    {fitLine(`${active() ? ">" : " "} ${checked() ? "[x]" : "[ ]"} ${agent} ${formatLocalDateTime(row.lastActivity)} ${flags} ${row.title} · ${row.projectPath}`, termColumns())}
                   </text>
                 )
               }}
@@ -399,7 +405,8 @@ export default Plugin.define({
               <text fg={muted()}>No conversations match. r refreshes, x shows archived, c clears selection.</text>
             </Show>
           </box>
-          <text fg={muted()}>up/down move · space select · a all filtered · c clear · p preview · enter resume · m archive · k backup on/off · t automated · ctrl+d delete (cursor row if none selected) · f/o/b/x filters · r refresh · esc close</text>
+          <text fg={muted()}>{fitLine("up/down move · space select · a all filtered · c clear · p preview · enter resume · r refresh · esc close", termColumns())}</text>
+          <text fg={muted()}>{fitLine("m archive · k backup on/off · t automated · f/o/b/x/ filters · ctrl+d delete (cursor row if none selected)", termColumns())}</text>
         </box>
       )
     }
