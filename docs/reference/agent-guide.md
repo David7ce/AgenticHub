@@ -47,6 +47,7 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 | Which agent is working right now | `hubctl live` |
 | Leftover checkouts and old backups | `hubctl clean` (dry run) |
 | Too many old conversations | the `/chats` panel in OpenCode |
+| Several agents side by side | `node agent-hub/tools/herdr-layout.mjs` (needs Herdr) |
 
 ## What does not belong here
 

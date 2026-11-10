@@ -38,7 +38,7 @@ trees.
 | `chatmgr/` | OpenCode TUI plugin: every agent's conversations in one list, filtered batch delete |
 | `models.json` | Local catalogue: providers, tiers, estimated cost, retention, capabilities |
 | `bench/` | The internal benchmark and its versioned baseline; `collab.mjs` is its offline cooperation check |
-| `tools/` | Egress posture, consent reminder, `check.mjs` |
+| `tools/` | Egress posture, consent reminder, `check.mjs`, `herdr-layout.mjs` (Herdr workspace: OpenCode, Codex, Claude and `hubctl live`) |
 | `docs/` | Start at `docs/README.md`; it says which document is current |
 
 ## How to call an agent
