@@ -9,6 +9,7 @@
  *   node cli.mjs preview --key provider:id
  *   node cli.mjs delete --keys k1,k2 [--yes] [--dry-run] [--backup-dir D]
  *   node cli.mjs delete ... [--backup]
+ *   node cli.mjs prune-automated [--older-than 7d] [--agent opencode] [--yes] [--backup]   (lists only without --yes)
  *   node cli.mjs prune-backups [--days N] [--yes]
  *   node cli.mjs backups | restore --manifest F | backup-remove --dir D
  */
@@ -19,7 +20,7 @@ import { runProcess } from "./providers/exec.mjs";
 import { applyFilters, emptyFilter, normalizeFilter } from "./core/filter.mjs";
 import { keyOf, sortConversations } from "./core/model.mjs";
 import { createSelection, selectedConversations } from "./core/selection.mjs";
-import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs";
+import { buildArchivePlan, buildDeletePlan, buildPruneAutomatedPlan, describeArchivePlan, describePlan, parseOlderThan } from "./core/plan.mjs";
 import { createBackup, removeBackup, restoreBackup } from "./core/backup.mjs";
 import { executeArchive, executeDeletes } from "./core/execute.mjs";
 import { listBackups, pruneBackups } from "./core/backup-store.mjs";
@@ -152,6 +153,37 @@ async function cmdDelete(flags) {
   };
 }
 
+async function cmdPruneAutomated(flags) {
+  const { providers, conversations } = await collect({});
+  const plan = buildPruneAutomatedPlan(conversations, {
+    agents: typeof flags.agent === "string" ? flags.agent.split(",") : null,
+    olderThanDays: parseOlderThan(flags["older-than"]),
+    currentKey: flags["current-key"] ?? null,
+  });
+  if (flags.yes !== true) {
+    return {
+      ok: true,
+      dryRun: true,
+      plan: {
+        summary: describePlan(plan),
+        delete: plan.items.map((conv) => ({ key: keyOf(conv), provider: conv.provider, id: conv.id, title: conv.title })),
+        blocked: plan.blocked.map((row) => ({ key: keyOf(row.conv), code: row.code, message: row.message })),
+      },
+    };
+  }
+  const backupRoot = typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot;
+  const backup = flags.backup !== true ? null : { create: (items) => createBackup(items, { root: backupRoot, providers }) };
+  const result = await executeDeletes(plan, { providers, backup });
+  return {
+    ok: result.failed === 0,
+    summary: describePlan(plan),
+    okCount: result.ok,
+    failedCount: result.failed,
+    blockedCount: result.blocked,
+    results: result.results,
+  };
+}
+
 async function cmdPruneBackups(flags) {
   const root = typeof flags["backup-dir"] === "string" ? flags["backup-dir"] : defaultBackupRoot;
   const days = Number.isFinite(Number(flags.days)) && flags.days !== undefined ? Number(flags.days) : 14;
@@ -218,6 +250,7 @@ async function main() {
     restore: cmdRestore,
     "backup-remove": cmdBackupRemove,
     "prune-backups": cmdPruneBackups,
+    "prune-automated": cmdPruneAutomated,
     providers: async () => ({ ok: true, providers: Object.values(PROVIDERS) }),
   };
   const handler = handlers[command];

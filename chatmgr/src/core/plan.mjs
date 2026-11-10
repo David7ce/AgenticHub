@@ -118,3 +118,27 @@ export function describePlan(plan) {
     : "";
   return `${parts.length ? parts.join(" · ") : "nothing to delete"}${children}${blocked}`;
 }
+
+/** "7d" or "7" -> 7; anything else throws, so a typo can never widen a deletion. */
+export function parseOlderThan(value) {
+  if (value === undefined || value === null || value === false) return null;
+  const match = /^(\d+)d?$/.exec(String(value).trim());
+  if (!match) throw new Error(`--older-than must look like 7d, got ${value}`);
+  return Number(match[1]);
+}
+
+/**
+ * The delete plan for sessions no person typed into (`automated`), optionally
+ * limited to some agents and to those idle for N days. Same blocks as any
+ * delete: running and current sessions are never in `items`.
+ */
+export function buildPruneAutomatedPlan(conversations, { agents = null, olderThanDays = null, now = Date.now(), currentKey = null } = {}) {
+  const cutoff = olderThanDays == null ? null : now - olderThanDays * 86_400_000;
+  const picked = conversations.filter(
+    (conv) =>
+      conv.automated === true &&
+      (!agents || agents.includes(conv.provider)) &&
+      (cutoff == null || conv.lastActivity < cutoff),
+  );
+  return buildDeletePlan(picked, { currentKey });
+}

@@ -41,6 +41,7 @@ node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --dry-run
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X,hermes:Y --yes
 node agent-hub/chatmgr/src/cli.mjs delete --keys codex:X --yes --backup      # opt in to a backup copy
 node agent-hub/chatmgr/src/cli.mjs prune-backups --days 14 [--yes]            # only when you run it; dry run without --yes
+node agent-hub/chatmgr/src/cli.mjs prune-automated [--older-than 7d] [--agent opencode] [--yes]   # sessions nobody typed into; only lists without --yes
 node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --dry-run
 node agent-hub/chatmgr/src/cli.mjs archive --keys codex:X --yes
 node agent-hub/chatmgr/src/cli.mjs backups
