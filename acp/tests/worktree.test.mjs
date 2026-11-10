@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -46,7 +46,10 @@ test('repoInfo finds the root and common git dir', () => {
   const repo = makeRepo();
   const info = repoInfo(repo);
   assert.ok(info);
-  assert.equal(info.root.replace(/\\/g, '/').toLowerCase(), repo.replace(/\\/g, '/').toLowerCase());
+  // Windows CI's tmpdir is an 8.3 short path (RUNNER~1) while git answers with
+  // the long form; compare the canonical path, not the spelling.
+  const canonical = (path) => realpathSync.native(path).replace(/\\/g, '/').toLowerCase();
+  assert.equal(canonical(info.root), canonical(repo));
   assert.ok(existsSync(join(info.commonDir, 'HEAD')));
 });
 
