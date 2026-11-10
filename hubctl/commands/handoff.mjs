@@ -4,7 +4,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildHandoffPrompt } from "../handoff.mjs";
+import { buildHandoffPrompt } from "../../acp/handoff.mjs";
 import { LOG_PATH } from "../common.mjs";
 import { runAgent } from "./run.mjs";
 

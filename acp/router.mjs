@@ -40,6 +40,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildHandoffPrompt } from './handoff.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Local registry first; a fresh clone runs with the shipped example.
@@ -324,7 +325,7 @@ function usageAndExit(code) {
     `usage: node router.mjs --prompt TEXT|- [--force opencode|claude] [--explain] [--json] [--review]\n` +
       `       [--cost-ceiling USD (default ${DEFAULT_COST_CEILING}, 0 disables)] [--daily-ceiling USD (default 3)]\n` +
       `       [--no-health]\n` +
-      `       [--no-failover] [--log FILE] [hub-acp.mjs options...]\n`,
+      `       [--no-failover] [--no-context] [--log FILE] [hub-acp.mjs options...]\n`,
   );
   process.exit(code);
 }
@@ -414,6 +415,7 @@ function main() {
   let dailyCeiling = 3;
   let health = true;
   let failover = true;
+  let withContext = true;
   let costCeiling = DEFAULT_COST_CEILING;
   let logPath = DEFAULT_LOG;
   const passthrough = [];
@@ -438,6 +440,8 @@ function main() {
       }
     } else if (arg === '--no-failover') {
       failover = false;
+    } else if (arg === '--no-context') {
+      withContext = false;
     } else if (arg === '--no-health') {
       health = false;
     } else if (arg === '--cost-ceiling') {
@@ -482,11 +486,22 @@ function main() {
 
   process.stderr.write(`[router] -> ${decision.agent}: ${decision.reason}\n`);
 
+  // When another agent takes over after a quota failure, it gets more than the
+  // bare prompt: the tree's git state, recent runs and the original task.
+  const cwdIndex = passthrough.indexOf('--cwd');
+  const workTree = cwdIndex === -1 ? null : passthrough[cwdIndex + 1];
+  const promptFor = (agent) => {
+    if (!withContext || !workTree || agent === decision.agent) return prompt;
+    let logText = '';
+    try { logText = readFileSync(logPath, 'utf8'); } catch { /* no log yet */ }
+    return buildHandoffPrompt({ cwd: workTree, target: agent, from: decision.agent, task: prompt, logText });
+  };
+
   const run = (agent, model) => {
     const extra = model ? ['--model', model] : [];
     const result = spawnSync(
       process.execPath,
-      [HUB, '--agent', agent, '--prompt', prompt, ...passthrough, ...extra],
+      [HUB, '--agent', agent, '--prompt', promptFor(agent), ...passthrough, ...extra],
       {
         // stdout is captured rather than inherited: with --json the quota
         // error lives inside the JSON, and the router has to read it to know

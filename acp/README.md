@@ -189,7 +189,7 @@ audit log.
 when `hub-acp.mjs` exits non-zero and its error text looks like exhaustion
 (`429`, quota, rate limit, weekly/monthly limit, insufficient credits), the
 router runs the same prompt on the other pool and says so. The MCP `route` tool
-does the same when `run: true`. `--no-failover` turns it off. The predicate is
+does the same when `run: true`. `--no-failover` turns it off; with `--cwd` the next agent gets the tree context too (`--no-context` disables that). The predicate is
 `isQuotaError` in `router.mjs`; it deliberately does not fire on timeouts or
 syntax errors, which a second pool would not fix.
 

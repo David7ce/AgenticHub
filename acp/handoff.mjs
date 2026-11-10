@@ -34,7 +34,7 @@ export function recentRunsFor(logText, cwd, count = 4) {
   return out.slice(-count);
 }
 
-export function buildHandoffPrompt({ cwd, target, from = 'claude', note = '', logText = '', run = spawnSync }) {
+export function buildHandoffPrompt({ cwd, target, from = 'claude', note = '', task = '', logText = '', run = spawnSync }) {
   const branch = git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], run) || '?';
   const status = git(cwd, ['status', '--short'], run);
   const commits = git(cwd, ['log', '--oneline', '-n', '3'], run);
@@ -47,6 +47,7 @@ export function buildHandoffPrompt({ cwd, target, from = 'claude', note = '', lo
     '',
     'First read, in this order, whichever exist: AGENTS.md, working/ROADMAP.md, docs/agent/HANDOFF.md.',
     'Then continue; do not redo what the log below shows as done.',
+    task ? `\nTask to carry out (the one ${from} was given):\n${clip(task, 1600)}` : '',
     note ? `\nInstruction from the owner: ${clip(note, 700)}` : '',
     status ? `\nUncommitted changes:\n${clip(status, 900)}` : '\nWorking tree is clean.',
     commits ? `\nLast commits:\n${commits}` : '',

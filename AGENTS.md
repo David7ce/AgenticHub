@@ -120,7 +120,7 @@ discards work).
 
 A pool that is out of quota hands the task to the other one: `router.mjs` and
 the MCP `route` tool retry once when the error looks like exhaustion
-(`--no-failover` disables it).
+(`--no-failover` disables it). The chain is the registry's `agentFallbacks`; with `--cwd`, the next agent also gets the tree's git state, recent runs and the original task (`--no-context` sends the bare prompt).
 
 **Inside OpenCode, the ladder is the registry's `modelFallbacks` (2026-11-04):**
 the default is the **paid** `opencode-go/deepseek-v4.1-flash` — the user's
