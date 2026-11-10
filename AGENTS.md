@@ -153,7 +153,8 @@ node agent-hub/bench/collab.mjs        # offline: fan-out, handoff, conflict, st
 
 1. **No secrets in a transcript.** `.env*` reads are denied in both harnesses. Read a
    credential inside a process and pass it on; never print it. The pre-commit hook
-   scans staged files for key shapes (`tools/secret-scan.mjs`) before the tests.
+   scans staged files for key shapes (`tools/secret-scan.mjs`) before the tests;
+   `--history` audits what is already committed (the next commit cannot fix it).
 2. **Escalate on scope or consequence**, not on perceived difficulty (the bench showed
    difficulty predicts nothing): a change spanning untested modules, or anything touching
    credentials, permissions, money or a public API.

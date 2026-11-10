@@ -3,6 +3,7 @@
 //
 //   node agent-hub/tools/secret-scan.mjs            # staged files (pre-commit)
 //   node agent-hub/tools/secret-scan.mjs --all      # every tracked file (CI)
+//   node agent-hub/tools/secret-scan.mjs --history  # last 500 commits (audit)
 //   node agent-hub/tools/secret-scan.mjs --json
 //
 // It scans the content git would commit, not the working tree, and prints only
@@ -48,6 +49,34 @@ export function scanText(text) {
   return findings;
 }
 
+/**
+ * Findings in a `git log -p` patch, restricted to added lines. History cannot
+ * be fixed by the next commit, so this is an audit tool, not a gate; one
+ * finding per commit/file/rule keeps the output readable.
+ */
+export function scanPatch(text) {
+  let commit = null;
+  let file = null;
+  const findings = [];
+  const seen = new Set();
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    if (line.startsWith('commit ')) {
+      commit = line.slice('commit '.length, 'commit '.length + 8);
+      file = null;
+    } else if (line.startsWith('+++ b/')) {
+      file = line.slice('+++ b/'.length);
+    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+      for (const finding of scanText(line.slice(1))) {
+        const key = `${commit}|${file}|${finding.rule}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        findings.push({ commit, file, rule: finding.rule });
+      }
+    }
+  }
+  return findings;
+}
+
 function git(args, options = {}) {
   return spawnSync('git', args, { encoding: 'utf8', windowsHide: true, ...options });
 }
@@ -84,21 +113,48 @@ function scanFiles(files, all) {
 
 export function runSecretScan(argv) {
   const all = argv.includes('--all');
+  const history = argv.includes('--history');
   const asJson = argv.includes('--json');
-  const files = listFiles(all);
-  if (!files) {
-    process.stderr.write('secret-scan: not a git repository\n');
+  const maxIndex = argv.indexOf('--max-commits');
+  const maxCommits = maxIndex === -1 ? 500 : Number(argv[maxIndex + 1]);
+  if (!Number.isInteger(maxCommits) || maxCommits <= 0) {
+    process.stderr.write('secret-scan: --max-commits needs a positive integer\n');
     return 1;
   }
-  const findings = scanFiles(files, all);
-  if (asJson) {
-    process.stdout.write(`${JSON.stringify({ scope: all ? 'tracked' : 'staged', files: files.length, findings }, null, 2)}\n`);
-  } else if (!findings.length) {
-    process.stdout.write(`secret-scan · ${files.length} ${all ? 'tracked' : 'staged'} file(s) · clean\n`);
+
+  let findings;
+  let scope;
+  if (history) {
+    const log = git(['log', '--all', '--no-color', '--unified=0', '-p', `-${maxCommits}`], {
+      maxBuffer: 256 * 1024 * 1024,
+    });
+    if (log.status !== 0) {
+      process.stderr.write('secret-scan: git log failed\n');
+      return 1;
+    }
+    findings = scanPatch(log.stdout);
+    scope = `history (last ${maxCommits} commits)`;
   } else {
-    process.stdout.write(`secret-scan · ${findings.length} finding(s) in ${files.length} ${all ? 'tracked' : 'staged'} file(s)\n`);
+    const files = listFiles(all);
+    if (!files) {
+      process.stderr.write('secret-scan: not a git repository\n');
+      return 1;
+    }
+    findings = scanFiles(files, all);
+    scope = `${files.length} ${all ? 'tracked' : 'staged'} file(s)`;
+  }
+
+  if (asJson) {
+    process.stdout.write(`${JSON.stringify({ scope, findings }, null, 2)}\n`);
+  } else if (!findings.length) {
+    process.stdout.write(`secret-scan · ${scope} · clean\n`);
+  } else {
+    process.stdout.write(`secret-scan · ${findings.length} finding(s) in ${scope}\n`);
     for (const finding of findings) {
-      process.stdout.write(`  ${finding.file}:${finding.line}:${finding.column}  ${finding.rule}\n`);
+      const where = finding.commit
+        ? `${finding.commit} ${finding.file}`
+        : `${finding.file}:${finding.line}:${finding.column}`;
+      process.stdout.write(`  ${where}  ${finding.rule}\n`);
     }
     process.stdout.write('  Remove the value (and rotate it); allowlist a false positive with "pragma: allowlist secret".\n');
   }

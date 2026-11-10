@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { scanText } from '../secret-scan.mjs';
+import { scanPatch, scanText } from '../secret-scan.mjs';
 
 // Built at runtime so this fixture file does not itself look like a leak to the
 // scanner that runs on commit.
@@ -26,6 +26,25 @@ test('placeholders and allowlisted lines do not fire', () => {
   assert.deepEqual(scanText(`password = "changeme_changeme"`), []);
   assert.deepEqual(scanText(`const k = "${awsKey}" // pragma: allowlist secret`), []);
   assert.deepEqual(scanText(`api_key = "your_api_key_here_123456"`), []);
+});
+
+test('history scanning reads added lines and attributes the commit', () => {
+  const patch = [
+    'commit abcdef1234567890',
+    'diff --git a/x.js b/x.js',
+    '+++ b/x.js',
+    '@@ -0,0 +1 @@',
+    `+const k = "${awsKey}";`,
+    '+const safe = "nothing here";',
+    'commit 1234567890abcdef',
+    'diff --git a/y.md b/y.md',
+    '+++ b/y.md',
+    '@@ -1 +1 @@',
+    '+unrelated',
+  ].join('\n');
+  const findings = scanPatch(patch);
+  assert.deepEqual(findings, [{ commit: 'abcdef12', file: 'x.js', rule: 'aws-access-key' }]);
+  assert.deepEqual(scanPatch('+no newline'), []);
 });
 
 test('findings never include the value', () => {

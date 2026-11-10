@@ -62,7 +62,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `bench [args...]` | Run the benchmark |
 | `usage [--days N]` | Estimated allowance spent |
 | `clean [--yes] [--days N]` | Tidy what agents leave behind: clean worktrees, chatmgr backups older than N days (default 14), and inflight records whose process is gone. Dry run without `--yes`; never touches a worktree with changes |
-| `verify [dir] [--cmd CMD] [--timeout MS]` | Run the repo's own tests (`package.json` script, pytest, .NET, Cargo or Go) and return their exit code; `--cmd` overrides detection. Add `--json` for a report |
+| `verify [dir] [--cmd CMD] [--timeout MS] [--task ID]` | Run the repo's own tests (`package.json` script, pytest, .NET, Cargo or Go) and return their exit code; `--cmd` overrides detection. `--task` saves the log as the task's evidence without changing its state. Add `--json` for a report |
 | `worktree [--prune]` | List or prune agent checkouts |
 
 Examples:

@@ -9,9 +9,11 @@
  * of the output is printed so a failure is visible without opening a log, and
  * the command never prints environment values.
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { HUB, TASKS_DB, stamp } from "../common.mjs";
+import { attachEvidence, getTask, openTaskDb } from "../tasks.mjs";
 
 export const TAIL_LINES = 20;
 export const DEFAULT_TIMEOUT_MS = 600_000;
@@ -44,6 +46,7 @@ export function parseVerifyArgs(argv, { cwd = process.cwd() } = {}) {
   let command = null;
   let timeout = DEFAULT_TIMEOUT_MS;
   let dir = null;
+  let task = null;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--json") {
@@ -55,6 +58,9 @@ export function parseVerifyArgs(argv, { cwd = process.cwd() } = {}) {
       const value = Number(argv[++i]);
       if (!Number.isFinite(value) || value <= 0) throw new Error("--timeout needs a positive number of milliseconds");
       timeout = value;
+    } else if (arg === "--task") {
+      task = argv[++i];
+      if (!task) throw new Error("--task needs a task id");
     } else if (arg.startsWith("--")) {
       throw new Error(`unknown option: ${arg}`);
     } else if (dir) {
@@ -63,7 +69,7 @@ export function parseVerifyArgs(argv, { cwd = process.cwd() } = {}) {
       dir = arg;
     }
   }
-  return { asJson, command, timeout, dir: resolve(dir ?? cwd) };
+  return { asJson, command, timeout, dir: resolve(dir ?? cwd), task };
 }
 
 function detect(dir) {
@@ -76,8 +82,23 @@ function detect(dir) {
   });
 }
 
+function writeEvidence(taskId, report) {
+  const file = join(HUB, "results", "verify", `${taskId}-${stamp()}.log`);
+  mkdirSync(dirname(file), { recursive: true });
+  const text = [
+    `verify ${report.dir}`,
+    `cmd ${report.command} (${report.why})`,
+    `result ${report.timedOut ? "timeout" : report.ok ? "PASS" : `FAIL ${report.status}`} in ${(report.durationMs / 1000).toFixed(1)}s`,
+    "",
+    report.tail,
+    "",
+  ].join("\n");
+  writeFileSync(file, text, "utf8");
+  return file;
+}
+
 export async function runVerify(argv) {
-  const { asJson, command: explicit, timeout, dir } = parseVerifyArgs(argv);
+  const { asJson, command: explicit, timeout, dir, task: taskId } = parseVerifyArgs(argv);
   if (!existsSync(dir)) throw new Error(`no such directory: ${dir}`);
 
   const detected = explicit ? { command: explicit, why: "--cmd" } : detect(dir);
@@ -112,6 +133,26 @@ export async function runVerify(argv) {
     tail: tailLines(output),
   };
 
+  // Evidence is attached to the task, but the state stays as it is: a green
+  // test run is proof the diff works, not a review that accepted it.
+  if (taskId) {
+    report.task = { id: taskId, evidence: null, attached: false, note: null };
+    if (!existsSync(TASKS_DB)) {
+      report.task.note = "no task database yet";
+    } else {
+      const db = openTaskDb(TASKS_DB);
+      try {
+        if (!getTask(db, taskId)) report.task.note = "unknown task";
+        else {
+          report.task.evidence = writeEvidence(taskId, report);
+          report.task.attached = attachEvidence(db, taskId, report.task.evidence);
+        }
+      } finally {
+        db.close();
+      }
+    }
+  }
+
   if (asJson) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
@@ -120,6 +161,10 @@ export async function runVerify(argv) {
     const verdict = report.timedOut ? `TIMEOUT after ${timeout} ms` : ok ? "PASS" : `FAIL (exit ${result.status})`;
     process.stdout.write(`result ${verdict} in ${(durationMs / 1000).toFixed(1)}s\n`);
     if (report.tail) process.stdout.write(`\n${report.tail}\n`);
+    if (report.task) {
+      const where = report.task.evidence ?? `not attached (${report.task.note})`;
+      process.stdout.write(`task   ${taskId} · evidence ${where}\n`);
+    }
   }
   process.exitCode = ok && !report.timedOut ? 0 : 1;
 }

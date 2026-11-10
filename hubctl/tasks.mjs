@@ -139,6 +139,15 @@ export function setTaskWorktree(db, id, worktree) {
 }
 
 /**
+ * Attach evidence without changing state: `hubctl verify` proves a diff runs,
+ * but moving `review` to `done` is still the human's call.
+ */
+export function attachEvidence(db, id, evidence) {
+  const { changes } = db.prepare('UPDATE tasks SET evidence = ? WHERE id = ?').run(String(evidence), id);
+  return changes > 0;
+}
+
+/**
  * Close a running task. `done` requires evidence: a path to the diff, the test
  * output, or the review that accepted it. The queue never marks work done on
  * the agent's own word.

@@ -12,7 +12,6 @@ git ignores — so a fork clones this explainer but none of the owner's state.
   next step. Read it at the start of a session, update it before finishing.
 - `working/JOURNAL.md` — append-only history, newest first.
 - `working/ROADMAP.md` — open work across the owner's projects.
-- `working/history/` — superseded handoffs and dispatch notes.
 
 Chat history is **not** shared between harnesses (Claude Code, OpenCode, Codex,
 …); a session that dies mid-task leaves its context in a transcript the next

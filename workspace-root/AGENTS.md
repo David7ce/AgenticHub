@@ -32,8 +32,8 @@ in each project repo; scripts and installers live in the toolbox repo.
 
 Everything that is the owner's and not the hub itself lives in
 [`working/`](working/), which git ignores wholesale: `ROADMAP.md`, the session
-batons (`HANDOFF.md`, `JOURNAL.md`), `git-backup.md`, `history/`. A fork clones it
-empty. Local **config** that code reads stays next to the code
+batons (`HANDOFF.md`, `JOURNAL.md`), `lecciones.md` and `git-backup.md`. A fork
+clones it empty. Local **config** that code reads stays next to the code
 (`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `repos/local/`), also
 ignored, each with a tracked `*.example` or README to copy from. Keep anything
 personal or machine-specific in `working/` or a `*.local.*` file — never in a

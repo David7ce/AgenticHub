@@ -11,9 +11,9 @@ jobs:
     # nobody runs.
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -24,4 +24,7 @@ jobs:
         run: node agent-hub/tools/check.mjs
 
       - name: Repository inventory tests
-        run: node --test repos/test/units.test.mjs
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem repos/test -Filter *.test.mjs | ForEach-Object { $_.FullName }
+          node --test $files

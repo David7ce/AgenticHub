@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   TOOLS,
@@ -11,6 +14,26 @@ import {
   renderAgents,
   renderRoute,
 } from '../core.mjs';
+
+// The fallback chain comes from the registry, which is local and git-ignored.
+// Pin it, or the test silently changes meaning with the owner's config (the
+// opencode -> codex fallback added on 2026-11-10 broke exactly that).
+const REGISTRY_DIR = mkdtempSync(join(tmpdir(), 'mcp-registry-'));
+const REGISTRY = join(REGISTRY_DIR, 'agents.json');
+writeFileSync(REGISTRY, JSON.stringify({ agents: {
+  opencode: { agentFallbacks: ['claude'] },
+  claude: {},
+  codex: {},
+} }));
+
+function withRegistry(fn) {
+  const previous = process.env.AGENT_HUB_REGISTRY;
+  process.env.AGENT_HUB_REGISTRY = REGISTRY;
+  return Promise.resolve().then(fn).finally(() => {
+    if (previous === undefined) delete process.env.AGENT_HUB_REGISTRY;
+    else process.env.AGENT_HUB_REGISTRY = previous;
+  });
+}
 
 const ok = (overrides = {}) => ({
   ok: true,
@@ -271,7 +294,7 @@ test('route retries on the other pool when the first is out of quota', async () 
     },
   };
 
-  const outcome = await callTool('route', { prompt: 'x', run: true }, handlers);
+  const outcome = await withRegistry(() => callTool('route', { prompt: 'x', run: true }, handlers));
   assert.deepEqual(calls, ['opencode', 'claude']);
   assert.match(outcome.text, /out of quota; retried on claude/);
   assert.match(outcome.text, /ANSWER/);
@@ -289,7 +312,8 @@ test('route with a cwd hands the fallback agent the tree context and the task', 
         : { ok: true, status: 'ok', agent: 'claude', text: 'ANSWER', durationMs: 1, cost: null, tools: [] };
     },
   };
-  await callTool('route', { prompt: 'fix the parser', run: true, cwd: process.cwd() }, handlers);
+  await withRegistry(() =>
+    callTool('route', { prompt: 'fix the parser', run: true, cwd: process.cwd() }, handlers));
   assert.equal(prompts.opencode, 'fix the parser', 'the first agent gets the bare prompt');
   assert.match(prompts.claude, /You are claude/);
   assert.match(prompts.claude, /fix the parser/);

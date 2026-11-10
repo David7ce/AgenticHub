@@ -26,6 +26,8 @@ test('verify arguments are strict and --cmd never becomes the directory', () => 
   assert.equal(args.command, 'npm test');
   assert.equal(args.timeout, 5000);
   assert.ok(args.dir.endsWith('repo'));
+  assert.equal(parseVerifyArgs(['--task', 't-1']).task, 't-1');
+  assert.throws(() => parseVerifyArgs(['--task']), /needs a task id/);
   assert.throws(() => parseVerifyArgs(['--cmd']), /needs a command/);
   assert.throws(() => parseVerifyArgs(['--nope']), /unknown option/);
   assert.throws(() => parseVerifyArgs(['a', 'b']), /unexpected argument/);
