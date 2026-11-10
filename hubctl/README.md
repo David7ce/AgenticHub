@@ -36,6 +36,8 @@ process cannot reach them, so run `hubctl` from a Windows terminal:
 ```powershell
 node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs status
 node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs live
+node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs brief   # start of a session
+node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs search "seclogon"   # full-text over runs, notes, git
 ```
 
 From WSL it still shows agents, worktrees, egress and the run log, and prints a

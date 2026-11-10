@@ -28,6 +28,8 @@ import { runClean } from "./commands/clean.mjs";
 import { runUsage } from "./commands/usage.mjs";
 import { runBench } from "./commands/bench.mjs";
 import { runPath } from "./commands/path.mjs";
+import { runBrief } from "./commands/brief.mjs";
+import { runSearch } from "./commands/search.mjs";
 
 export { buildHubArgs, inferSessionAgent, summarizeConsent } from "./common.mjs";
 export {
@@ -46,6 +48,8 @@ async function main() {
   const command = argv[0] ?? "status";
   if (command === "status") return runStatus(argv);
   if (command === "live") return runLive(argv);
+  if (command === "brief") return runBrief(argv);
+  if (command === "search") return runSearch(argv.slice(1));
   if (command === "report") return runReport(argv);
   if (command === "spend") return runSpend(argv);
   if (command === "doctor") return runDoctor(argv);
@@ -65,6 +69,8 @@ async function main() {
         "usage: hubctl <command>",
         "",
         "  status [--json] [--no-color]     one-shot snapshot",
+        "  brief [--json]                   the state of the world in <=40 lines: doctor, dirty repos, last runs, spend, pending",
+        "  search \"text\" [--since DATE] [--source runs|notes|git] [--json]   full-text search of runs, notes and git history (index: logs/index.db)",
         "  live [--once] [--json] [--interval MS] [--no-external]  who is working now; q quits, r refreshes, p pauses",
         "  report [--days N] [--json] [--no-color]   completed turns by agent and model",
         "  spend [--days N] [--date YYYY-MM-DD] [--by day,project,agent,model]",

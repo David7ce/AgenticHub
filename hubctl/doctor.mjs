@@ -157,6 +157,42 @@ export function checkLeftovers(inflight, locks) {
   return out;
 }
 
+// The handoff is the baton for the next session: warn when commits landed well
+// after it was last written, or when it names a commit that no longer exists.
+export function checkHandoffFresh({ handoffMtimeMs, lastCommitMs, text = '', commitExists = () => true, maxHours = 24 }) {
+  if (handoffMtimeMs == null) return [];
+  const out = [];
+  if (lastCommitMs != null && lastCommitMs - handoffMtimeMs > maxHours * 3_600_000) {
+    const hours = Math.round((lastCommitMs - handoffMtimeMs) / 3_600_000);
+    out.push(row('handoff', 'warn', `working/HANDOFF.md is ${hours}h older than the last commit; update it before relying on it`));
+  }
+  const hashes = new Set();
+  for (const m of String(text).matchAll(/`([0-9a-f]{7,12})`/g)) {
+    if (/\d/.test(m[1]) && /[a-f]/.test(m[1])) hashes.add(m[1]);
+  }
+  const gone = [...hashes].filter((h) => !commitExists(h));
+  if (gone.length) out.push(row('handoff', 'warn', `working/HANDOFF.md names commit(s) not in git log: ${gone.join(', ')}`));
+  if (!out.length) out.push(row('handoff', 'ok', 'working/HANDOFF.md is current'));
+  return out;
+}
+
+function gitOut(root, args) {
+  const r = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true });
+  return r.status === 0 ? r.stdout.trim() : null;
+}
+
+function handoffInputs(root) {
+  const file = join(root, 'working', 'HANDOFF.md');
+  if (!existsSync(file)) return null;
+  const ct = gitOut(root, ['log', '-1', '--format=%ct']);
+  return {
+    handoffMtimeMs: statSync(file).mtimeMs,
+    lastCommitMs: ct ? Number(ct) * 1000 : null,
+    text: readFileSync(file, 'utf8'),
+    commitExists: (hash) => gitOut(root, ['cat-file', '-e', `${hash}^{commit}`]) !== null,
+  };
+}
+
 // Parses `opencode mcp list`. Missing servers are a fail: the daily surface
 // could not reach the hub.
 export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright']) {
@@ -273,6 +309,8 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
+  const handoff = handoffInputs(root);
+  if (handoff) checks.push(...checkHandoffFresh(handoff));
   // OpenCode starts its MCP servers lazily; on a loaded machine the first listing
   // can say "not connected" for a server that is a moment from ready. Look twice
   // before reporting a failure.

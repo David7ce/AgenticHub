@@ -44,6 +44,8 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 |---|---|
 | An agent was refused | `hubctl doctor` — consent expired, path outside `writeTrees`, daily cap |
 | Costs look off | `hubctl spend` and `hubctl usage` |
+| Did we already hit this before | `hubctl search "text"` (runs, notes, git; `--since`, `--source`; index `logs/index.db` rebuilds itself) |
+| Start of a session: what is the state | `hubctl brief` (≤40 lines; `--json`; watch more repos in `working/repos-vigilados.txt`) |
 | Which agent is working right now | `hubctl live` |
 | Leftover checkouts and old backups | `hubctl clean` (dry run) |
 | Too many old conversations | the `/chats` panel in OpenCode |

@@ -18,6 +18,8 @@ in each project repo; scripts and installers live in the toolbox repo.
 
 ## Before you start
 
+0. Run `node agent-hub/hubctl/hubctl.mjs brief` first: doctor, dirty repos, last runs,
+   today's spend and the pending list in ≤40 lines.
 1. No task given? Read [`working/ROADMAP.md`](working/ROADMAP.md) for open items.
 2. Touching `agent-hub/`: read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md). Touching
    `repos/`: read [`repos/README.md`](repos/README.md).

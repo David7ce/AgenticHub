@@ -6,6 +6,7 @@ import {
   checkCodexModels,
   checkFrontier,
   checkGrants,
+  checkHandoffFresh,
   checkLeftovers,
   checkOpencodeMcp,
   checkRegistryConsent,
@@ -135,4 +136,16 @@ test('an MCP server that is still starting is a warning, a failed one is a failu
   assert.equal(rows.find((r) => /playwright/.test(r.detail)).level, 'warn');
   const failed = checkOpencodeMcp('✗ agent-hub   failed\n✓ playwright  connected');
   assert.equal(failed.find((r) => /agent-hub/.test(r.detail)).level, 'fail');
+});
+
+test('handoff freshness warns on a stale file or a vanished commit hash', () => {
+  const H = 3_600_000;
+  const fresh = checkHandoffFresh({ handoffMtimeMs: 100 * H, lastCommitMs: 110 * H, text: 'ultimo: `c0b1260`' });
+  assert.deepEqual(fresh.map((r) => r.level), ['ok']);
+  const stale = checkHandoffFresh({ handoffMtimeMs: 0, lastCommitMs: 30 * H });
+  assert.match(stale[0].detail, /30h older/);
+  const gone = checkHandoffFresh({ handoffMtimeMs: 0, lastCommitMs: 0, text: '`abc1234` y `bee1234f` y `plainword`', commitExists: (h) => h === 'abc1234' });
+  assert.equal(gone.length, 1);
+  assert.match(gone[0].detail, /bee1234f/);
+  assert.deepEqual(checkHandoffFresh({ handoffMtimeMs: null }), []);
 });
