@@ -270,6 +270,23 @@ test('route retries on the other pool when the first is out of quota', async () 
   assert.equal(outcome.isError, false);
 });
 
+test('route with a cwd hands the fallback agent the tree context and the task', async () => {
+  const prompts = {};
+  const handlers = {
+    route: async () => ({ agent: 'opencode', reason: 'cheap default' }),
+    ask: async (args) => {
+      prompts[args.agent] = args.prompt;
+      return args.agent === 'opencode'
+        ? { ok: false, status: 'failed', agent: 'opencode', error: 'weekly limit reached', text: '', tools: [] }
+        : { ok: true, status: 'ok', agent: 'claude', text: 'ANSWER', durationMs: 1, cost: null, tools: [] };
+    },
+  };
+  await callTool('route', { prompt: 'fix the parser', run: true, cwd: process.cwd() }, handlers);
+  assert.equal(prompts.opencode, 'fix the parser', 'the first agent gets the bare prompt');
+  assert.match(prompts.claude, /You are claude/);
+  assert.match(prompts.claude, /fix the parser/);
+});
+
 test('status calls the handler and returns its text verbatim', async () => {
   const { handlers, calls } = fakeHandlers();
   const response = await handleMessage(

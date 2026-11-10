@@ -269,7 +269,12 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
-  checks.push(...checkOpencodeMcp(fast ? null : runOpencodeMcpList(root)));
+  // OpenCode starts its MCP servers lazily; on a loaded machine the first listing
+  // can say "not connected" for a server that is a moment from ready. Look twice
+  // before reporting a failure.
+  let mcpChecks = checkOpencodeMcp(fast ? null : runOpencodeMcpList(root));
+  if (!fast && mcpChecks.some((c) => c.level === 'fail')) mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
+  checks.push(...mcpChecks);
   const counts = { ok: 0, warn: 0, fail: 0 };
   for (const check of checks) counts[check.level] += 1;
   return { now: new Date().toISOString(), ok: counts.fail === 0, counts, checks };

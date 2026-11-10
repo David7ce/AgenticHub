@@ -1,6 +1,6 @@
 // tree-lock.mjs — claim a tree before write-permission hub runs start.
 //
-// This does NOT enforce "one orchestrator per tree" in general: StarNet (or
+// This does NOT enforce "one orchestrator per tree" in general: an agent (or
 // any other tool outside this hub) does not know this file exists, so it can
 // still collide silently with a hub run. What this catches is the collision
 // the hub can actually see coming -- two of its own allow-all runs (e.g. two

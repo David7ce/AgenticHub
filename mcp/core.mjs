@@ -7,6 +7,7 @@
 // working exactly as they do from the command line.
 
 import { agentChain, DEFAULT_REGISTRY, isQuotaError, readAgentEntry } from '../acp/router.mjs';
+import { buildHandoffPrompt } from '../acp/handoff.mjs';
 
 // Reasoning-effort levels the hub maps onto each agent's own option (acp/effort.mjs).
 const EFFORTS = ['low', 'medium', 'high', 'max'];
@@ -171,6 +172,12 @@ export const TOOLS = [
           type: 'number',
           exclusiveMinimum: 0,
           description: 'With run=true, same meaning and default (3) as ask_agent\'s budgetUsd.',
+        },
+        cwd: {
+          type: 'string',
+          description:
+            'Working tree for the run. When set and the pool is out of quota, the next agent ' +
+            'also receives the tree\'s git state, recent runs and the original task.',
         },
       },
       required: ['prompt'],
@@ -478,15 +485,16 @@ export async function callTool(name, args, handlers) {
       if (args.run !== true) return { text: renderRoute(decision), isError: false };
       const permission = optionalPermission(args);
       const budgetUsd = optionalPositiveNumber(args, 'budgetUsd');
+      const cwd = optionalString(args, 'cwd');
       if (args.background === true) {
-        const job = await handlers.startJob({ agent: decision.agent, prompt, permission, budgetUsd });
+        const job = await handlers.startJob({ agent: decision.agent, prompt, permission, budgetUsd, cwd });
         if (job?.error) return { text: `cannot start job: ${job.error}`, isError: true };
         return {
           text: `${renderRoute(decision)}\n\njob ${job.id} started · poll job_status ${job.id}`,
           isError: false,
         };
       }
-      let result = await handlers.ask({ agent: decision.agent, prompt, permission, budgetUsd });
+      let result = await handlers.ask({ agent: decision.agent, prompt, permission, budgetUsd, cwd });
       // A pool that is out of quota is not a failed task: hand it to the other
       // one, and say so, rather than reporting an exhausted pool as the answer.
       let failedOver = null;
@@ -494,7 +502,10 @@ export async function callTool(name, args, handlers) {
         const registry = process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY;
         for (const next of agentChain(readAgentEntry(registry, decision.agent), decision.agent)) {
           failedOver = next;
-          result = await handlers.ask({ agent: next, prompt, permission, budgetUsd });
+          const handedOver = cwd
+            ? buildHandoffPrompt({ cwd, target: next, from: decision.agent, task: prompt })
+            : prompt;
+          result = await handlers.ask({ agent: next, prompt: handedOver, permission, budgetUsd, cwd });
           if (result.ok || !isQuotaError(result.error)) break;
         }
       }

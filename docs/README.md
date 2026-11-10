@@ -11,8 +11,7 @@ código; si contradice `AGENTS.md`, manda `AGENTS.md`.
 | [`architecture.md`](architecture.md)                     | Entender el hub: hosts, MCP, ACP, consentimiento, auditoría, locks y estado en vuelo. |
 | [`routing.md`](routing.md)                               | Elegir agente/modelo/topología y conocer el catálogo y sus límites.                   |
 | [`operations.md`](operations.md)                         | Arrancar, lanzar, hablar, observar, depurar y limpiar.                                |
-| [`comparativa-agenthub-omniroute-ax.md`](comparativa-agenthub-omniroute-ax.md) | Decidir qué capa usar: gobierno local, gateway de modelos o runtime de clúster. |
-| [`stack-agentes-2026-11-09.md`](stack-agentes-2026-11-09.md) | Elegir entre agente suelto, AgentHub y OpenRig, y con qué modelo, según el repo. |
+| [`decisions.md`](decisions.md)                           | Qué se decidió y qué se descartó (OpenRig, gateway de modelos, canales retirados).    |
 | [`dispatch-playbook.md`](dispatch-playbook.md)           | Delegar trabajo a otro agente o recuperar un turno atascado.                          |
 | [`../bench/WORKFLOW.md`](../bench/WORKFLOW.md)           | Recomendación medida: qué agente lanzar y con qué workflow.                           |
 | [`../bench/COLLABORATION.md`](../bench/COLLABORATION.md) | Evidencia de cooperación: fan-out, handoff, conflicto, stall.                         |
@@ -21,7 +20,6 @@ código; si contradice `AGENTS.md`, manda `AGENTS.md`.
 
 | Documento                                                          | Cuándo leerlo                                     |
 |--------------------------------------------------------------------|---------------------------------------------------|
-| [`vscode-harnesses-and-remote.md`](vscode-harnesses-and-remote.md) | Tocar VS Code, BYOK, túneles o harnesses remotos. |
 | [`tetragon-runtime-security.md`](tetragon-runtime-security.md)     | Cambiar lo que registra la auditoría.             |
 
 ## Histórico
