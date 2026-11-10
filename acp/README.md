@@ -30,7 +30,11 @@ other major version instead of silently drifting.
         registry.mjs       agent registry and MCP server config
         run-record.mjs     audit line, in-flight file, salvage record
       fanout-acp.mjs     CLI: N agents in parallel, one merged result
-      router.mjs         CLI: pick one worker by cost/complexity, hand off to hub-acp.mjs
+      router.mjs         CLI + facade (re-exports the router-* modules): pick one worker by cost/complexity, hand off to hub-acp.mjs
+      router-config.mjs  paths and thresholds shared by the router modules
+      router-stats.mjs   24 h audit-log stats per routing target
+      router-decide.mjs  routing rules: prompt signals, health overlay, model pick
+      router-failover.mjs agent and model fallback chains, quota detection
         quota.mjs          the one definition of "out of quota"
         handoff.mjs        relay prompt (git state, recent runs, the task)
       consent.mjs        grant, limits and today's spend

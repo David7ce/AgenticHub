@@ -25,7 +25,7 @@
     "symbols": [
       "decideAgent"
     ],
-    "file": "agent-hub/acp/router.mjs",
+    "file": "agent-hub/acp/router-decide.mjs",
     "test": "agent-hub/acp/tests/router.test.mjs",
     "prompt": "The router picks between the cheap and the strong worker from the prompt shape and the recent audit log."
   },
@@ -78,12 +78,11 @@
     "tier": "hard",
     "symbols": [
       "readRunStats",
-      "decideAgent",
       "describeStats"
     ],
-    "file": "agent-hub/acp/router.mjs",
+    "file": "agent-hub/acp/router-stats.mjs",
     "test": "agent-hub/acp/tests/router.test.mjs",
-    "prompt": "Rebuild the cost/health router: reading the audit log window, applying the overlay to the prompt rules, and describing the stats."
+    "prompt": "Rebuild the audit-log half of the router: reading the 24 h window per routing target, and describing the stats."
   },
   {
     "id": "core-render-module",
