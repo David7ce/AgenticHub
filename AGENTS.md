@@ -33,7 +33,7 @@ trees.
 | Path | What it is |
 |---|---|
 | `acp/` | ACP v1 client, registry (`agents.json`, from `agents.example.json`), consent gate, router with failover, fan-out, handoff prompt, spend estimate, path policy |
-| `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `job_*`) |
+| `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `brief`, `search`, `job_*`) |
 | `hubctl/` | Control room: status, live, report, spend, usage, doctor, run, handoff, tasks, clean, worktree (one module per command in `commands/`) |
 | `chatmgr/` | OpenCode TUI plugin: every agent's conversations in one list, filtered batch delete |
 | `models.json` | Local catalogue: providers, tiers, estimated cost, retention, capabilities |

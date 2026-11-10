@@ -21,6 +21,14 @@ export { TOOLS } from './tools.mjs';
 export { renderAgents, renderAsk, renderFanout, renderJobResult, renderJobStatus, renderRoute } from './render.mjs';
 
 export const PROTOCOL_VERSION = '2025-06-18';
+const SEARCH_SOURCES = ['runs', 'notes', 'git'];
+
+function isRealDate(text) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const date = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === text;
+}
+
 export const SERVER_INFO = { name: 'agent-hub', version: '1.0.0' };
 
 // ── dispatch ────────────────────────────────────────────────────────────────
@@ -127,6 +135,24 @@ export async function callTool(name, args, handlers) {
     case 'agents': {
       const rows = await handlers.agents();
       return { text: renderAgents(rows), isError: false };
+    }
+    case 'brief': {
+      if (args.json !== undefined && typeof args.json !== 'boolean') throw new ToolError('"json" must be a boolean');
+      const text = await handlers.brief({ json: args.json === true });
+      return { text, isError: false };
+    }
+    case 'search': {
+      const query = requireString(args, 'query');
+      const since = optionalString(args, 'since');
+      if (since !== undefined && !isRealDate(since)) throw new ToolError('"since" must be a real date as YYYY-MM-DD');
+      const source = optionalString(args, 'source');
+      if (source !== undefined && !SEARCH_SOURCES.includes(source)) {
+        throw new ToolError(`"source" must be one of ${SEARCH_SOURCES.join(', ')}`);
+      }
+      const limit = args.limit === undefined ? 20 : args.limit;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new ToolError('"limit" must be an integer from 1 to 50');
+      const text = await handlers.search({ query, since, source, limit });
+      return { text, isError: false };
     }
     case 'status': {
       const text = await handlers.status();

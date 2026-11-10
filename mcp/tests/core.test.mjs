@@ -57,6 +57,14 @@ function fakeHandlers(overrides = {}) {
       calls.push({ tool: 'status', args: {} });
       return 'AGENTHUB 2026-11-01 00:00\n\nagents    claude ok (22d)\n';
     },
+    brief: async (args) => {
+      calls.push({ tool: 'brief', args });
+      return args.json ? '{"doctor":{"ok":true}}' : 'BRIEF doctor: 14 ok';
+    },
+    search: async (args) => {
+      calls.push({ tool: 'search', args });
+      return `2026-11-10  journal  JOURNAL.md\n    «${args.query}» found`;
+    },
     startJob: async (request) => {
       calls.push({ tool: 'startJob', args: request });
       return { id: 'job_ab12cd34', agent: request.agent, cwd: request.cwd ?? null };
@@ -108,7 +116,7 @@ test('tools/list exposes exactly the hub tools', async () => {
   const response = await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, handlers);
   assert.deepEqual(
     response.result.tools.map((t) => t.name),
-    ['ask_agent', 'fanout', 'route', 'agents', 'job_status', 'job_result', 'job_cancel', 'status'],
+    ['ask_agent', 'fanout', 'route', 'agents', 'job_status', 'job_result', 'job_cancel', 'status', 'brief', 'search'],
   );
   for (const tool of response.result.tools) {
     assert.equal(tool.inputSchema.type, 'object');
@@ -442,4 +450,65 @@ test('ask_agent and fanout pass effort through and reject unknown levels', async
     () => callTool('ask_agent', { agent: 'opencode', prompt: 'x', effort: 'turbo' }, handlers),
     /"effort" must be one of low, medium, high, max/,
   );
+});
+
+const call = (handlers, name, args) =>
+  handleMessage({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name, arguments: args } }, handlers);
+
+test('brief returns the handler text, and asks for json only when told to', async () => {
+  const { handlers, calls } = fakeHandlers();
+  const text = await call(handlers, 'brief', {});
+  assert.equal(text.result.isError, false);
+  assert.match(text.result.content[0].text, /BRIEF/);
+  assert.deepEqual(calls.at(-1).args, { json: false });
+  const json = await call(handlers, 'brief', { json: true });
+  assert.deepEqual(calls.at(-1).args, { json: true });
+  assert.match(json.result.content[0].text, /"doctor"/);
+});
+
+test('brief refuses a non-boolean json', async () => {
+  const { handlers, calls } = fakeHandlers();
+  await assert.rejects(() => callTool('brief', { json: 'yes' }, handlers), /"json" must be a boolean/);
+  assert.equal(calls.length, 0);
+});
+
+test('search passes the query through with its defaults', async () => {
+  const { handlers, calls } = fakeHandlers();
+  const response = await call(handlers, 'search', { query: 'seclogon' });
+  assert.equal(response.result.isError, false);
+  assert.deepEqual(calls.at(-1).args, { query: 'seclogon', since: undefined, source: undefined, limit: 20 });
+  assert.match(response.result.content[0].text, /seclogon/);
+});
+
+test('search forwards since, source and limit', async () => {
+  const { handlers, calls } = fakeHandlers();
+  await call(handlers, 'search', { query: 'codex', since: '2026-11-01', source: 'git', limit: 5 });
+  assert.deepEqual(calls.at(-1).args, { query: 'codex', since: '2026-11-01', source: 'git', limit: 5 });
+});
+
+test('search rejects bad input as a tool error and never reaches the handler', async () => {
+  const { handlers, calls } = fakeHandlers();
+  const bad = [
+    {},                                              // no query
+    { query: '' },                                   // empty query
+    { query: 'x', since: '2026-13-45' },             // not a real date
+    { query: 'x', since: '10/11/2026' },             // wrong shape
+    { query: 'x', source: 'logs' },                  // unknown source
+    { query: 'x', limit: 0 },                        // below range
+    { query: 'x', limit: 51 },                       // above range
+    { query: 'x', limit: 2.5 },                      // not an integer
+  ];
+  for (const args of bad) {
+    await assert.rejects(() => callTool('search', args, handlers), /must be|non-empty|required/, JSON.stringify(args));
+  }
+  assert.equal(calls.length, 0);
+});
+
+test('brief and search are described well enough for a model to choose them', () => {
+  for (const name of ['brief', 'search']) {
+    const tool = TOOLS.find((t) => t.name === name);
+    assert.ok(tool.description.length > 120, `${name} needs a real description`);
+    assert.match(tool.description, /Read-only/);
+  }
+  assert.deepEqual(TOOLS.find((t) => t.name === 'search').inputSchema.required, ['query']);
 });

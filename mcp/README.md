@@ -45,6 +45,8 @@ keep the surface, give it a tool that reaches the rest of the fleet.
 | `fanout` | Same prompt to 2+ agents in parallel, with optional `synthesize` and per-agent `worktree`. | yes, per agent |
 | `route` | Which agent should take this prompt (cost/health aware, reads the audit log). `run: true` also executes it; `run` + `background` executes it as a job. | only with `run` |
 | `agents` | Registry, availability, consent state, default model. | no |
+| `brief` | The workspace in at most 40 lines — same text as `hubctl brief`: doctor, repos with uncommitted changes, last runs, today's spend, the handoff's pending list. `json: true` returns the object. Call it first in a new session. | no |
+| `search` | Full-text search over the audit log, the working notes and git commit messages (`hubctl search`). `query` plus optional `since`, `source` (`runs`/`notes`/`git`), `limit`. Read-only; it refreshes only its own derived `logs/index.db`. | no |
 | `status` | The hub's own health — same snapshot as `hubctl status` (consent/expiry, worktrees, bench vs. baseline, egress, recent runs), plus the background jobs living in this server process. | no |
 
 Every call goes through `../consent.json` (copy `consent.example.json` and

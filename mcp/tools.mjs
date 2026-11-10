@@ -225,4 +225,34 @@ export const TOOLS = [
       "hub's own state from inside the chat instead of shelling out.",
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
+  {
+    name: 'brief',
+    description:
+      "The state of the hub's workspace in at most 40 lines, as `hubctl brief` prints it: config health (doctor), " +
+      'repositories with uncommitted changes, the last runs, today\'s spend per agent and the pending list from the ' +
+      'handoff. Call it first in a new session to resume without reading the whole docs trail. Read-only; no agent runs.',
+    inputSchema: {
+      type: 'object',
+      properties: { json: { type: 'boolean', description: 'Return the structured object instead of the text.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'search',
+    description:
+      'Full-text search over what the hub has already done and decided: the audit log (prompts and answers), the ' +
+      'working notes (journal, handoff, history) and git commit messages. Use it before repeating work or to find why ' +
+      'something was decided. Diacritics are ignored. Read-only; it only refreshes its own derived index.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', minLength: 1, description: 'Words to find; all must appear.' },
+        since: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Only results from this date on, YYYY-MM-DD.' },
+        source: { type: 'string', enum: ['runs', 'notes', 'git'], description: 'Limit to one source.' },
+        limit: { type: 'integer', minimum: 1, maximum: 50, default: 20, description: 'Maximum results.' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
 ];

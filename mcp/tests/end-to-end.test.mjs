@@ -139,7 +139,7 @@ test('the server speaks MCP over stdio and lists its tools', async (t) => {
   const list = await server.request('tools/list', {});
   assert.deepEqual(
     list.result.tools.map((tool) => tool.name),
-    ['ask_agent', 'fanout', 'route', 'agents', 'job_status', 'job_result', 'job_cancel', 'status'],
+    ['ask_agent', 'fanout', 'route', 'agents', 'job_status', 'job_result', 'job_cancel', 'status', 'brief', 'search'],
   );
 });
 
@@ -218,7 +218,7 @@ test('a malformed line does not kill the session', async (t) => {
   const server = await session(t);
   server.raw('{not json at all');
   const list = await server.request('tools/list', {});
-  assert.equal(list.result.tools.length, 8);
+  assert.equal(list.result.tools.length, 10);
 });
 
 // ── per-tree concurrency ────────────────────────────────────────────────────

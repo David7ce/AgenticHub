@@ -15,6 +15,7 @@
 // treats them as protocol and disconnects.
 
 
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 import { handleMessage, SERVER_INFO } from './core.mjs';
@@ -28,6 +29,9 @@ import {
   shouldTryNextModel,
 } from '../acp/router.mjs';
 import { CONSENT_PATH, testConsent } from '../acp/consent.mjs';
+import { gatherBrief, renderBrief } from '../hubctl/commands/brief.mjs';
+import { ROOT as WORKSPACE_ROOT } from '../hubctl/common.mjs';
+import { openIndex, reindex, search as searchIndex } from '../hubctl/search.mjs';
 import { gatherStatus, readInflight, renderStatus } from '../hubctl/hubctl.mjs';
 
 import {
@@ -265,8 +269,30 @@ async function startJob(request) {
   });
 }
 
+// Read-only views over the same files hubctl reads; neither starts an agent.
+async function brief({ json }) {
+  const snapshot = gatherBrief();
+  return json ? JSON.stringify(snapshot, null, 2) : renderBrief(snapshot);
+}
+
+async function searchHistory({ query, since, source, limit }) {
+  const db = openIndex(process.env.AGENT_HUB_INDEX || join(WORKSPACE_ROOT, 'logs', 'index.db'));
+  try {
+    reindex(db, { logsDir: join(WORKSPACE_ROOT, 'logs'), workingDir: join(WORKSPACE_ROOT, 'working'), repo: WORKSPACE_ROOT });
+    const hits = searchIndex(db, query, { since, source, limit });
+    if (!hits.length) return 'no matches';
+    return hits
+      .map((hit) => `${hit.date}  ${hit.source.padEnd(8)} ${String(hit.label).slice(0, 40)}\n    ${hit.snippet.replace(/\s+/g, ' ')}`)
+      .join('\n');
+  } finally {
+    db.close();
+  }
+}
+
 const handlers = {
   ask,
+  brief,
+  search: searchHistory,
   fanout,
   route,
   agents,
