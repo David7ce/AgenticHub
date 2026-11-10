@@ -8,13 +8,12 @@ import { keyOf } from "./core/model.mjs"
 import { formatLocalDateTime } from "./core/time.mjs"
 import { buildArchivePlan, buildDeletePlan, describeArchivePlan, describePlan } from "./core/plan.mjs"
 import { PROVIDERS, providerList } from "./core/capabilities.mjs"
+import { counterText, deleteTargets, pageSizeFor } from "./core/view.mjs"
 
 const CLI = fileURLToPath(new URL("./cli.mjs", import.meta.url))
 // Rows that fit: terminal height minus title, status, filters, margins, footer.
-const CHROME = 10
-const termRows = () => Math.max(6, Number(process.stdout.rows) || 30)
-const [pageSize, setPageSize] = createSignal(Math.max(5, termRows() - CHROME))
-process.stdout.on?.("resize", () => setPageSize(Math.max(5, termRows() - CHROME)))
+const [pageSize, setPageSize] = createSignal(pageSizeFor(process.stdout.rows))
+process.stdout.on?.("resize", () => setPageSize(pageSizeFor(process.stdout.rows)))
 
 type Row = {
   provider: string
@@ -319,9 +318,8 @@ export default Plugin.define({
 
       async function deleteSelected() {
         if (busy()) return
-        let chosen = rows().filter((row) => selected().has(keyOf(row)))
-        // Nothing marked with space: act on the row under the cursor.
-        if (chosen.length === 0 && cursorRow()) chosen = [cursorRow() as Row]
+        // Marked rows, or the row under the cursor when none is marked.
+        const chosen = deleteTargets(rows(), selected(), cursorRow() as Row | undefined, keyOf) as Row[]
         if (chosen.length === 0) {
           await dialog.alert({ title: "Nothing to delete", message: "The list is empty." })
           return
@@ -377,7 +375,7 @@ export default Plugin.define({
       return (
         <box flexDirection="column" padding={1}>
           <text fg={base()}>Conversations</text>
-          <text fg={muted()}>{visibleRows().length} of {rows().length} conversations{rows().length > visibleRows().length ? ` (${rows().length - visibleRows().length} hidden by filters)` : ""} · {selected().size} selected{status() ? ` · ${status()}` : ""}</text>
+          <text fg={muted()}>{counterText({ visible: visibleRows().length, total: rows().length, selected: selected().size, status: status() })}</text>
           <text fg={muted()}>{filterLine()}</text>
           <Show when={errors().length > 0}>
             <text fg={warning()}>{errors().join(" · ")}</text>

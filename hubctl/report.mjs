@@ -4,13 +4,15 @@
 // actually been doing": success, failures, timeouts, p50/p95 latency and
 // reported cost. It reads the append-only audit log, never the network.
 
+import { QUOTA_PATTERN } from '../acp/quota.mjs';
+
 const STATUSES = new Set(['ok', 'failed', 'timeout', 'empty', 'budget']);
 
 // Why a turn did not end ok, from its status and error text. Order matters:
 // quota and auth errors also carry the generic -32603 code. Each cause points
 // at a different fix, which is the point of separating them.
 const CAUSES = [
-  ['quota', /usage limit|session limit|hour limit|weekly limit|rate limit|quota|exhaust/i],
+  ['quota', QUOTA_PATTERN],
   ['auth', /authentication required|unauthori[sz]ed|code -32000/i],
   ['network', /EAI_AGAIN|ENOTFOUND|ECONN|endpoint is unavailable|upstream request failed|internal service failure/i],
   ['config', /set_config_option|unknown config option|invalid params|does not advertise/i],

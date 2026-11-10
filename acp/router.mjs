@@ -41,6 +41,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildHandoffPrompt } from './handoff.mjs';
+import { isQuotaError } from './quota.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Local registry first; a fresh clone runs with the shipped example.
@@ -343,12 +344,7 @@ function readPrompt(promptArg) {
 // A pool that is out of quota is not a failed task: it is the other pool's
 // turn. Matched against the error text hub-acp reports, because neither
 // provider exposes a distinct exit code for "exhausted".
-export function isQuotaError(text) {
-  if (!text) return false;
-  return /\b(429|quota|rate.?limit|usage limit|weekly limit|insufficient|exceeded|allowance|credits?)\b/i.test(
-    text,
-  );
-}
+export { isQuotaError };
 
 /**
  * Who takes over when `agent` is out of quota. The registry entry may list
