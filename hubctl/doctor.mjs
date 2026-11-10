@@ -162,10 +162,14 @@ export function checkLeftovers(inflight, locks) {
 export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright']) {
   if (output == null) return [row('opencode', 'warn', 'opencode mcp list not run (OpenCode unavailable or --fast)')];
   const clean = String(output).replace(/\x1b\[[0-9;]*m/g, '');
-  return expected.map((name) =>
-    new RegExp(`✓\\s+${name}\\s+connected`).test(clean)
-      ? row('opencode', 'ok', `${name} connected`)
-      : row('opencode', 'fail', `${name} is not connected in OpenCode`));
+  return expected.map((name) => {
+    const state = new RegExp(`\\S\\s+${name}\\s+(\\w+)`).exec(clean)?.[1] ?? null;
+    if (state === 'connected') return row('opencode', 'ok', `${name} connected`);
+    // OpenCode starts MCP servers lazily: "pending" is a server still coming up,
+    // not a broken one, so it must not fail the whole check.
+    if (state === 'pending') return row('opencode', 'warn', `${name} is still starting in OpenCode (pending)`);
+    return row('opencode', 'fail', `${name} is not connected in OpenCode`);
+  });
 }
 
 function listCurrentDocs(root) {

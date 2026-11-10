@@ -129,3 +129,10 @@ test('a frontier model enabled for routing is a warn', () => {
   assert.equal(checkFrontier({ models: [{ id: 'opus', tier: 'frontier', enabled: true }] })[0].level, 'warn');
   assert.equal(checkFrontier({ models: [{ id: 'opus', tier: 'frontier', enabled: false }] })[0].level, 'ok');
 });
+
+test('an MCP server that is still starting is a warning, a failed one is a failure', () => {
+  const rows = checkOpencodeMcp('✓ agent-hub   connected\n○ playwright  pending');
+  assert.equal(rows.find((r) => /playwright/.test(r.detail)).level, 'warn');
+  const failed = checkOpencodeMcp('✗ agent-hub   failed\n✓ playwright  connected');
+  assert.equal(failed.find((r) => /agent-hub/.test(r.detail)).level, 'fail');
+});
