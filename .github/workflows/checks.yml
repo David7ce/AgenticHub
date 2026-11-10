@@ -1,0 +1,27 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    # The hub is Windows-first: path translation, the OpenCode launcher and the
+    # sandbox assumptions are exercised there. A Linux job would test a shape
+    # nobody runs.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Credentials never enter tracked files
+        run: node agent-hub/tools/secret-scan.mjs --all
+
+      - name: Hub tests and bench dry-run
+        run: node agent-hub/tools/check.mjs
+
+      - name: Repository inventory tests
+        run: node --test repos/test/units.test.mjs

@@ -33,6 +33,7 @@ import {
   MAX_PROMPT_CHARS, NON_CONFIG_KEYS, RESULTS_DIR,
 } from './hub-env.mjs';
 import { USAGE, fail, parseArgs, readPrompt } from './hub-args.mjs';
+import { chooseAutoAgent } from './route-pick.mjs';
 import {
   checkMcpCapabilities, listAgents, loadMcpServers, loadRegistry, resolveAgent,
 } from './registry.mjs';
@@ -64,6 +65,15 @@ async function main() {
   if (opts.list) {
     listAgents(registry, opts);
     return 0;
+  }
+  if (opts.agent === 'auto') {
+    if (opts.probe) fail('--agent auto needs a prompt; --probe requires a concrete agent');
+    // Read stdin/text once here: the choice needs the real prompt, and the
+    // later read would otherwise consume an already-drained stdin.
+    opts.promptText = readPrompt(opts);
+    const decision = chooseAutoAgent(opts.promptText);
+    opts.agent = decision.agent;
+    process.stderr.write(`[acp] auto -> ${decision.agent}: ${decision.reason}\n`);
   }
   if (!opts.agent) fail('--agent is required (or use --list)');
 
@@ -119,7 +129,7 @@ async function main() {
 
   let prompt = '';
   if (!opts.probe) {
-    prompt = readPrompt(opts);
+    prompt = opts.promptText ?? readPrompt(opts);
     const maxPromptChars = opts.maxPromptChars ?? MAX_PROMPT_CHARS;
     if (maxPromptChars <= 0 || !Number.isFinite(maxPromptChars)) {
       fail(`--max-prompt-chars must be a positive number, got "${opts.maxPromptChars}"`);

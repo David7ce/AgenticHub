@@ -80,5 +80,7 @@ node agent-hub/tools/check.mjs          # unit tests + bench dry-run
 node --test agent-hub/hubctl/tests/*.mjs agent-hub/acp/tests/*.mjs agent-hub/mcp/tests/*.mjs agent-hub/chatmgr/test/*.mjs
 ```
 
-`.githooks/pre-commit` runs the fast half; enable it once per clone with
-`git config core.hooksPath .githooks`.
+`.githooks/pre-commit` scans staged files for credential shapes
+(`tools/secret-scan.mjs`), then runs the fast half; enable it once per clone with
+`git config core.hooksPath .githooks`. `.github/workflows/checks.yml` repeats the
+full run on push (nothing pushed yet).

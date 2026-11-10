@@ -2,9 +2,10 @@
 
 import { readFileSync } from 'node:fs';
 
-export const USAGE = `usage: node hub-acp.mjs --agent NAME (--prompt TEXT | --prompt -) [options]
+export const USAGE = `usage: node hub-acp.mjs --agent NAME|auto (--prompt TEXT | --prompt -) [options]
 
-  --agent NAME          registry entry to drive (see --list)
+  --agent NAME          registry entry to drive (see --list); "auto" applies the
+                        router's rules (scope/consequence signals) to the prompt
   --prompt TEXT|-       prompt text, or - to read it from stdin
   --cwd DIR             session working directory (default: current dir)
   --load SESSION_ID     resume via session/load (replays history first;

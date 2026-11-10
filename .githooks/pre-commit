@@ -11,4 +11,8 @@
 # instead. Clear them before running anything.
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 
+# Credentials first: a failing test can be fixed in the next commit, a leaked
+# key has already left the machine once it is in history.
+node agent-hub/tools/secret-scan.mjs || exit 1
+
 exec node agent-hub/tools/check.mjs --no-bench

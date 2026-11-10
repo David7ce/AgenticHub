@@ -31,6 +31,7 @@ import { runPath } from "./commands/path.mjs";
 import { runBrief } from "./commands/brief.mjs";
 import { runSearch } from "./commands/search.mjs";
 import { runWrap } from "./commands/wrap.mjs";
+import { runVerify } from "./commands/verify.mjs";
 
 export { buildHubArgs, inferSessionAgent, summarizeConsent } from "./common.mjs";
 export {
@@ -65,6 +66,7 @@ async function main() {
   if (command === "usage") return runUsage(argv.slice(1));
   if (command === "worktree") return runWorktree(argv.slice(1));
   if (command === "clean") return runClean(argv.slice(1));
+  if (command === "verify") return runVerify(argv.slice(1));
   if (command === "-h" || command === "--help" || command === "help") {
     process.stdout.write(
       [
@@ -86,7 +88,8 @@ async function main() {
         "  path <path> [--json]             both spellings of one path (Windows/WSL)",
         "  bench [args...]                  run the benchmark (passes --dry-run, --reps, --model through)",
         "  usage [--days N] [--json]        estimated allowance spent, per Go model, plus the Claude window",
-        "  clean [--yes] [--days N]         tidy clean worktrees and old chatmgr backups (dry run without --yes)",
+        "  clean [--yes] [--days N]         tidy clean worktrees, old chatmgr backups and orphaned inflight (dry run without --yes)",
+        "  verify [dir] [--cmd CMD] [--timeout MS] [--json]   run the repo's tests and return their exit code",
         "  worktree [--prune] [--force]     list agent worktrees; --prune removes the clean ones",
         "",
       ].join("\n"),

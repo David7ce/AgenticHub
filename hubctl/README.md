@@ -53,7 +53,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `live [--once] [--json] [--interval MS] [--no-external]` | Who is working now; `q` quits, `r` refreshes, `p` pauses |
 | `report [--days N] [--json]` | Completed turns by agent and model: OK, failures, timeouts, p50/p95, cost, and why the rest failed (quota, auth, network, config, spawn, agent-error, timeout, budget) |
 | `spend [--days N] [--date YYYY-MM-DD] [--by ...] [--json\|--csv]` | Tokens by project and day: OpenCode exact, Claude cost-only |
-| `doctor [--json] [--fast]` | Config coherence: registry vs consent, enforced `limits`, expiry, prose-vs-enforced budget, broken relative links in current docs, stale inflight/locks, `opencode mcp list` (`--fast` skips it). Exit 1 on any `fail` |
+| `doctor [--json] [--fast]` | Config coherence: registry vs consent, enforced `limits`, expiry, prose-vs-enforced budget, broken relative links in current docs, stale inflight/locks, `core.hooksPath`, `opencode mcp list` (`--fast` skips the network probes it cannot answer honestly). Exit 1 on any `fail` |
 | `run <agent> [--worktree]` | One agent through `hub-acp`; consent checked first |
 | `tasks add\|list\|show\|run\|done\|block\|cancel\|retry` | The thin work queue (see below) |
 | `handoff <agent> [--cwd DIR] [--note TEXT] [--dry-run]` | Relay a tree to another agent when a pool runs out |
@@ -62,6 +62,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `bench [args...]` | Run the benchmark |
 | `usage [--days N]` | Estimated allowance spent |
 | `clean [--yes] [--days N]` | Tidy what agents leave behind: clean worktrees, chatmgr backups older than N days (default 14), and inflight records whose process is gone. Dry run without `--yes`; never touches a worktree with changes |
+| `verify [dir] [--cmd CMD] [--timeout MS]` | Run the repo's own tests (`package.json` script, pytest, .NET, Cargo or Go) and return their exit code; `--cmd` overrides detection. Add `--json` for a report |
 | `worktree [--prune]` | List or prune agent checkouts |
 
 Examples:

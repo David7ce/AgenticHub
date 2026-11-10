@@ -34,7 +34,7 @@ trees.
 |---|---|
 | `acp/` | ACP v1 client, registry (`agents.json`, from `agents.example.json`), consent gate, router with failover, fan-out, handoff prompt, spend estimate, path policy |
 | `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `brief`, `search`, `job_*`) |
-| `hubctl/` | Control room: status, live, report, spend, usage, doctor, run, handoff, tasks, clean, worktree (one module per command in `commands/`) |
+| `hubctl/` | Control room: status, live, report, spend, usage, doctor, run, handoff, tasks, clean, verify, worktree (one module per command in `commands/`) |
 | `chatmgr/` | OpenCode TUI plugin: every agent's conversations in one list, filtered batch delete |
 | `models.json` | Local catalogue: providers, tiers, estimated cost, retention, capabilities |
 | `bench/` | The internal benchmark and its versioned baseline; `collab.mjs` is its offline cooperation check |
@@ -46,6 +46,12 @@ trees.
 ```bash
 # One agent, through the consent gate (writes one line to logs/runs.jsonl)
 node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
+
+# Let the router pick (same prompt rules and health overlay as router.mjs)
+node agent-hub/acp/hub-acp.mjs --agent auto --prompt "..." --json
+
+# Judge a diff produced by an agent that cannot run tests (Codex: spawn EPERM)
+node agent-hub/hubctl/hubctl.mjs verify <worktree>
 
 # Parallel, with per-agent worktrees so edits cannot collide
 node agent-hub/acp/fanout-acp.mjs --agents opencode,claude --worktree --prompt "..."
@@ -65,8 +71,8 @@ node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence <diff-or-test>
 node agent-hub/tools/check.mjs
 ```
 
-There is no CI workflow (the GitHub remote exists, but nothing runs on push).
-`.githooks/pre-commit` runs the checks on every commit; enable it once per clone
+`.github/workflows/checks.yml` repeats the checks on push, but nothing has been
+pushed yet; locally `.githooks/pre-commit` is the guard. Enable it once per clone
 with `git config core.hooksPath .githooks`.
 
 `hubctl status` is the health snapshot; `hubctl live` is "who is working now"
@@ -146,7 +152,8 @@ node agent-hub/bench/collab.mjs        # offline: fan-out, handoff, conflict, st
 ## Rules
 
 1. **No secrets in a transcript.** `.env*` reads are denied in both harnesses. Read a
-   credential inside a process and pass it on; never print it.
+   credential inside a process and pass it on; never print it. The pre-commit hook
+   scans staged files for key shapes (`tools/secret-scan.mjs`) before the tests.
 2. **Escalate on scope or consequence**, not on perceived difficulty (the bench showed
    difficulty predicts nothing): a change spanning untested modules, or anything touching
    credentials, permissions, money or a public API.
