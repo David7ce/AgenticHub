@@ -144,8 +144,6 @@ export function buildLiveModel({
     trees,
     runs: status.runs ?? [],
     services: {
-      bridge: status.bridge?.up ?? null,
-      memory: status.memory?.up ?? null,
       starnet: status.starnet?.up ?? null,
     },
   };

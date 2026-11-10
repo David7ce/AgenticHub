@@ -19,7 +19,6 @@ const ROOT = resolve(HUB, '..');
 
 const TEST_DIRS = [
   'agent-hub/acp/tests',
-  'agent-hub/bridge/tests',
   'agent-hub/tools/tests',
   'agent-hub/hubctl/tests',
   'agent-hub/mcp/tests',

@@ -10,13 +10,11 @@ import { basename, join } from "node:path";
 import { defaultSettingsPath, evaluatePosture } from "../../tools/egress-posture.mjs";
 import { readTaskCounts, renderQueueLine } from "../tasks.mjs";
 import {
-  BRIDGE_URL,
   CONSENT_PATH,
   HUB,
   INFLIGHT_DIR,
   LOG_PATH,
   MAX_RUNS,
-  MEMORY_URL,
   ROOT,
   STARNET_URL,
   TASKS_DB,
@@ -91,8 +89,6 @@ export function pickLatestBench(candidates, baseline) {
 
 export async function gatherStatus() {
   const consent = summarizeConsent(readJson(CONSENT_PATH));
-  const bridge = await probe(BRIDGE_URL, "/health");
-  const memory = await probe(MEMORY_URL, "/api/health");
   const starnet = await probe(STARNET_URL, "/api/health");
   const git = spawnSync("git", ["-C", ROOT, "worktree", "list", "--porcelain"], {
     encoding: "utf8",
@@ -100,11 +96,9 @@ export async function gatherStatus() {
   });
   const worktrees = countWorktrees(git.status === 0 ? git.stdout : "");
 
-  const bridgeConfig = readJson(join(HUB, "bridge", "config.json")) ??
-    readJson(join(HUB, "bridge", "config.example.json"));
   const settings = readJson(defaultSettingsPath()) ?? {};
   const policy = readJson(join(HUB, "tools", "egress-policy.json"));
-  const egress = evaluatePosture({ settings, bridge: bridgeConfig, policy });
+  const egress = evaluatePosture({ settings, policy });
 
   const runs = parseRuns(existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "");
   const isWsl = process.platform === "linux" && existsSync("/mnt/c/Windows");
@@ -129,22 +123,10 @@ export async function gatherStatus() {
   return {
     now: new Date().toISOString(),
     hint:
-      isWsl && !bridge.up && !memory.up
+      isWsl && !starnet.up
         ? "run hubctl on Windows: WSL cannot reach Windows loopback services"
         : null,
     agents: consent,
-    bridge: {
-      up: bridge.up,
-      port: new URL(BRIDGE_URL).port,
-      models: bridge.body?.models ?? null,
-      modelIds: bridgeConfig?.agents?.models?.map((model) => model.id) ?? [],
-    },
-    memory: {
-      up: memory.up,
-      port: new URL(MEMORY_URL).port,
-      provider: memory.body?.ai?.provider ?? null,
-      quota7d: memory.body?.rateLimits?.seven_day?.utilization ?? null,
-    },
     starnet: {
       up: starnet.up,
       port: new URL(STARNET_URL).port,
@@ -241,23 +223,6 @@ export function renderStatus(status, { color = true } = {}) {
         .join("  ")
     : paintFn.dim("none");
 
-  const bridgeIds = status.bridge.modelIds?.length
-    ? status.bridge.modelIds.join(", ")
-    : `${status.bridge.models ?? "?"} model(s)`;
-  // Dormant by default: the bridge only matters when VS Code Chat is the
-  // surface, so a stopped one is not a problem worth a red line every day.
-  const bridgeLine = status.bridge.up
-    ? paintFn.green(`${status.bridge.port} up`) + paintFn.dim(` · ${bridgeIds}`)
-    : null;
-
-  const quota = status.memory.quota7d;
-  const quotaText = quota == null ? "" : ` · 7d ${Math.round(quota * 100)}%`;
-  const memory = status.memory.up
-    ? paintFn.green(`${status.memory.port} up`) +
-      paintFn.dim(` · ${status.memory.provider ?? "?"}`) +
-      (quota != null && quota >= 0.9 ? paintFn.yellow(quotaText) : paintFn.dim(quotaText))
-    : paintFn.yellow(`${status.memory.port} stopped`);
-
   const starnetLine = status.starnet.up
     ? paintFn.green(`${status.starnet.port} up`)
     : paintFn.dim(`${status.starnet.port} down`);
@@ -336,8 +301,6 @@ export function renderStatus(status, { color = true } = {}) {
       paintFn.dim("                    local · loopback"),
     "",
     `${pad("agents")}${agents}`,
-    ...(bridgeLine ? [`${pad("bridge")}${bridgeLine}`] : []),
-    `${pad("memory")}${memory}`,
     `${pad("starnet")}${starnetLine}`,
     `${pad("worktrees")}${worktrees}`,
     ...(queueText ? [`${pad("queue")}${paintFn.dim(queueText)}`] : []),

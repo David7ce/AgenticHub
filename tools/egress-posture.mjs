@@ -12,7 +12,7 @@
  * pass. Use a container for genuinely untrusted work.
  *
  * Usage:
- *   node agent-hub/tools/egress-posture.mjs [--settings FILE] [--bridge FILE] [--json]
+ *   node agent-hub/tools/egress-posture.mjs [--settings FILE] [--json]
  *
  * Exit: 0 when no warnings, 1 when at least one warning.
  */
@@ -56,7 +56,7 @@ export function defaultSettingsPath() {
  * Pure evaluation so the rules can be tested without touching a real editor.
  * Absent settings use VS Code's documented defaults: sandbox on, network on.
  */
-export function evaluatePosture({ settings = {}, bridge = null, hubConsent = null, policy = null }) {
+export function evaluatePosture({ settings = {}, hubConsent = null, policy = null }) {
   const checks = [];
 
   const sandboxOn = settings["chat.agent.sandbox.enabled"] !== false;
@@ -84,19 +84,6 @@ export function evaluatePosture({ settings = {}, bridge = null, hubConsent = nul
       : null,
   });
 
-  const permission = bridge?.agents?.permission ?? null;
-  if (permission) {
-    checks.push({
-      id: "bridge-agent-permission",
-      level: permission === "deny" ? "pass" : "warn",
-      detail:
-        permission === "deny"
-          ? "bridge agents run with permission=deny"
-          : `bridge agents run with permission=${permission}`,
-      fix: permission === "deny" ? null : 'Set "agents.permission": "deny"',
-    });
-  }
-
   if (hubConsent) {
     const now = Date.now();
     const entries = Object.entries(hubConsent).filter(([key]) => !key.startsWith("_"));
@@ -118,7 +105,7 @@ export function evaluatePosture({ settings = {}, bridge = null, hubConsent = nul
     id: "acp-agents",
     level: "info",
     detail:
-      "hub/bridge ACP agents are not covered by VS Code sandboxing; " +
+      "hub ACP agents are not covered by VS Code sandboxing; " +
       "run untrusted work in a container with default-deny egress",
     fix: null,
   });
@@ -138,7 +125,6 @@ function render(report, paths) {
   }
   lines.push("");
   lines.push(`settings: ${paths.settings ?? "(not found)"}`);
-  lines.push(`bridge:   ${paths.bridge ?? "(not found)"}`);
   lines.push(`policy:   ${paths.policy ?? "(not found)"}`);
   lines.push("");
   lines.push(report.ok ? "OK: no warnings" : "ATTENTION: at least one warning");
@@ -148,21 +134,14 @@ function render(report, paths) {
 function main() {
   const argv = process.argv.slice(2);
   const settingsPath = argValue(argv, "--settings") ?? defaultSettingsPath();
-  const bridgePath =
-    argValue(argv, "--bridge") ??
-    [join(HUB, "bridge", "config.json"), join(HUB, "bridge", "config.example.json")].find((path) =>
-      existsSync(path),
-    ) ??
-    null;
 
   const settings = readJson(settingsPath) ?? {};
-  const bridge = readJson(bridgePath);
   const hubConsent = readJson(join(HUB, "consent.json"));
   const policyPath = argValue(argv, "--policy") ?? join(HERE, "egress-policy.json");
   const policy = readJson(policyPath);
 
-  const report = evaluatePosture({ settings, bridge, hubConsent, policy });
-  const paths = { settings: settingsPath, bridge: bridgePath, policy: policyPath };
+  const report = evaluatePosture({ settings, hubConsent, policy });
+  const paths = { settings: settingsPath, policy: policyPath };
 
   if (argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify({ ...report, paths }, null, 2)}\n`);

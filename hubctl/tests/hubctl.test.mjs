@@ -60,8 +60,6 @@ const status = {
   now: "2026-10-30T01:24:00.000Z",
   hint: null,
   agents: [{ name: "claude", status: "ok", daysLeft: 24 }],
-  bridge: { up: true, port: "3010", models: 2, modelIds: ["claude", "opencode"] },
-  memory: { up: true, port: "37777", provider: "claude", quota7d: 0.99 },
   starnet: { up: true, port: "8787" },
   worktrees: { total: 2, agentCheckouts: [{ path: "/repo/.git/agent-worktrees/x" }] },
   bench: { baseline: 15, attempts: 15, latest: { passed: 15, attempts: 15, stamp: "2026-10-30" } },
@@ -72,8 +70,6 @@ const status = {
 test("renderStatus shows every plane", () => {
   const text = renderStatus(status, { color: false });
   assert.match(text, /claude ok/);
-  assert.match(text, /3010 up · claude, opencode/);
-  assert.match(text, /37777 up · claude · 7d 99%/);
   assert.match(text, /8787 up/);
   assert.match(text, /2 total · 1 agent/);
   assert.match(text, /15\/15 baseline · last ok/);
@@ -85,14 +81,10 @@ test("renderStatus prints the WSL hint when loopback probes fail", () => {
     {
       ...status,
       hint: "run hubctl on Windows: WSL cannot reach Windows loopback services",
-      bridge: { up: false, port: "3010", models: null, modelIds: [] },
-      memory: { up: false, port: "37777", provider: null, quota7d: null },
     },
     { color: false },
   );
   assert.match(text, /WSL cannot reach Windows loopback services/);
-  assert.doesNotMatch(text, /3010/, "a dormant bridge is not a red line every day");
-  assert.match(text, /37777 stopped/);
 });
 
 test("buildHubArgs maps flags to hub-acp", () => {
@@ -162,8 +154,6 @@ test("a bench run on another model is labelled with that model", () => {
     now: "2026-11-04T00:00:00Z",
     hint: null,
     agents: [{ name: "opencode", status: "ok", daysLeft: 28 }],
-    bridge: { up: false, port: "3010", models: null, modelIds: [] },
-    memory: { up: false, port: "37777", provider: null, quota7d: null },
     starnet: { up: false, port: "8787" },
     worktrees: { total: 1, agentCheckouts: [] },
     egress: { ok: true, warnings: [] },
@@ -194,8 +184,6 @@ test("a clean run over the same tasks is 'last ok' even with a different attempt
     now: "2026-11-04T00:00:00Z",
     hint: null,
     agents: [{ name: "opencode", status: "ok", daysLeft: 28 }],
-    bridge: { up: false, port: "3010", models: null, modelIds: [] },
-    memory: { up: false, port: "37777", provider: null, quota7d: null },
     starnet: { up: false, port: "8787" },
     worktrees: { total: 1, agentCheckouts: [] },
     egress: { ok: true, warnings: [] },

@@ -2,7 +2,7 @@
 
 Entry point for any AI agent working in this directory. It says what the hub
 is, how to call it, and which rules are not negotiable. The live state of a
-particular workspace lives in `../private/HANDOFF.md` when that local file
+particular workspace lives in `../working/HANDOFF.md` when that local file
 exists (personal, git-ignored); this file is the map.
 
 ## What this is
@@ -39,14 +39,13 @@ focus and invalidate clicks. Code/build work may still overlap on separate trees
 |-------------------------|-------------------------------------------------------------------------------------|
 | `acp/`                  | ACP v1 client, registry (`agents.json`, copied from `agents.example.json`), consent gate, router, fan-out, path policy |
 | `mcp/`                  | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`)                 |
-| `hubctl/`               | Read-only status/live/report/spend/path/run/mem/attach                               |
+| `hubctl/`               | Control room: status/live/report/spend/usage/doctor/run/handoff/tasks (`commands/`)  |
 | `chatmgr/`              | OpenCode TUI plugin: one list for OpenCode/Codex/Claude/Hermes conversations, filtered batch delete with backup |
 | `models.json`           | Catálogo local: proveedores, tiers, coste, retención y capacidades                   |
 | `bench/`                | The internal benchmark and its versioned baseline                                   |
-| `bridge/`               | VS Code BYOK endpoint — dormant: kept for VS Code Chat's browser/DOM context |
 | `tools/`                | Egress posture, `check.mjs`                                                         |
 | `docs/`                 | Start at `docs/README.md`; it says which document is current                        |
-| `hub.ps1`, `fanout.ps1` | CLI transport fallback; ACP is the default path                                     |
+| `chatmgr/`              | OpenCode TUI plugin: every agent's conversations in one list, batch delete           |
 
 ## How to call an agent
 
@@ -79,7 +78,7 @@ now" view (inflight heartbeat, tree locks, file activity and external agent
 processes; `--once --json` for scripts, `p` pauses). `hubctl path <p>` prints
 both spellings of one path; `hubctl usage` estimates what each paid pool has
 spent (Go reports cost 0, so it prices the tokens against the published table;
-Claude's 7-day window comes from claude-mem); `hubctl worktree` lists the agent
+Claude's cost comes from the audit log); `hubctl worktree` lists the agent
 checkouts kept after a fan-out and `--prune` removes the clean ones (`--force`
 discards work).
 
@@ -137,8 +136,8 @@ Copilot's free tier is a few tokens that run out immediately; its value is the
 VS Code integration, not capacity. `iceman-contributor-free` is disabled in the
 OpenCode config (trains on data, limited time, and redundant at 5.6% of the Go
 allowance).
-`muse-spark-*` is allowed only where the session cannot read `.env` or the
-claude-mem store.
+`muse-spark-*` is allowed only where the session cannot read `.env` or another
+tool's memory store.
 
 ## Paths
 
@@ -175,6 +174,5 @@ hubctl bench --tasks paths-to-wsl --keep      # same thing, from the control roo
 ## Current state
 
 Done and verified: ACP path, fan-out with worktrees, MCP server, consent/audit,
-path policy, bench with four tiers. Open: whether `bridge/` and the CLI
-fallback stay (see `ROADMAP.md`), and the Claude arm of the bench after the
-quota reset.
+path policy, bench with four tiers, quota failover (`agentFallbacks`) and
+`hubctl handoff`. Open: the Claude arm of the bench after the quota reset.

@@ -99,7 +99,7 @@ function startServer(paths) {
       const timer = setTimeout(() => {
         pending.delete(id);
         reject(new Error(`${method} timed out; stderr:\n${stderr}`));
-      }, 45_000);
+      }, 90_000); // generous: a loaded machine (agents running) once hit 45 s
       pending.set(id, {
         resolve: (message) => {
           clearTimeout(timer);

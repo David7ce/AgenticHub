@@ -1,13 +1,36 @@
 /**
- * `hubctl usage` — estimated allowance spent per Go model, plus the Claude
- * seven-day window.
+ * `hubctl usage` — estimated allowance spent per Go model, plus what Claude
+ * costs through the hub today and over seven days.
  *
  * No provider exposes "allowance left" locally, so this is assembled from what
  * each tool does expose: OpenCode's own stats (tokens per model), the published
- * Go prices, and claude-mem's 7-day rate-limit window for the Claude plan.
+ * Go prices, and the hub's own audit log for what Claude costs.
  */
 import { spawnSync } from "node:child_process";
-import { MEMORY_URL, paint, probe } from "../common.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { spentToday } from "../../acp/consent.mjs";
+import { CONSENT_PATH, LOG_PATH, paint, readJson } from "../common.mjs";
+
+// Reported cost per agent from logs/runs.jsonl: today and the last 7 days.
+function hubSpend(agent, now = Date.now()) {
+  const today = spentToday(agent, LOG_PATH);
+  let week = 0;
+  if (existsSync(LOG_PATH)) {
+    for (const line of readFileSync(LOG_PATH, "utf8").split("\n")) {
+      if (!line.includes(`"agent":"${agent}"`)) continue;
+      try {
+        const e = JSON.parse(line);
+        const when = Date.parse(e.time ?? "");
+        const amount = typeof e.cost === "number" ? e.cost : e.cost?.amount;
+        if (e.agent === agent && Number.isFinite(when) && now - when <= 7 * 86_400_000 && Number.isFinite(amount)) {
+          week += amount;
+        }
+      } catch { /* skip a bad line */ }
+    }
+  }
+  const dailyCap = readJson(CONSENT_PATH)?.[agent]?.limits?.maxDailyUsd ?? null;
+  return { today: Number(today.toFixed(2)), week: Number(week.toFixed(2)), dailyCap };
+}
 
 // OpenCode Go is flat-rate: its own stats report cost 0 for `opencode-go/*`
 // models, so the only local way to see how much of the monthly allowance is
@@ -67,8 +90,7 @@ export async function runUsage(argv) {
   const asJson = argv.includes("--json");
 
   const stats = opencodeStats(days);
-  const memory = await probe(MEMORY_URL, "/api/health");
-  const claudePct = memory.body?.rateLimits?.seven_day?.utilization ?? null;
+  const claude = hubSpend("claude");
 
   const models = [];
   for (const entry of stats?.models ?? []) {
@@ -88,7 +110,7 @@ export async function runUsage(argv) {
   const payload = {
     days,
     opencode: stats ? { sessions: stats.sessions, models } : null,
-    claude: { sevenDayUtilization: claudePct, source: memory.up ? "claude-mem" : null },
+    claude,
   };
 
   if (asJson) {
@@ -123,9 +145,7 @@ export async function runUsage(argv) {
   }
   lines.push(
     "",
-    claudePct == null
-      ? "claude     claude-mem down, no rate-limit window available"
-      : `claude     ${Math.round(claudePct * 100)}% of the 7-day window (claude-mem)`,
+    `claude     $${claude.today.toFixed(2)} today${claude.dailyCap == null ? "" : ` of $${claude.dailyCap}`} · $${claude.week.toFixed(2)} in 7 days (hub runs only)`,
     "",
     paint("2", "Go reports cost 0 for opencode-go models; the estimate prices the tokens at the published table."),
   );

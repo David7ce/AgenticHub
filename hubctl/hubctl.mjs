@@ -27,7 +27,6 @@ import { runWorktree } from "./commands/worktree.mjs";
 import { runUsage } from "./commands/usage.mjs";
 import { runBench } from "./commands/bench.mjs";
 import { runPath } from "./commands/path.mjs";
-import { mem } from "./commands/mem.mjs";
 
 export { buildHubArgs, inferSessionAgent, summarizeConsent } from "./common.mjs";
 export {
@@ -53,7 +52,6 @@ async function main() {
   if (command === "run") return runAgent(argv);
   if (command === "handoff") return runHandoff(argv);
   if (command === "tasks") return runTasks(argv);
-  if (command === "mem") return mem(argv);
   if (command === "attach") return attach(argv);
   if (command === "path") return runPath(argv.slice(1));
   if (command === "bench") return runBench(argv.slice(1));
@@ -73,7 +71,6 @@ async function main() {
         "  run <agent> [--worktree] [--model ID]   run one agent through hub-acp",
         "  handoff <agent> [--cwd DIR] [--note TEXT] [--dry-run]   relay this tree to another agent (quota ran out)",
         "  tasks add|list|show|run|done|block|cancel|retry   the thin work queue (hubctl tasks --help)",
-        "  mem <query>                      search claude-mem",
         "  attach <session> [--agent NAME]  resume a session",
         "  path <path> [--json]             both spellings of one path (Windows/WSL)",
         "  bench [args...]                  run the benchmark (passes --dry-run, --reps, --model through)",

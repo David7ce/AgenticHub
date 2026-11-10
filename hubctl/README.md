@@ -11,7 +11,6 @@ one small SQLite file (`logs/hub.db`) that holds what is queued and who owns it.
 AGENTHUB 2026-11-08 19:10                    local · loopback
 
 agents    claude ok (61d)  opencode ok (61d)
-memory    37777 up · claude
 worktrees 1 total · 0 agent
 queue     2 queued · 1 review
 bench     15/15 baseline · not run
@@ -27,11 +26,11 @@ re-exports other files and tests import. Shared plumbing lives in `common.mjs`
 (paths, colour, `readJson`, consent checks, `buildHubArgs`, `parseFlags`).
 There is one module per subcommand under `commands/`: `status`, `live`,
 `report`, `spend`, `doctor`, `run`, `handoff`, `tasks`, `attach`, `worktree`,
-`usage`, `bench`, `path`, `mem`.
+`usage`, `bench`, `path`.
 
 ## Run it on Windows
 
-The bridge and the claude-mem worker bind `127.0.0.1` **on Windows**. A WSL
+The loopback services bind `127.0.0.1` **on Windows**. A WSL
 process cannot reach them, so run `hubctl` from a Windows terminal:
 
 ```powershell
@@ -54,7 +53,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `doctor [--json] [--fast]` | Config coherence: registry vs consent, enforced `limits`, expiry, prose-vs-enforced budget, broken relative links in current docs, stale inflight/locks, `opencode mcp list` (`--fast` skips it). Exit 1 on any `fail` |
 | `run <agent> [--worktree]` | One agent through `hub-acp`; consent checked first |
 | `tasks add\|list\|show\|run\|done\|block\|cancel\|retry` | The thin work queue (see below) |
-| `mem <query>` | `claude-mem search` |
+| `handoff <agent> [--cwd DIR] [--note TEXT] [--dry-run]` | Relay a tree to another agent when a pool runs out |
 | `attach <session>` | Resume; infers the agent from `runs.jsonl` |
 | `path <path>` | Both Windows and WSL spellings |
 | `bench [args...]` | Run the benchmark |
@@ -158,7 +157,7 @@ trees · 1 locked
 external · 0
   none from this side of the WSL/Windows boundary
 recent · 5
-services  bridge down  ·  memory up  ·  starnet down
+services  starnet down
 ```
 
 - **runs** — `results/inflight/<pid>.json`: agent, tree, model, tool count,
@@ -180,10 +179,6 @@ locks.
 
 - **agents** — `consent.json`: `ok`, `disabled`, `unacked` or `expired`, with
   days until expiry.
-- **bridge** — `GET /health` on `:3010`, plus the model ids from the bridge
-  config.
-- **memory** — claude-mem worker health on `:37777`, its provider and the
-  seven-day quota utilization.
 - **worktrees** — `git worktree list`; “agent” counts the checkouts under
   `.git/agent-worktrees/`.
 - **egress** — `tools/egress-posture.mjs` rules; warnings only.
@@ -194,8 +189,6 @@ locks.
 
 | Variable | Default |
 |---|---|
-| `AGENT_HUB_BRIDGE_URL` | `http://127.0.0.1:3010` |
-| `CLAUDE_MEM_URL` | `http://127.0.0.1:37777` |
 | `AGENT_HUB_STALL_MS` | `900000` (15 min) |
 | `AGENT_HUB_LOG` | `logs/runs.jsonl` |
 | `AGENT_HUB_INFLIGHT` | `agent-hub/results/inflight` |

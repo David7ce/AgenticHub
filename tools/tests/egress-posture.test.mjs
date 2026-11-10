@@ -37,18 +37,6 @@ test("denying sandbox network access passes", () => {
   assert.equal(network.fix, null);
 });
 
-test("bridge permission other than deny is a warning", () => {
-  const report = evaluatePosture({
-    settings: { "chat.agent.sandbox.network.allowNetwork": false },
-    bridge: { agents: { permission: "allow-all" } },
-    hubConsent: currentConsent,
-  });
-  assert.equal(
-    report.checks.find((check) => check.id === "bridge-agent-permission").level,
-    "warn",
-  );
-});
-
 test("expired consent is a warning", () => {
   const report = evaluatePosture({
     settings: { "chat.agent.sandbox.network.allowNetwork": false },

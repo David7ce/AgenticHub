@@ -45,7 +45,7 @@ export function buildHandoffPrompt({ cwd, target, from = 'claude', note = '', lo
     `You are taking over work from ${from}, which is out of quota. You are ${target}.`,
     `Tree: ${cwd} (branch ${branch}). Treat it as live: you are the only writer.`,
     '',
-    'First read, in this order, whichever exist: AGENTS.md, private/ROADMAP.md, docs/agent/HANDOFF.md.',
+    'First read, in this order, whichever exist: AGENTS.md, working/ROADMAP.md, docs/agent/HANDOFF.md.',
     'Then continue; do not redo what the log below shows as done.',
     note ? `\nInstruction from the owner: ${clip(note, 700)}` : '',
     status ? `\nUncommitted changes:\n${clip(status, 900)}` : '\nWorking tree is clean.',

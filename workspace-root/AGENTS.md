@@ -22,7 +22,7 @@ belong to a separate toolbox repo outside this tree.
 
 ## Before you start any task
 
-1. If the user doesn't specify a task, read [`private/ROADMAP.md`](private/ROADMAP.md) for
+1. If the user doesn't specify a task, read [`working/ROADMAP.md`](working/ROADMAP.md) for
    open items to pick up.
 2. For `agent-hub/`, read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md) and
    [`agent-hub/README.md`](agent-hub/README.md); for `repos/`, read
@@ -34,23 +34,23 @@ belong to a separate toolbox repo outside this tree.
    documentation, put it in the AI-vault; if it is project-specific, keep it
    in the project.
 
-## The `private/` folder (personal, never published)
+## The `working/` folder (personal, never published)
 
 Everything that is this owner's and not the hub itself lives in
-[`private/`](private/), which git ignores wholesale. A fork clones an **empty**
-`private/` and a generic repo. It holds `ROADMAP.md`, the session batons
+[`working/`](working/), which git ignores wholesale. A fork clones an **empty**
+`working/` and a generic repo. It holds `ROADMAP.md`, the session batons
 (`HANDOFF.md`, `JOURNAL.md`), `git-backup.md` and `history/` (old handoffs and
 dispatch notes). Local **config** that code reads stays next to the code
 (`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `repos/local/`), also
 ignored, each with a tracked `*.example` or README a fork copies from.
 
-Keep anything personal, project-specific or machine-specific in `private/` or in
+Keep anything personal, project-specific or machine-specific in `working/` or in
 a `*.local.*` file — never in a tracked file, so the public tree stays generic.
 
-### Keeping `private/ROADMAP.md` current
+### Keeping `working/ROADMAP.md` current
 
 - Something the user mentions that isn't handled immediately: add it to
-  `private/ROADMAP.md` rather than letting it live only in conversation.
+  `working/ROADMAP.md` rather than letting it live only in conversation.
 - A task genuinely blocked on someone/something else (not just "the user
   hasn't done it yet") stays there with the blocker spelled out.
   A one-step thing only the user can do is still their next action, not a wait.
@@ -73,12 +73,12 @@ Pattern to copy: any repository that already keeps an `AGENTS.md` with its
 read/close protocol. If a repo you work in has no `AGENTS.md`, add one there rather
 than keeping the knowledge only in chat.
 
-This workspace's own baton is [`private/HANDOFF.md`](private/HANDOFF.md)
-and [`private/JOURNAL.md`](private/JOURNAL.md) — read them at the start
-of a session and update them before finishing. They live under `private/`
+This workspace's own baton is [`working/HANDOFF.md`](working/HANDOFF.md)
+and [`working/JOURNAL.md`](working/JOURNAL.md) — read them at the start
+of a session and update them before finishing. They live under `working/`
 (ignored by git): they carry personal project state, not hub code, so they stay
 on disk and out of the repository. The `docs/agent/` paths above are the
-convention each *project* repo follows; AgentHub keeps its own under `private/`.
+convention each *project* repo follows; AgentHub keeps its own under `working/`.
 
 **Concurrency policy:** one writing orchestrator per working tree. Read-only
 sessions may overlap. Give simultaneous writers separate Git worktrees;
@@ -90,7 +90,7 @@ commit without naming it.
 
 ## While working
 
-- **`agent-hub/` is infrastructure.** The dispatcher (`hub.ps1`/`fanout.ps1`),
+- **`agent-hub/` is infrastructure.** The dispatcher (`acp/`),
   consent gate, MCP server and orchestration docs live here as a sibling of
   `repos/`, `docs/` and `logs/`. Don't move it into a task folder.
 - **`repos/` has source and generated halves.** Edit `cli.mjs`, `src/` or
@@ -143,5 +143,5 @@ never paste it into a prompt.
 
 **Model choice follows what the session touches.** Public repos and anything
 without credentials may use any model, including ones that train on request
-data. A session that could read `.env`, tokens or the claude-mem store stays on
+data. A session that could read `.env`, tokens or another tool's memory store stays on
 zero-retention models.

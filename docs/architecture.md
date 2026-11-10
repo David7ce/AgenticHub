@@ -29,7 +29,7 @@ Windows
 ```
 
 El hub canónico corre en **Windows** porque ahí viven las credenciales de
-Claude/Codex y los servicios loopback (`bridge`, claude-mem). OpenCode
+Claude/Codex y los servicios loopback. OpenCode
 sigue en WSL y se lanza con `wsl.exe`; su MCP se arranca desde
 [`../../opencode.json`](../../opencode.json) con `cmd.exe /c node
 D:\...\server.mjs`, una forma que funciona desde WSL y desde Windows.

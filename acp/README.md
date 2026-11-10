@@ -3,7 +3,7 @@
 STATUS: active
 
 The hub's ACP path: instead of each worker getting its own bespoke CLI
-wrapper (what [`../hub.ps1`](../hub.ps1) does), the hub acts as an **ACP
+wrapper, the hub acts as an **ACP
 Client** and every managed agent runs as an **ACP Agent** subprocess over
 stdio. One independent session per agent; ACP itself has no concept of
 multi-agent coordination, so routing and fan-out are the hub's own work —
@@ -14,8 +14,7 @@ This implements the ACP half of the hub design: the hub is the Client,
 each managed agent is an Agent subprocess over stdio, and every session
 is 1:1. On top of that it adds the hub-side pieces ACP deliberately does
 not provide: parallel fan-out (with an optional synthesis turn) and a
-health/cost-aware router. It stays separate from `hub.ps1`'s CLI
-adapters, which remain a fallback (`-Transport cli`).
+health/cost-aware router.
 
 Spec: <https://agentclientprotocol.com> — **v1 is pinned**. v2 exists only
 as a draft; the client refuses to talk to an agent that answers with any
@@ -65,7 +64,7 @@ Options that matter:
 | `--json` | one machine-readable result object on stdout |
 | `--probe` | initialize + `session/new`, print capabilities/options, no prompt |
 
-Exit codes match `hub.ps1`: `0` answered, `1` denied/rejected/failed,
+Exit codes: `0` answered, `1` denied/rejected/failed,
 `2` timed out.
 
 ### Session resume
@@ -259,14 +258,12 @@ the tool's `HUB_MCP_OK`.
   `read`/`search`/`fetch`/`think`; `allow-all` picks `allow_once`
   (never `allow_always` on its own). OpenCode executes its own built-in
   tools without asking, so the policy only sees requests the agent
-  chooses to raise — it is not a sandbox. `hub.ps1` exposes the same
-  choice as `-Permission` (ACP mode), and `fanout.ps1` passes it through;
-  the default stays `deny`.
-- **Consent gate.** Same `../consent.json` check as
-  `hub.ps1` — enabled, overseer-acknowledged, unexpired — and it runs
+  chooses to raise — it is not a sandbox. The default stays `deny`.
+- **Consent gate.** The `../consent.json` check —
+  enabled, overseer-acknowledged, unexpired — and it runs
   before anything spawns, including `--probe`.
 - **Audit.** One JSON line per run in `../../logs/runs.jsonl` (shared
-  with `hub.ps1`). Records include status, session id, stop reason,
+  by every entry point). Records include status, session id, stop reason,
   duration, cost when reported, permission decisions, and a truncated
   prompt/output. `logs/*.jsonl` and `results/` are gitignored.
 - **Results.** Non-empty answers are saved to
@@ -316,9 +313,6 @@ until a task needs it.
 | Fan-out: OpenCode + Hermes + Claude (Windows) | 2/3 answered in parallel (`FANOUT_OK`, 7s / 42s); Claude timed out at 120s; merged file written, exit 0 |
 | Fan-out `--json` (OpenCode + Hermes) | both answers + statuses/costs parsed by the caller |
 | `fanout --synthesize` (OpenCode + Hermes, 2026-10-29) | synthesis section produced (`SYNTH_OK`), both source answers kept below it, exit 0 |
-| `hub.ps1` default ACP (OpenCode / Hermes, 2026-10-29) | answers returned; result header says `transport: acp`; the inner client is the only audit entry |
-| `hub.ps1 -Transport cli` (OpenCode, 2026-10-29) | fallback path still answers (`HUB_CLI_OK`) |
-| `fanout.ps1` (one worker, 2026-10-29) | exit 0 after fixing the PS 5.1 scalar-`.Count` bug |
 | Session resume (`--resume` / `--load`, OpenCode, 2026-10-29) | remembered `417` across a new process in both modes; `sessionMode` recorded |
 | Edit task (OpenCode, `-Permission allow-all`, scratch folder, 2026-10-29) | added `multiply` + its test, ran `node --test`; independent re-run 2/2 pass |
 | Edit task (Claude, `-Permission allow-all`, scratch folder, 2026-10-29) | two edits, 5 permission requests (2 edit / 3 execute), 9 tool calls, $0.3041; independent re-run 2/2 pass |
@@ -328,7 +322,7 @@ until a task needs it.
 
 `--probe` is the cheap regression check; a full turn costs a model call.
 OpenCode's free model can hit its provider's free-tier quota — pass
-`--model` (or `hub.ps1 -Model`) to use a paid model for a run.
+`--model` to use a paid model for a run.
 
 ## Tests
 

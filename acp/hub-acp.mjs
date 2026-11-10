@@ -6,13 +6,13 @@
 //   node hub-acp.mjs --list
 //   node hub-acp.mjs --agent opencode --probe
 //
-// This is the ACP transport path, alongside hub.ps1 (CLI adapters). It
+// This is the ACP transport path. It
 // speaks ACP v1 directly, passes MCP servers to the agent at session/new,
 // answers permission requests from a policy instead of a human, and writes
 // the same shape of audit record to ../logs/runs.jsonl. See acp-client.mjs
 // for the protocol layer and README.md for the design.
 //
-// Exit codes match hub.ps1: 0 answered, 1 denied/rejected/failed, 2 timed out.
+// Exit codes: 0 answered, 1 denied/rejected/failed, 2 timed out.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, appendFileSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -87,7 +87,7 @@ const USAGE = `usage: node hub-acp.mjs --agent NAME (--prompt TEXT | --prompt -)
   --max-prompt-chars N  reject prompts longer than N chars (default 4000;
                         fan-out synthesis raises this for its own merge call)
   --budget USD          cancel the turn when reported cost exceeds this
-                        (default 0.50, matching hub.ps1's Claude cap; 0 = off)
+                        (default 0.50; 0 = off)
   --config ID=VALUE     set a session config option (repeatable); e.g.
                         --config model=opencode-go/deepseek-v4.1-flash
   --model NAME          shorthand for --config model=NAME
@@ -658,7 +658,7 @@ async function main() {
       // Cost is reported per turn by agents that support usage_update.
       // There is no protocol-level budget primitive, so enforce it here:
       // cancel the turn as soon as the reported cumulative cost crosses
-      // the cap. Matches hub.ps1's --max-budget-usd guard for Claude.
+      // the cap. Mirrors Claude's own --max-budget-usd guard.
       const cost = update?.cost?.amount;
       if (
         update?.sessionUpdate === 'usage_update' &&

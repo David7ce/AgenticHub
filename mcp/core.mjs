@@ -224,7 +224,7 @@ export const TOOLS = [
     name: 'status',
     description:
       "The hub's own health, the same snapshot `hubctl status` prints: consent/expiry per " +
-      'agent, claude-mem and the bridge (if running), worktrees left on disk, the last bench ' +
+      'agent, worktrees left on disk, the last bench ' +
       'result against baseline, egress posture, and the most recent runs. Use it to check the ' +
       "hub's own state from inside the chat instead of shelling out.",
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },

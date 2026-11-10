@@ -23,8 +23,6 @@ código; si contradice `AGENTS.md`, manda `AGENTS.md`.
 |--------------------------------------------------------------------|---------------------------------------------------|
 | [`vscode-harnesses-and-remote.md`](vscode-harnesses-and-remote.md) | Tocar VS Code, BYOK, túneles o harnesses remotos. |
 | [`tetragon-runtime-security.md`](tetragon-runtime-security.md)     | Cambiar lo que registra la auditoría.             |
-| [`copilot-bridge-assessment.md`](copilot-bridge-assessment.md)     | Tocar `bridge/` (dormido).                        |
-| [`claude-mem-evaluation.md`](claude-mem-evaluation.md)             | Tocar memoria entre harnesses; es Windows-only.   |
 
 ## Histórico
 

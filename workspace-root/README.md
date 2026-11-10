@@ -19,7 +19,7 @@ lives in each project repository, and scripts live in the toolbox.
 | [`repos/`](repos/) | Repository inventory and the generated Repos/Heatmap pages |
 | [`docs/`](docs/) | Generic docs; `docs/agent/` documents the session-baton convention |
 | [`logs/`](logs/) | Agent audit log and final task evidence (local, ignored) |
-| `private/` | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and history. A fork clones it empty |
+| `working/` | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and history. A fork clones it empty |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate

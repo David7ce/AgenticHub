@@ -36,12 +36,12 @@ what was compared and rejected.
 | `fanout` | Same prompt to 2+ agents in parallel, with optional `synthesize` and per-agent `worktree`. | yes, per agent |
 | `route` | Which agent should take this prompt (cost/health aware, reads the audit log). `run: true` also executes it; `run` + `background` executes it as a job. | only with `run` |
 | `agents` | Registry, availability, consent state, default model. | no |
-| `status` | The hub's own health — same snapshot as `hubctl status` (consent/expiry, claude-mem, bridge, worktrees, bench vs. baseline, egress, recent runs), plus the background jobs living in this server process. | no |
+| `status` | The hub's own health — same snapshot as `hubctl status` (consent/expiry, worktrees, bench vs. baseline, egress, recent runs), plus the background jobs living in this server process. | no |
 
 Every call goes through `../consent.json` (copy `consent.example.json` and
 edit) and writes one
 line to [`../../logs/runs.jsonl`](../../logs/runs.jsonl), exactly like
-`hub.ps1` and `hub-acp.mjs`. There is no second, unaudited path.
+`hub-acp.mjs`. There is no second, unaudited path.
 
 ## Register it
 
