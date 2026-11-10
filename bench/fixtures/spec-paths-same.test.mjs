@@ -25,9 +25,10 @@ test('a trailing separator and drive-letter case do not change identity', () => 
 });
 
 test('separators, slash style and case do not change the file', () => {
-  assert.equal(samePath(String.raw`D:\Workspaces\AgentHub\`, '/mnt/d/Workspaces/AgentHub/'), true);
+  // A raw template cannot end in a backslash (it escapes the closing backtick).
+  assert.equal(samePath('D:\\Workspaces\\AgentHub\\', '/mnt/d/Workspaces/AgentHub/'), true);
   assert.equal(samePath(String.raw`d:/Workspaces/AgentHub`, String.raw`D:\Workspaces\AgentHub`), true);
-  assert.equal(samePath(String.raw`\\wsl.localhost\Ubuntu\home\user\`, '/home/user/'), true);
+  assert.equal(samePath('\\\\wsl.localhost\\Ubuntu\\home\\user\\', '/home/user/'), true);
 });
 
 test('a genuinely different path is not the same file', () => {

@@ -8,12 +8,12 @@
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { spentToday } from "../../acp/consent.mjs";
+import { spentTodayAll } from "../../acp/spend-estimate.mjs";
 import { CONSENT_PATH, LOG_PATH, paint, readJson } from "../common.mjs";
 
 // Reported cost per agent from logs/runs.jsonl: today and the last 7 days.
 function hubSpend(agent, now = Date.now()) {
-  const today = spentToday(agent, LOG_PATH);
+  const today = spentTodayAll(agent, LOG_PATH);
   let week = 0;
   if (existsSync(LOG_PATH)) {
     for (const line of readFileSync(LOG_PATH, "utf8").split("\n")) {

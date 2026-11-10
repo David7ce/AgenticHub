@@ -21,7 +21,7 @@ import {
   renderSpend,
   toCsv,
 } from "../spend.mjs";
-import { priceOf, readCodexSpend } from "../spend-codex.mjs";
+import { priceOf, readCodexSpend } from "../../acp/codex-spend.mjs";
 import { HUB, HUBCTL_ENTRY, LOG_PATH, readJson, useColor } from "../common.mjs";
 
 export async function runSpend(argv) {

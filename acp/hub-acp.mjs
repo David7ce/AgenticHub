@@ -24,7 +24,8 @@ import {
   makePermissionHandler,
   windowsPathToWsl,
 } from './acp-client.mjs';
-import { CONSENT_PATH, spentToday, testConsent as testConsentShared } from './consent.mjs';
+import { CONSENT_PATH, testConsent as testConsentShared } from './consent.mjs';
+import { spentTodayAll } from './spend-estimate.mjs';
 import { effortConfig } from './effort.mjs';
 import { rotateIfNeeded } from './log-rotation.mjs';
 import { acquireTreeLock, releaseTreeLock } from './tree-lock.mjs';
@@ -527,7 +528,7 @@ async function main() {
     permission: opts.permission,
     cwd: resolve(opts.cwd ?? process.cwd()),
     budget: opts.budget,
-    spentToday: spentToday(agent.name, LOG_PATH),
+    spentToday: spentTodayAll(agent.name, LOG_PATH),
   });
   if (!consent.ok) {
     writeLog({

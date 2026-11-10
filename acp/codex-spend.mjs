@@ -23,13 +23,13 @@ function walk(dir, out = []) {
 }
 
 export function parseRollout(text) {
-  let cwd = null, model = null, last = null, lastAt = null;
+  let cwd = null, model = null, last = null, lastAt = null, originator = null;
   for (const line of text.split('\n')) {
     if (!line.includes('"session_meta"') && !line.includes('"turn_context"') && !line.includes('"token_count"')) continue;
     let ev;
     try { ev = JSON.parse(line); } catch { continue; }
     const p = ev.payload ?? {};
-    if (ev.type === 'session_meta') cwd = p.cwd ?? cwd;
+    if (ev.type === 'session_meta') { cwd = p.cwd ?? cwd; originator = p.originator ?? originator; }
     else if (ev.type === 'turn_context') model = p.model ?? model;
     else if (p.type === 'token_count' && p.info?.total_token_usage) {
       last = p.info.total_token_usage;
@@ -37,7 +37,7 @@ export function parseRollout(text) {
     }
   }
   if (!last || !Number.isFinite(lastAt)) return null;
-  return { cwd, model: model ?? '—', usage: last, at: lastAt };
+  return { cwd, model: model ?? '—', usage: last, at: lastAt, originator };
 }
 
 /** USD per million tokens from a models.json entry; null when no price is published/filled in. */
@@ -49,12 +49,13 @@ export function priceOf(entry) {
   return { input, output, cacheRead: Number.isFinite(Number(p.cacheRead)) ? Number(p.cacheRead) : input };
 }
 
-export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), range, dayKey, projectLabel, project = null, prices = {} } = {}) {
+export function readCodexSpend({ root = join(homedir(), '.codex', 'sessions'), range, dayKey, projectLabel, project = null, prices = {}, originator = null } = {}) {
   const groups = new Map();
   for (const { full, mtime } of walk(root)) {
     if (range && mtime < range.from) continue;
     const s = parseRollout(readFileSync(full, 'utf8'));
     if (!s || (range && (s.at < range.from || s.at >= range.to))) continue;
+    if (originator && s.originator !== originator) continue;
     const where = s.cwd ? projectLabel(s.cwd) : { label: 'unknown', path: null };
     if (project && project !== where.label && project !== where.path) continue;
     const day = dayKey(s.at);

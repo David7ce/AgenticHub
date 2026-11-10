@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRollout } from '../spend-codex.mjs';
+import { parseRollout } from '../../acp/codex-spend.mjs';
 import { collectReport } from '../report.mjs';
 
 test('parseRollout keeps the last cumulative token_count, model and cwd', () => {

@@ -384,6 +384,12 @@ async function main() {
         }
 
         if (opts.dryRun) {
+          // A fixture that does not even parse "fails its tests" for the wrong
+          // reason, so no agent could ever pass it (spec-paths-same did once).
+          if (task.fixture) {
+            const parse = spawnSync(process.execPath, ['--check', join(HERE, task.fixture)], { encoding: 'utf8' });
+            if (parse.status !== 0) throw new Error(`fixture ${task.fixture} does not parse: ${parse.stderr.trim().split('\n')[0]}`);
+          }
           record = { ...record, dryRun: true, stubBreaksTests: true, pass: false };
           process.stderr.write(`[bench] ${task.id}: stub breaks the tests as expected\n`);
         } else {
@@ -422,9 +428,13 @@ async function main() {
     }
   }
 
-  mkdirSync(RESULTS_DIR, { recursive: true });
+  // A dry run proves the tasks are broken; it is not a result worth keeping, and
+  // check.mjs runs it on every commit.
   const file = join(RESULTS_DIR, `${runStamp}-${opts.agent}.jsonl`);
-  for (const record of records) appendFileSync(file, JSON.stringify(record) + '\n', 'utf8');
+  if (!opts.dryRun) {
+    mkdirSync(RESULTS_DIR, { recursive: true });
+    for (const record of records) appendFileSync(file, JSON.stringify(record) + '\n', 'utf8');
+  }
 
   const attempts = records.filter((r) => !r.dryRun);
   const passed = attempts.filter((r) => r.pass).length;
@@ -442,7 +452,9 @@ async function main() {
     results: file,
     dryRun: opts.dryRun,
   };
-  writeFileSync(join(RESULTS_DIR, `${runStamp}-${opts.agent}-summary.json`), JSON.stringify(summary, null, 2) + '\n', 'utf8');
+  if (!opts.dryRun) {
+    writeFileSync(join(RESULTS_DIR, `${runStamp}-${opts.agent}-summary.json`), JSON.stringify(summary, null, 2) + '\n', 'utf8');
+  }
 
   if (opts.json) {
     process.stdout.write(JSON.stringify(summary, null, 2) + '\n');

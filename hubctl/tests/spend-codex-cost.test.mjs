@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { priceOf, readCodexSpend } from '../spend-codex.mjs';
+import { priceOf, readCodexSpend } from '../../acp/codex-spend.mjs';
 
 test('priceOf needs both input and output, and defaults cacheRead to input', () => {
   assert.equal(priceOf({ costPerMillion: null }), null);

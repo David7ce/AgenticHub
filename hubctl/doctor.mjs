@@ -11,7 +11,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
-import { PERMISSION_RANK, spentToday } from '../acp/consent.mjs';
+import { PERMISSION_RANK } from '../acp/consent.mjs';
+import { spentTodayAll } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
 
 const DAY = 86_400_000;
@@ -259,7 +260,7 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   else if (usingExample) checks.push(row('registry', 'warn', 'using agents.example.json; copy it to acp/agents.json and set your agent paths'));
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
-  if (consent) checks.push(...checkDailySpend(consent, (name) => spentToday(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
+  if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {
