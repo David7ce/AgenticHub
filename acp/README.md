@@ -25,8 +25,16 @@ other major version instead of silently drifting.
     acp/
       acp-client.mjs    stdio transport, JSON-RPC dispatch, permissions
       hub-acp.mjs        CLI: consent -> spawn -> initialize -> session -> prompt
+        hub-env.mjs        paths, limits and AGENT_HUB_* overrides
+        hub-args.mjs       usage text, argument parsing, prompt input
+        registry.mjs       agent registry and MCP server config
+        run-record.mjs     audit line, in-flight file, salvage record
       fanout-acp.mjs     CLI: N agents in parallel, one merged result
       router.mjs         CLI: pick one worker by cost/complexity, hand off to hub-acp.mjs
+        quota.mjs          the one definition of "out of quota"
+        handoff.mjs        relay prompt (git state, recent runs, the task)
+      consent.mjs        grant, limits and today's spend
+      spend-estimate.mjs Codex cost estimate counted against its daily cap
       agents.json        registry: launch command per agent, per platform
       README.md
 

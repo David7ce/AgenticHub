@@ -1,0 +1,100 @@
+// hub-args.mjs — the command line of hub-acp.mjs.
+
+import { readFileSync } from 'node:fs';
+
+export const USAGE = `usage: node hub-acp.mjs --agent NAME (--prompt TEXT | --prompt -) [options]
+
+  --agent NAME          registry entry to drive (see --list)
+  --prompt TEXT|-       prompt text, or - to read it from stdin
+  --cwd DIR             session working directory (default: current dir)
+  --load SESSION_ID     resume via session/load (replays history first;
+                        requires the agent's loadSession capability)
+  --resume SESSION_ID   resume via session/resume (no replay; requires the
+                        agent's sessionCapabilities.resume capability)
+  --mcp FILE            JSON file with mcpServers to pass at session/new
+                        (array, or { "mcpServers": [...] })
+  --permission POLICY   deny (default) | allow-reads | allow-all
+  --allow-concurrent-write  explicitly bypass a conflicting tree claim
+  --timeout MS          prompt turn timeout (default 300000)
+  --max-prompt-chars N  reject prompts longer than N chars (default 4000;
+                        fan-out synthesis raises this for its own merge call)
+  --budget USD          cancel the turn when reported cost exceeds this
+                        (default 0.50; 0 = off)
+  --config ID=VALUE     set a session config option (repeatable); e.g.
+                        --config model=opencode-go/deepseek-v4.1-flash
+  --model NAME          shorthand for --config model=NAME
+  --effort LEVEL        reasoning effort: low | medium | high | max, mapped to the
+                        agent's own option (registry "effort"); low is enough for
+                        text and mechanical work and is several times faster
+  --task-id ID          tag the audit line and JSON result with a queue task id
+  --auth METHOD         call authenticate with this methodId after initialize
+  --registry FILE       alternate agents.json
+  --json                machine-readable result on stdout (no streaming)
+  --no-stream           do not print answer chunks as they arrive
+  --no-save             do not write a result file under ../results/
+  --verbose             tool calls, permission decisions, agent stderr
+  --probe               initialize + session/new, print capabilities, no prompt
+  --list                list registry entries and availability
+`;
+
+export function parseArgs(argv) {
+  const opts = {
+    permission: 'deny',
+    timeout: 300_000,
+    budget: 0.5,
+    stream: true,
+    save: true,
+    json: false,
+    verbose: false,
+    probe: false,
+    list: false,
+    configs: [],
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    const next = () => {
+      if (i + 1 >= argv.length) fail(`${arg} needs a value`);
+      return argv[++i];
+    };
+    switch (arg) {
+      case '--agent': opts.agent = next(); break;
+      case '--prompt': opts.prompt = next(); break;
+      case '--cwd': opts.cwd = next(); break;
+      case '--load': opts.loadSession = next(); break;
+      case '--resume': opts.resumeSession = next(); break;
+      case '--mcp': opts.mcp = next(); break;
+      case '--permission': opts.permission = next(); break;
+      case '--allow-concurrent-write': opts.allowConcurrentWrite = true; break;
+      case '--timeout': opts.timeout = Number(next()); break;
+      case '--max-prompt-chars': opts.maxPromptChars = Number(next()); break;
+      case '--budget': opts.budget = Number(next()); break;
+      case '--config': opts.configs.push(next()); break;
+      case '--model': opts.configs.push(`model=${next()}`); break;
+      case '--effort': opts.effort = next(); break;
+      case '--task-id': opts.taskId = next(); break;
+      case '--auth': opts.auth = next(); break;
+      case '--registry': opts.registry = next(); break;
+      case '--json': opts.json = true; break;
+      case '--no-stream': opts.stream = false; break;
+      case '--no-save': opts.save = false; break;
+      case '--verbose': opts.verbose = true; break;
+      case '--probe': opts.probe = true; break;
+      case '--list': opts.list = true; break;
+      case '-h': case '--help': opts.help = true; break;
+      default: fail(`unknown option: ${arg}`);
+    }
+  }
+  return opts;
+}
+
+export function fail(message) {
+  process.stderr.write(`[acp] ${message}\n\n${USAGE}`);
+  process.exit(1);
+}
+
+export function readPrompt(opts) {
+  if (opts.prompt === '-') return readFileSync(0, 'utf8');
+  if (opts.prompt !== undefined) return opts.prompt;
+  if (!process.stdin.isTTY) return readFileSync(0, 'utf8');
+  fail('no prompt given (use --prompt TEXT, --prompt -, or pipe into stdin)');
+}
