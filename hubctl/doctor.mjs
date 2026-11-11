@@ -186,11 +186,37 @@ export function checkBridge(configured, health) {
     : row('bridge', 'warn', 'configured but not answering on /health: start it (node agent-hub/bridge/server.mjs --config agent-hub/bridge/config.json) or VS Code Custom Endpoint models fail')];
 }
 
-/** Probe http://127.0.0.1:<port>/health with a hard timeout; never throws. */
-export function probeBridge(port = 3010, timeoutMs = 1500) {
-  const code = `fetch('http://127.0.0.1:${port}/health',{signal:AbortSignal.timeout(${timeoutMs})}).then(r=>process.exit(r.ok?0:2),()=>process.exit(1))`;
+/** Probe http://127.0.0.1:<port><path> with a hard timeout; never throws. */
+export function probeLocal(port, path = '/health', timeoutMs = 1500) {
+  const code = `fetch('http://127.0.0.1:${port}${path}',{signal:AbortSignal.timeout(${timeoutMs})}).then(r=>process.exit(r.ok?0:2),()=>process.exit(1))`;
   const r = spawnSync(process.execPath, ['-e', code], { timeout: timeoutMs + 1500, windowsHide: true });
   return { ok: r.status === 0 };
+}
+
+export const probeBridge = (port = 3010, timeoutMs) => probeLocal(port, '/health', timeoutMs);
+
+// The AHP gateway is what VS Code's Agents window connects to (chat.remoteAgentHosts).
+// logs/ahp-gateway.json exists once it has been generated, i.e. once someone meant to use it.
+export function checkGateway(configured, health) {
+  if (!configured || health == null) return [];
+  return [health.ok
+    ? row('gateway', 'ok', 'answers on /healthz (the AHP host for VS Code Agents is reachable)')
+    : row('gateway', 'warn', 'configured but not answering on /healthz: start it with agent-hub/tools/run-ahp-gateway.ps1 or the AgentHub host in VS Code Agents fails')];
+}
+
+export function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// Runs `run` until `isBad(result)` is false, at most `tries` times with a pause between.
+// Probes of lazily started things (OpenCode's MCP servers) need time, not just a second look.
+export function withRetries(run, isBad, { tries = 3, pauseMs = 2500, sleep = sleepSync } = {}) {
+  let result = run();
+  for (let i = 1; i < tries && isBad(result); i++) {
+    sleep(pauseMs);
+    result = run();
+  }
+  return result;
 }
 
 export function checkLeftovers(inflight, locks) {
@@ -362,17 +388,20 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   checks.push(...checkLeftovers(inflight, locks));
   const bridgeConfig = readJson(join(hub, 'bridge', 'config.json'));
   if (bridgeConfig) checks.push(...checkBridge(true, probeBridge(bridgeConfig.port ?? 3010)));
+  const gatewayConfig = readJson(join(root, 'logs', 'ahp-gateway.json'));
+  if (gatewayConfig) checks.push(...checkGateway(true, probeLocal(gatewayConfig.listener?.port ?? 8765, '/healthz')));
   checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));
   const handoff = handoffInputs(root);
   if (handoff) checks.push(...checkHandoffFresh(handoff));
   // OpenCode starts its MCP servers lazily; on a loaded machine the first listing
-  // can say "not connected" for a server that is a moment from ready. Look twice
-  // before reporting a failure. --fast does not query OpenCode at all, so it must
+  // can say "not connected" for a server that is a moment from ready. Look up to
+  // three times, a few seconds apart, before reporting a failure. --fast does not query OpenCode at all, so it must
   // not report that query as a warning either.
   if (!fast) {
-    let mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
-    if (mcpChecks.some((c) => c.level === 'fail')) mcpChecks = checkOpencodeMcp(runOpencodeMcpList(root));
-    checks.push(...mcpChecks);
+    checks.push(...withRetries(
+      () => checkOpencodeMcp(runOpencodeMcpList(root)),
+      (found) => found.some((c) => c.level === 'fail'),
+    ));
   }
   const counts = { ok: 0, warn: 0, fail: 0 };
   for (const check of checks) counts[check.level] += 1;

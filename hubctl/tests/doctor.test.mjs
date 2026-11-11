@@ -174,3 +174,26 @@ test('checkBridge: silent when unconfigured, warns when down, ok when up', () =>
   assert.equal(checkBridge(true, { ok: false })[0].level, 'warn');
   assert.equal(checkBridge(true, { ok: true })[0].level, 'ok');
 });
+
+import { checkGateway, withRetries } from '../doctor.mjs';
+test('checkGateway: silent when never generated, warns when configured but down, ok when up', () => {
+  assert.deepEqual(checkGateway(false, { ok: false }), []);
+  assert.equal(checkGateway(true, { ok: false })[0].level, 'warn');
+  assert.equal(checkGateway(true, { ok: true })[0].level, 'ok');
+});
+
+test('withRetries pauses between attempts, stops at the first good result and caps the tries', () => {
+  const pauses = [];
+  let calls = 0;
+  const flaky = withRetries(() => ++calls, (n) => n < 3, { sleep: (ms) => pauses.push(ms), pauseMs: 7 });
+  assert.equal(flaky, 3);
+  assert.deepEqual(pauses, [7, 7]);
+
+  let always = 0;
+  withRetries(() => ++always, () => true, { tries: 4, sleep: () => {} });
+  assert.equal(always, 4);
+
+  let once = 0;
+  withRetries(() => ++once, () => false, { sleep: () => assert.fail('must not sleep after a good first result') });
+  assert.equal(once, 1);
+});
