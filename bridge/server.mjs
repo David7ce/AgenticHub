@@ -239,6 +239,8 @@ export function loadConfig(configPath) {
     authTokenEnv: raw.authTokenEnv ?? null,
     // Literal token for a local, git-ignored config.json; wins over authTokenEnv.
     authToken: typeof raw.authToken === "string" && raw.authToken ? raw.authToken : null,
+    // SSE keep-alive period while a streamed turn is running.
+    keepaliveMs: Number.isFinite(raw.keepaliveMs) && raw.keepaliveMs > 0 ? raw.keepaliveMs : 15_000,
     systemPrompt: raw.systemPrompt ?? null,
     auditLog,
     providers,
@@ -734,6 +736,7 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
   // Token accounting: what the agent reports (PromptResponse.usage or a
   // usage_update), else a chars/4 estimate, flagged as such in the audit.
   let reported = null;
+  let heartbeat = null;
 
   // Handlers are per-request: a pooled client must never write the previous
   // request's response.
@@ -797,6 +800,13 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       });
+      // A long turn can go quiet for a while (a model thinking before its first
+      // token). An SSE comment line keeps proxies and clients from timing out
+      // and is ignored by every SSE parser.
+      heartbeat = setInterval(() => {
+        if (!res.writableEnded) res.write(": keepalive\n\n");
+      }, config.keepaliveMs ?? 15_000);
+      heartbeat.unref?.();
     }
 
     controller.signal.addEventListener(
@@ -826,6 +836,8 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
   } catch (error) {
     if (checkedOut) releaseAgent(agent, client, { broken: true });
     throw error;
+  } finally {
+    if (heartbeat) clearInterval(heartbeat);
   }
 
   const promptChars = entry.promptChars ?? 0;

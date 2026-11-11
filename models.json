@@ -160,7 +160,7 @@
       "agent": "codex",
       "provider": "openai",
       "label": "Codex GPT-6.1 Terra",
-      "context": 500000,
+      "context": 872000,
       "tier": "default",
       "capabilities": {
         "code": 4,
@@ -179,7 +179,7 @@
       "agent": "codex",
       "provider": "openai",
       "label": "Codex GPT-6.1 Sol",
-      "context": 500000,
+      "context": 872000,
       "tier": "strong",
       "capabilities": {
         "code": 5,

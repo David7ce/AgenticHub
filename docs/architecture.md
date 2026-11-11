@@ -13,7 +13,7 @@ línea de auditoría por cada intento.
 Windows
   OpenCode Desktop/Web? ─┐
   Claude Code ───────────┤
-  VS Code/Copilot ───────┤        ┌───────────────┐
+  VS Code/Copilot ───────┤        ┌───────────────┐   (Custom Endpoint: bridge/, aparte)
                          ├──────▶ │  hub-mcp      │  stdio JSON-RPC
   PowerShell / hubctl ───┘        │  (server.mjs) │
                                   └──────┬────────┘
@@ -48,6 +48,7 @@ negocia v1. No hay shim propio.
 |---|---|
 | `mcp/server.mjs` | Servidor MCP (stdio). Expone `ask_agent`, `fanout`, `route`, `agents`, `status`, jobs. |
 | `acp/hub-acp.mjs` | Cliente ACP: consentimiento, spawn, sesión, prompt, cancelación, presupuesto, auditoría. |
+| `bridge/server.mjs` | Endpoint OpenAI-compatible en loopback para el Custom Endpoint de VS Code: un turno de chat = una sesión ACP efímera con el login de cada agente, tras token y `consent.json`. Solo texto (`toolCalling: false`); ver [`../bridge/README.md`](../bridge/README.md). |
 | `acp/fanout-acp.mjs` | Varios agentes en paralelo, resultado fusionado y síntesis opcional. |
 | `acp/router.mjs` | Elige agente/modelo/topología. Hoy es advisory; no lanza por su cuenta. |
 | `acp/consent.mjs` + `consent.json` | Puerta: `enabled`, `overseerAck`, expiración. |

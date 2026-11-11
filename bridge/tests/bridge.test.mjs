@@ -539,3 +539,108 @@ test("an ACP model without a consent entry returns 403", async () => {
     await close(bridge.server);
   }
 });
+
+// --- features added 2026-11-11: reasoning stream, usage/cost, sessionMeta,
+// --- auth-failure audit, SSE keep-alive -------------------------------------
+
+async function ask(bridge, body, headers = {}) {
+  return fetch(`${bridge.base}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ model: "fake-agent", messages: [{ role: "user", content: "EXTRAS" }], ...body }),
+  });
+}
+
+test("streamReasoning forwards thought chunks as reasoning_content, and only when enabled", async () => {
+  for (const enabled of [true, false]) {
+    const config = acpConfig();
+    config.models[0].streamReasoning = enabled;
+    const bridge = await startBridge(config);
+    try {
+      const text = await (await ask(bridge, { stream: true })).text();
+      assert.equal(/"reasoning_content":"pondering"/.test(text), enabled);
+      assert.match(text, /"content":"Hello"/);
+    } finally {
+      await closeAgentPool();
+      await close(bridge.server);
+    }
+  }
+});
+
+test("usage, context size and cost reach the response, the audit and runs.jsonl", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bridge-usage-"));
+  const config = acpConfig();
+  config.auditLog = join(dir, "bridge.jsonl");
+  const bridge = await startBridge(config);
+  try {
+    const body = await (await ask(bridge, {})).json();
+    // The fake reports no token counts, so the response falls back to an estimate.
+    assert.ok(body.usage.total_tokens > 0);
+    const entry = JSON.parse(readFileSync(config.auditLog, "utf8").trim().split("\n").pop());
+    assert.equal(entry.usage.source, "estimate");
+    assert.equal(entry.usage.contextUsed, 1234);
+    assert.equal(entry.usage.contextSize, 100000);
+    assert.deepEqual(entry.cost, { amount: 0.5, currency: "USD" });
+    // Cost-reporting agents also leave a hub-shaped line next to the audit log.
+    const run = JSON.parse(readFileSync(join(dir, "runs.jsonl"), "utf8").trim());
+    assert.equal(run.agent, "fake");
+    assert.equal(run.transport, "bridge");
+    assert.equal(run.cost.amount, 0.5);
+  } finally {
+    await closeAgentPool();
+    await close(bridge.server);
+  }
+});
+
+test("sessionMeta is sent as session/new _meta", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bridge-meta-"));
+  const logPath = join(dir, "events.log");
+  const config = acpConfig();
+  config.agentMode.registry.agents.fake.env = { FAKE_ACP_LOG: logPath };
+  config.models[0].sessionMeta = { claudeCode: { options: { settingSources: [] } } };
+  const bridge = await startBridge(config);
+  try {
+    assert.equal((await ask(bridge, {})).status, 200);
+    const events = readFileSync(logPath, "utf8");
+    assert.match(events, /meta:\{"claudeCode":\{"options":\{"settingSources":\[\]\}\}\}/);
+  } finally {
+    await closeAgentPool();
+    await close(bridge.server);
+  }
+});
+
+test("a failed bearer check is audited by header length only, never the token", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bridge-authfail-"));
+  const config = acpConfig();
+  config.authToken = "s3cret-token-value";
+  config.auditLog = join(dir, "bridge.jsonl");
+  const bridge = await startBridge(config);
+  try {
+    assert.equal((await ask(bridge, {})).status, 401);
+    assert.equal((await ask(bridge, {}, { Authorization: "Bearer wrong" })).status, 401);
+    assert.equal((await ask(bridge, {}, { Authorization: "Bearer s3cret-token-value" })).status, 200);
+    const raw = readFileSync(config.auditLog, "utf8");
+    assert.ok(!raw.includes("s3cret-token-value"));
+    const failures = raw.trim().split("\n").map((l) => JSON.parse(l)).filter((e) => e.status === "auth-failed");
+    assert.equal(failures.length, 2);
+    assert.equal(failures[0].authHeader, "absent");
+    assert.match(failures[1].authHeader, /^Bearer \(12 chars\)$/);
+  } finally {
+    await closeAgentPool();
+    await close(bridge.server);
+  }
+});
+
+test("a slow streamed turn gets SSE keep-alive comments", async () => {
+  const config = acpConfig();
+  config.keepaliveMs = 50;
+  const bridge = await startBridge(config);
+  try {
+    const text = await (await ask(bridge, { stream: true, messages: [{ role: "user", content: "SLOW" }] })).text();
+    assert.match(text, /^: keepalive$/m);
+    assert.match(text, /data: \[DONE\]/);
+  } finally {
+    await closeAgentPool();
+    await close(bridge.server);
+  }
+});
