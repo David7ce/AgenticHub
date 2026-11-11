@@ -3,6 +3,9 @@
 # Safe to run as often as you like (Task Scheduler runs it every few minutes):
 #   - bridge already answering on /health  -> exit 0 and do nothing
 #   - otherwise start `node bridge/server.mjs` detached, wait for /health
+# The same run also makes sure the AHP gateway for VS Code's Agents window is up
+# (run-ahp-gateway.ps1 next to this file, itself idempotent), so one scheduled task
+# covers both.
 # It never kills anything and never reads or prints the bridge token. The
 # bridge is the same loopback-only, token-protected process you would start by
 # hand; this only saves you from having to remember to.
@@ -35,7 +38,17 @@ function Invoke-SessionPrune {
     New-Item -ItemType File -Force -Path $stamp | Out-Null
     (Get-Item -LiteralPath $stamp).LastWriteTime = Get-Date
     $cli = Join-Path $hub "chatmgr\src\cli.mjs"
-    $out = & node $cli prune-automated --project-match hub-bridge --older-than 1h --yes 2>$null | Out-String
+    # Windows PowerShell 5.1 turns a native command's stderr (Node's deprecation
+    # warning included) into a terminating error under "Stop": relax it for this call,
+    # and ask Node not to print warnings at all.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $env:NODE_NO_WARNINGS = "1"
+    try {
+      $out = & node $cli prune-automated --project-match hub-bridge --older-than 1h --yes 2>$null | Out-String
+    } finally {
+      $ErrorActionPreference = $previous
+    }
     $r = $out | ConvertFrom-Json
     if ($r.okCount -gt 0 -or $r.failedCount -gt 0) { Write-Log "pruned bridge sessions: ok=$($r.okCount) failed=$($r.failedCount) blocked=$($r.blockedCount)" }
   } catch {
@@ -51,6 +64,13 @@ function Test-Bridge {
 }
 
 Invoke-SessionPrune
+
+# One task, both VS Code entry points. A gateway failure must not stop the bridge.
+$gatewayLauncher = Join-Path $PSScriptRoot "run-ahp-gateway.ps1"
+if (Test-Path -LiteralPath $gatewayLauncher) {
+  try { & $gatewayLauncher | Out-Null } catch { Write-Log "gateway launcher failed: $($_.Exception.Message)" }
+}
+
 if (Test-Bridge) { exit 0 }
 
 if (-not (Test-Path -LiteralPath $Config)) {
