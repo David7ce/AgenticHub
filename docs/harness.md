@@ -69,6 +69,29 @@ versión nueva del gateway.
 - **Hermes como interfaz**: se llega por el hub o AHP, con su permiso desactivado y fuera de árboles
   con credenciales (su retención puede entrenar).
 
+## Acceso y ejecución: lo medido (2026-11-11)
+
+Los agentes corren con **tus derechos de Windows, sin contenedor**: el acceso ya es total. Lo que es
+fino es la *ejecución controlada*:
+
+| Agente | Cómo actúa hoy | Control que hay |
+|---|---|---|
+| Claude Code (nativo) | Modo por defecto: **pregunta** antes de editar y de ejecutar | 3 reglas deny globales (Raindrop) y 7 de proyecto (`.env`) |
+| Claude por el adaptador ACP (hub, bridge, AHP) | Arranca en modo `auto`, más abierto que el nativo | `writeTrees` + clamp (modo `plan` fuera) |
+| Codex | `approval_policy = "never"` (tu decisión del 2026-11-09) y sandbox de Windows `unelevated` | `writeTrees` y topes del hub; **sin** regla `.env` |
+| OpenCode | Modo `build`: edita y ejecuta sin preguntar | Solo reglas `.env` en su configuración global; `writeTrees` del hub |
+| Hub (ejecuciones desatendidas) | `writeTrees`, presupuesto, tiempo, auditoría, worktrees | La puerta de `consent.json` |
+
+Red: salida permitida por política aceptada; los agentes ACP del hub no están cubiertos por el sandbox
+de terminal de VS Code (`tools/egress-posture.mjs`: sin avisos).
+
+**Distinción que manda:** en ejecución *desatendida* (el hub) no se puede preguntar a nadie, así que el
+control es el confinamiento (árbol, worktree, presupuesto, auditoría); en ejecución *atendida* (VS Code,
+Claude Code) sí se puede preguntar por lo arriesgado. Cambiar `approval_policy` de Codex o añadir reglas
+`ask` globales a OpenCode haría que las ejecuciones del hub se queden esperando una respuesta: por eso
+la política atendida se aplica donde hay una persona (el proxy de AHP y la configuración del propio
+Claude Code), no en la configuración global de los agentes.
+
 ## Riesgos y revisión
 
 - El gateway de AHP es de terceros y va por la 0.2.x; está fijado a `0.2.2`. Revisar al subir de
