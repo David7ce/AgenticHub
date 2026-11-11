@@ -19,6 +19,8 @@ const conv = (id, extra = {}) => ({
 test("parseOlderThan accepts 7d or 7 and rejects anything else", () => {
   assert.equal(parseOlderThan("7d"), 7);
   assert.equal(parseOlderThan("14"), 14);
+  assert.equal(parseOlderThan("6h"), 0.25);
+  assert.equal(parseOlderThan("1h"), 1 / 24);
   assert.equal(parseOlderThan(undefined), null);
   assert.throws(() => parseOlderThan("soon"));
   assert.throws(() => parseOlderThan("-3d"));
@@ -46,4 +48,13 @@ test("running and current sessions are blocked, not deleted", () => {
   const plan = buildPruneAutomatedPlan([conv("busy", { running: true }), conv("me")], { now: NOW, currentKey: "opencode:me" });
   assert.equal(plan.items.length, 0);
   assert.deepEqual(plan.blocked.map((b) => b.code).sort(), ["current-session", "running"]);
+});
+
+test("--project-match limits the pick to sessions whose project path contains it", () => {
+  const list = [
+    conv("bridge", { projectPath: String.raw`D:WorkspacesAgentHublogshub-bridge` }),
+    conv("bench", { projectPath: "C:/tmp/hub-bench-x" }),
+  ];
+  const plan = buildPruneAutomatedPlan(list, { now: NOW, projectMatch: "HUB-BRIDGE" });
+  assert.deepEqual(plan.items.map((c) => c.id), ["bridge"]);
 });

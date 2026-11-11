@@ -42,8 +42,13 @@ processes it pooled (Codex's `app-server`, Claude's adapter) are orphaned and ke
 their sessions "running", which blocks deleting them from chatmgr. Left alone, the
 bridge closes idle agents by itself after 60 s (checked 2026-11-11: Codex exits
 after about 54 s and releases its lock). Each turn still leaves one session in the
-agent's own store, under `logs/hub-bridge`; chatmgr marks those as automated and
-`chatmgr prune-automated` removes them.
+agent's own store, under `logs/hub-bridge`; chatmgr marks those as automated. When the
+launcher runs (`tools/run-bridge.ps1`, normally from the scheduled task) it deletes
+those idle for over an hour, at most every 30 minutes, without a backup:
+`chatmgr prune-automated --project-match hub-bridge --older-than 1h --yes`. Claude
+sessions have no lock, so chatmgr treats one as running until 10 minutes after its
+last write; the one-hour threshold stays clear of that. Without the task, run that
+command yourself.
 
 ## Which VS Code surface for what
 

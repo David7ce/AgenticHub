@@ -119,12 +119,13 @@ export function describePlan(plan) {
   return `${parts.length ? parts.join(" · ") : "nothing to delete"}${children}${blocked}`;
 }
 
-/** "7d" or "7" -> 7; anything else throws, so a typo can never widen a deletion. */
+/** "7d", "7", "6h" or "30m" -> days (7, 7, 0.25, ...); anything else throws, so a typo can never widen a deletion. */
 export function parseOlderThan(value) {
   if (value === undefined || value === null || value === false) return null;
-  const match = /^(\d+)d?$/.exec(String(value).trim());
-  if (!match) throw new Error(`--older-than must look like 7d, got ${value}`);
-  return Number(match[1]);
+  const match = /^(\d+)([dhm]?)$/.exec(String(value).trim());
+  if (!match) throw new Error(`--older-than must look like 7d, 6h or 30m, got ${value}`);
+  const n = Number(match[1]);
+  return match[2] === "h" ? n / 24 : match[2] === "m" ? n / 1440 : n;
 }
 
 /**
@@ -132,12 +133,14 @@ export function parseOlderThan(value) {
  * limited to some agents and to those idle for N days. Same blocks as any
  * delete: running and current sessions are never in `items`.
  */
-export function buildPruneAutomatedPlan(conversations, { agents = null, olderThanDays = null, now = Date.now(), currentKey = null } = {}) {
+export function buildPruneAutomatedPlan(conversations, { agents = null, olderThanDays = null, projectMatch = null, now = Date.now(), currentKey = null } = {}) {
   const cutoff = olderThanDays == null ? null : now - olderThanDays * 86_400_000;
+  const needle = projectMatch ? String(projectMatch).toLowerCase() : null;
   const picked = conversations.filter(
     (conv) =>
       conv.automated === true &&
       (!agents || agents.includes(conv.provider)) &&
+      (!needle || String(conv.projectPath ?? "").toLowerCase().includes(needle)) &&
       (cutoff == null || conv.lastActivity < cutoff),
   );
   return buildDeletePlan(picked, { currentKey });

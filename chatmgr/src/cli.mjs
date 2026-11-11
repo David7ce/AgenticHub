@@ -9,7 +9,7 @@
  *   node cli.mjs preview --key provider:id
  *   node cli.mjs delete --keys k1,k2 [--yes] [--dry-run] [--backup-dir D]
  *   node cli.mjs delete ... [--backup]
- *   node cli.mjs prune-automated [--older-than 7d] [--agent opencode] [--yes] [--backup]   (lists only without --yes)
+ *   node cli.mjs prune-automated [--older-than 7d|6h|30m] [--agent opencode] [--project-match hub-bridge] [--yes] [--backup]   (lists only without --yes)
  *   node cli.mjs prune-backups [--days N] [--yes]
  *   node cli.mjs backups | restore --manifest F | backup-remove --dir D
  */
@@ -158,6 +158,7 @@ async function cmdPruneAutomated(flags) {
   const plan = buildPruneAutomatedPlan(conversations, {
     agents: typeof flags.agent === "string" ? flags.agent.split(",") : null,
     olderThanDays: parseOlderThan(flags["older-than"]),
+    projectMatch: typeof flags["project-match"] === "string" ? flags["project-match"] : null,
     currentKey: flags["current-key"] ?? null,
   });
   if (flags.yes !== true) {

@@ -23,6 +23,26 @@ function Write-Log([string]$msg) {
   "$(Get-Date -Format s)  $msg" | Out-File -FilePath $log -Append -Encoding utf8
 }
 
+# Housekeeping, at most every 30 minutes: every bridge turn leaves one session
+# in the agent's own store (cwd logs\hub-bridge). Conversations are disposable,
+# so delete the ones idle for over an hour, without a backup. chatmgr never
+# deletes a running or current session, and --project-match keeps this away from
+# anything a person opened.
+function Invoke-SessionPrune {
+  $stamp = Join-Path $logDir "bridge-prune.stamp"
+  if ((Test-Path -LiteralPath $stamp) -and (((Get-Date) - (Get-Item -LiteralPath $stamp).LastWriteTime).TotalMinutes -lt 30)) { return }
+  try {
+    New-Item -ItemType File -Force -Path $stamp | Out-Null
+    (Get-Item -LiteralPath $stamp).LastWriteTime = Get-Date
+    $cli = Join-Path $hub "chatmgr\src\cli.mjs"
+    $out = & node $cli prune-automated --project-match hub-bridge --older-than 1h --yes 2>$null | Out-String
+    $r = $out | ConvertFrom-Json
+    if ($r.okCount -gt 0 -or $r.failedCount -gt 0) { Write-Log "pruned bridge sessions: ok=$($r.okCount) failed=$($r.failedCount) blocked=$($r.blockedCount)" }
+  } catch {
+    Write-Log "session prune skipped: $($_.Exception.Message)"
+  }
+}
+
 function Test-Bridge {
   try {
     $r = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2
@@ -30,6 +50,7 @@ function Test-Bridge {
   } catch { return $false }
 }
 
+Invoke-SessionPrune
 if (Test-Bridge) { exit 0 }
 
 if (-not (Test-Path -LiteralPath $Config)) {
