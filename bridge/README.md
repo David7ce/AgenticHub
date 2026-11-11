@@ -61,6 +61,10 @@ agents over ACP: Claude and OpenCode 1,000,000, Codex 828,400 (Codex clamps its 
 `model_context_window` to its 872K cap: asking for 1,000,000 changed nothing),
 `gpt-luna` (OpenCode Go's `gpt-6-luna`) 1,050,000. That last one is the way to a 1M GPT.
 
+The two OpenCode models are pinned with `set` to cheap flat-plan models
+(`opencode-go/deepseek-v4.1-flash`, `opencode-go/gpt-6-luna`), so a change of OpenCode's own
+default can never make the bridge spend more. Checked in the audit: `applied.model`.
+
 ## Which VS Code surface for what
 
 VS Code chat has two levels. The **harness** selector (Copilot, Local, Claude,
