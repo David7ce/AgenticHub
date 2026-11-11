@@ -709,6 +709,9 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
   let text = "";
   let client = null;
   let checkedOut = false;
+  // Token accounting: what the agent reports (PromptResponse.usage or a
+  // usage_update), else a chars/4 estimate, flagged as such in the audit.
+  let reported = null;
 
   // Handlers are per-request: a pooled client must never write the previous
   // request's response.
@@ -717,6 +720,9 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       if (res.writableEnded) return;
       if (msg.method !== "session/update") return;
       const update = msg.params?.update;
+      if (update?.sessionUpdate === "usage_update" && Number.isFinite(update.used)) {
+        reported = { ...(reported ?? {}), contextUsed: update.used, contextSize: update.size ?? null };
+      }
       if (update?.sessionUpdate !== "agent_message_chunk") return;
       if (update.content?.type !== "text") return;
       const part = update.content.text ?? "";
@@ -776,6 +782,10 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       { timeoutMs: config.agentMode.timeoutMs },
     );
     entry.stopReason = result?.stopReason ?? null;
+    const u = result?.usage ?? result?._meta?.usage;
+    if (u && (Number.isFinite(u.inputTokens) || Number.isFinite(u.outputTokens))) {
+      reported = { ...(reported ?? {}), input: u.inputTokens ?? 0, output: u.outputTokens ?? 0 };
+    }
     releaseAgent(agent, client, { broken: false });
     checkedOut = false;
   } catch (error) {
@@ -783,8 +793,19 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
     throw error;
   }
 
+  const promptChars = entry.promptChars ?? 0;
+  const usage = reported?.input != null
+    ? { prompt_tokens: reported.input, completion_tokens: reported.output, total_tokens: reported.input + reported.output }
+    : { prompt_tokens: Math.ceil(promptChars / 4), completion_tokens: Math.ceil(text.length / 4), total_tokens: Math.ceil((promptChars + text.length) / 4) };
+  entry.usage = { ...usage, source: reported?.input != null ? "agent" : "estimate", contextUsed: reported?.contextUsed ?? null, contextSize: reported?.contextSize ?? null };
+
   if (streaming) {
     res.write(chunk(id, created, model.id, {}, "stop"));
+    if (payload.stream_options?.include_usage) {
+      res.write(`data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: model.id, choices: [], usage })}
+
+`);
+    }
     res.write("data: [DONE]\n\n");
     res.end();
     return;
@@ -796,7 +817,7 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
     created,
     model: model.id,
     choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
-    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+    usage,
   });
 }
 
