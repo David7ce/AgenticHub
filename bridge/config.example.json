@@ -32,21 +32,71 @@
             }
           }
         },
-        "streamReasoning": true
+        "streamReasoning": true,
+        "effort": {
+          "option": "effort",
+          "values": {
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          }
+        }
       },
       {
         "id": "codex",
         "agent": "codex",
         "label": "Codex via AgentHub",
         "contextWindow": 872000,
-        "maxOutputTokens": 128000
+        "maxOutputTokens": 128000,
+        "effort": {
+          "option": "reasoning_effort",
+          "values": {
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          }
+        }
       },
       {
         "id": "opencode",
         "agent": "opencode",
         "label": "OpenCode via AgentHub",
         "contextWindow": 1000000,
-        "maxOutputTokens": 64000
+        "maxOutputTokens": 64000,
+        "effort": {
+          "option": "effort",
+          "values": {
+            "low": "low",
+            "medium": "default",
+            "high": "high",
+            "xhigh": "high",
+            "max": "max"
+          }
+        }
+      },
+      {
+        "id": "gpt-luna",
+        "agent": "opencode",
+        "label": "GPT-6 Luna via AgentHub",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 64000,
+        "effort": {
+          "option": "effort",
+          "values": {
+            "low": "low",
+            "medium": "default",
+            "high": "high",
+            "xhigh": "high",
+            "max": "max"
+          }
+        },
+        "set": {
+          "model": "opencode-go/gpt-6-luna"
+        }
       }
     ]
   }

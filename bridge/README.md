@@ -50,6 +50,17 @@ sessions have no lock, so chatmgr treats one as running until 10 minutes after i
 last write; the one-hour threshold stays clear of that. Without the task, run that
 command yourself.
 
+### Effort and model variants
+
+Add `"supportsReasoningEffort": ["low","medium","high","xhigh","max"]` to a model in
+`chatLanguageModels.json` and VS Code shows an effort picker for it and sends
+`reasoning_effort`; the model's `effort` mapping in `config.json` turns that into the
+agent's own option. The audit records what was asked (`effort`) and what was applied
+(`applied`), plus the agent's available options (`configOptions`). Windows reported by the
+agents over ACP: Claude and OpenCode 1,000,000, Codex 828,400 (Codex clamps its own
+`model_context_window` to its 872K cap: asking for 1,000,000 changed nothing),
+`gpt-luna` (OpenCode Go's `gpt-6-luna`) 1,050,000. That last one is the way to a 1M GPT.
+
 ## Which VS Code surface for what
 
 VS Code chat has two levels. The **harness** selector (Copilot, Local, Claude,
@@ -196,6 +207,8 @@ files. Model defaults per agent live in `agent-hub/roster.md`.
 | `agents.models[]`            | `{ id, agent, label?, systemPrompt? }`                        |
 | `agents.models[].sessionMeta` | Sent as ACP `session/new` `_meta`. For Claude: `{"claudeCode":{"options":{"settingSources":[],"tools":["Read","Glob","Grep"]}}}` keeps a chat turn at about 14K tokens of start-up context instead of 44K (measured 2026-11-11: trivial turn 44K → 13.7K, 0.06 → 0.01 USD) and the agent can still read attached files by path; it cannot edit or run commands |
 | `agents.models[].streamReasoning` | `true` forwards the agent's thought summaries as `reasoning_content` deltas (DeepSeek-style). Claude needs `thinking: {type: "adaptive", display: "summarized"}` in `sessionMeta` or it emits none; Codex emits none through ACP today. Verified on the wire 2026-11-11 (9 reasoning chunks); how VS Code renders the field is not verified |
+| `agents.models[].effort` | `{ option, values }`: maps the `reasoning_effort` VS Code sends (when the model declares `supportsReasoningEffort`) onto the agent's own option: Claude `effort`, Codex `reasoning_effort`, OpenCode `effort` (its `medium` is `default`). Applied with `session/set_config_option`; a failure is audited and never fails the turn |
+| `agents.models[].set` | Fixed agent options applied to every session, e.g. `{ "model": "opencode-go/gpt-6-luna" }`. Use it to publish a variant as its own model |
 | `providers.<name>.type`      | `openai` or `anthropic` (optional API-key mode)               |
 | `providers.<name>.baseUrl`   | Without the trailing API path                                 |
 | `providers.<name>.apiKeyEnv` | Env var holding that provider's key                           |

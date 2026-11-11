@@ -65,6 +65,11 @@ rl.on("line", (line) => {
     else finish();
     return;
   }
+  if (method === "session/set_config_option") {
+    log(`set:${message.params?.configId}=${message.params?.value}`);
+    send({ jsonrpc: "2.0", id, result: { configOptions: [] } });
+    return;
+  }
   if (method === "session/cancel") return;
   if (id != null) {
     send({ jsonrpc: "2.0", id, error: { code: -32601, message: `unsupported: ${method}` } });

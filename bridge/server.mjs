@@ -221,6 +221,11 @@ export function loadConfig(configPath) {
         // Agent-specific session options sent as session/new `_meta`.
         sessionMeta: model.sessionMeta ?? null,
         streamReasoning: model.streamReasoning === true,
+        // { option, values: { low: "...", ... } }: how a request's reasoning_effort maps
+        // onto this agent's own config option (Claude `effort`, Codex `reasoning_effort`).
+        effort: model.effort && typeof model.effort === "object" ? model.effort : null,
+        // Fixed config options applied to every session, e.g. { "model": "opus" }.
+        set: model.set && typeof model.set === "object" ? model.set : null,
       });
     }
   }
@@ -791,6 +796,35 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       checkedOut = true;
       attach(client);
       await client.newSession({ cwd: sessionCwd, meta: model.sessionMeta ?? null });
+    }
+
+    // What the agent lets a client configure (model, mode, effort...): ids and
+    // values only, so the audit shows which knobs exist without guessing.
+    entry.configOptions = (client.configOptions ?? []).map((o) => ({
+      id: o.id,
+      current: o.currentValue ?? null,
+      values: (o.options ?? []).flatMap((g) => (g.options ? g.options : [g])).map((v) => v.value ?? v.id).filter(Boolean),
+    }));
+
+    // Config options for this turn: the model's fixed `set` plus the effort the
+    // client asked for (VS Code sends reasoning_effort when the model declares
+    // supportsReasoningEffort). A failure is recorded and never fails the turn.
+    const wanted = Object.entries(model.set ?? {});
+    const effortValue = model.effort?.values?.[payload.reasoning_effort];
+    if (effortValue && model.effort.option) {
+      wanted.push([model.effort.option, effortValue]);
+      entry.effort = payload.reasoning_effort;
+    }
+    if (wanted.length) {
+      entry.applied = {};
+      for (const [optionId, value] of wanted) {
+        try {
+          await client.setConfigOption(client.sessionId, optionId, value);
+          entry.applied[optionId] = value;
+        } catch (error) {
+          entry.applied[optionId] = `failed: ${String(error?.message ?? error).slice(0, 80)}`;
+        }
+      }
     }
 
     if (streaming) {

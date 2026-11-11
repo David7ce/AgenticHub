@@ -27,6 +27,9 @@ estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 
 ## 2026-11-11 — The bridge returns as a second surface
 
+*Addendum (later the same day):* the bridge also maps VS Code's `reasoning_effort` onto each agent's own
+option, and `gpt-luna` (OpenCode Go `gpt-6-luna`, 1,050,000) is the 1M GPT option because Codex caps itself at 872K.
+
 VS Code's Custom Endpoint still pointed at `127.0.0.1:3010` after `bridge/` was deleted, so
 every model there was dead. `bridge/` is restored from history (text chat only, no
 `tool_calls`: the agent owns its tools), Codex is added and Hermes dropped. Context windows

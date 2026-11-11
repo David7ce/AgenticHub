@@ -644,3 +644,23 @@ test("a slow streamed turn gets SSE keep-alive comments", async () => {
     await close(bridge.server);
   }
 });
+
+test("reasoning_effort maps onto the agent's own option, and fixed `set` options apply to every session", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bridge-effort-"));
+  const logPath = join(dir, "events.log");
+  const config = acpConfig();
+  config.agentMode.registry.agents.fake.env = { FAKE_ACP_LOG: logPath };
+  config.models[0].effort = { option: "effort", values: { low: "low", high: "hi", max: "max" } };
+  config.models[0].set = { model: "opus" };
+  const bridge = await startBridge(config);
+  try {
+    assert.equal((await ask(bridge, { reasoning_effort: "high" })).status, 200);
+    assert.equal((await ask(bridge, { reasoning_effort: "medium" })).status, 200); // unmapped: ignored
+    assert.equal((await ask(bridge, {})).status, 200); // none asked: only `set`
+    const events = readFileSync(logPath, "utf8").trim().split("\n").filter((e) => e.startsWith("set:"));
+    assert.deepEqual(events, ["set:model=opus", "set:effort=hi", "set:model=opus", "set:model=opus"]);
+  } finally {
+    await closeAgentPool();
+    await close(bridge.server);
+  }
+});
