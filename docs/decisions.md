@@ -25,6 +25,12 @@ in git history.
 is documentation, never the control. Codex reports no cost, so its daily cap counts the
 estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 
+## 2026-11-11 — Two top surfaces (Claude Code, OpenCode); AHP on trial
+
+See [`harness.md`](harness.md): the hub centralises governance and orchestration, not the models, and the chat UIs are cut
+to two by what each uniquely gives; the Agents window over AHP replaces OpenCode-in-the-IDE only if it passes the checklist
+there.
+
 ## 2026-11-11 — AHP is the way into VS Code's native chat (reviewed, not built yet)
 
 Reviewed https://microsoft.github.io/agent-host-protocol/ (spec v1.0.0, MIT, repo pushed the same day). AHP is the

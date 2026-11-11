@@ -8,11 +8,13 @@ git-ignored); this file is the map.
 ## What this is
 
 One backend that lets any agent call any other agent on this machine, behind a
-consent gate and with an audit line for every run. It is not a UI: **OpenCode is
-the daily surface** (decided 2026-11-01: talking to a model directly beats VS Code's
-Copilot session target, which relays prompts through its own SDK with capped context
-and extra latency). The hub is what that surface calls; Claude Code and Codex are
-reached through it.
+consent gate and with an audit line for every run. It is not a UI. Two surfaces
+call it (decided 2026-11-11, see [`docs/harness.md`](docs/harness.md)): **Claude Code**
+for hard work and orchestration, **OpenCode** for cheap daily work. Codex and Hermes
+are reached through the hub, not through a UI of their own. VS Code's Agents window
+over AHP is on trial as a single pane (`ahp/`). (2026-11-01: talking to a model
+directly beats VS Code's Copilot session target, which relays prompts through its own
+SDK with capped context and extra latency.)
 
 ```
 OpenCode ── MCP "agent-hub" ──> consent.json ──> runs.jsonl
