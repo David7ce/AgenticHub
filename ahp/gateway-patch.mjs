@@ -75,12 +75,31 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
       entry.repeated = seen?.suppressed || undefined;
       recent.set(key, { second, suppressed: 0 });
     }
+    // A session config change (mode, effort...) is a setting, not conversation: keep what was asked,
+    // what the session holds afterwards, and the reason when the gateway rejected it (a rejection is
+    // only broadcast, never thrown, so without this it would leave no trace).
+    const isConfig = entry.action === 'session/configChanged';
+    let rejection = null;
+    const store = this.store;
+    const reject = isConfig && typeof store?.reject === 'function' ? store.reject : null;
+    if (reject) {
+      entry.asked = JSON.stringify(request.params.action.config ?? null).slice(0, 160);
+      store.reject = function patchedReject(...args) { rejection = args[3] ?? 'rejected'; return reject.apply(this, args); };
+    }
+    const settle = () => {
+      if (!reject) return;
+      store.reject = reject;
+      entry.after = JSON.stringify(store.getSession?.(request.params.channel)?.state?.config?.values ?? null).slice(0, 160);
+      if (rejection) entry.rejected = String(rejection).slice(0, 160);
+    };
     const write = (extra) => { if (!quiet) log({ ...entry, ...extra, ms: Date.now() - startedAt }); };
     try {
       const result = await handle.call(this, connection, request);
+      settle();
       write({});
       return result;
     } catch (error) {
+      settle();
       log({ ...entry, ms: Date.now() - startedAt, error: String(error?.message ?? error).slice(0, 160) }); // errors always
       throw error;
     }

@@ -458,6 +458,38 @@ test('patched subscribe declines a windowed-delivery offer instead of failing, a
   assert.equal(seen.length, 2);
 });
 
+test('patched handle records a session config change, its result and the reason when the gateway rejects it', async () => {
+  const events = [];
+  class Server {
+    constructor() {
+      this.values = { mode: 'plan' };
+      this.store = {
+        reject: (_r, _a, _o, reason) => ({ rejected: reason }),
+        getSession: () => ({ state: { config: { values: this.values } } }),
+      };
+    }
+    async handle(_c, request) {
+      const mode = request.params.action.config.mode;
+      if (mode === 'bad') this.store.reject('s', {}, {}, 'Invalid value for session config mode');
+      else this.values = { mode };
+      return null;
+    }
+  }
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  const send = (mode) => server.handle(null, { method: 'dispatchAction', params: { channel: 'ahp-session:/abcdef12', action: { type: 'session/configChanged', config: { mode } } } });
+  await send('build');
+  await new Promise((r) => setTimeout(r, 1100)); // another second, so the next line is not collapsed
+  await send('bad');
+  const [ok, bad] = events.filter((e) => e.event === 'rpc');
+  assert.equal(ok.asked, '{"mode":"build"}');
+  assert.equal(ok.after, '{"mode":"build"}');
+  assert.equal(ok.rejected, undefined);
+  assert.equal(bad.rejected, 'Invalid value for session config mode');
+  assert.equal(bad.after, '{"mode":"build"}', 'the value did not change');
+  assert.equal(typeof server.store.reject, 'function');
+});
+
 test('patched handle keeps the action type and collapses a burst of identical requests into one line a second', async () => {
   const Server = fakeServer();
   const events = [];
