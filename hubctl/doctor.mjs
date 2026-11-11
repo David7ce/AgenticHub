@@ -174,6 +174,25 @@ export function checkHooks(root, { hooksPath = null, exists = existsSync } = {})
     : 'core.hooksPath is not set: the pre-commit checks do not run (git config core.hooksPath .githooks)')];
 }
 
+// The bridge is the endpoint VS Code's Custom Endpoint points at. When it is
+// configured (bridge/config.json exists) but not answering, every model in
+// that picker fails without an explanation. `health` is null when it was not
+// probed, otherwise { ok, status?, error? }.
+export function checkBridge(configured, health) {
+  if (!configured) return [];
+  if (health == null) return [];
+  return [health.ok
+    ? row('bridge', 'ok', 'answers on /health (VS Code Custom Endpoint models are reachable)')
+    : row('bridge', 'warn', 'configured but not answering on /health: start it (node agent-hub/bridge/server.mjs --config agent-hub/bridge/config.json) or VS Code Custom Endpoint models fail')];
+}
+
+/** Probe http://127.0.0.1:<port>/health with a hard timeout; never throws. */
+export function probeBridge(port = 3010, timeoutMs = 1500) {
+  const code = `fetch('http://127.0.0.1:${port}/health',{signal:AbortSignal.timeout(${timeoutMs})}).then(r=>process.exit(r.ok?0:2),()=>process.exit(1))`;
+  const r = spawnSync(process.execPath, ['-e', code], { timeout: timeoutMs + 1500, windowsHide: true });
+  return { ok: r.status === 0 };
+}
+
 export function checkLeftovers(inflight, locks) {
   const out = [];
   for (const run of inflight) {
@@ -341,6 +360,8 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
+  const bridgeConfig = readJson(join(hub, 'bridge', 'config.json'));
+  if (bridgeConfig) checks.push(...checkBridge(true, probeBridge(bridgeConfig.port ?? 3010)));
   checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));
   const handoff = handoffInputs(root);
   if (handoff) checks.push(...checkHandoffFresh(handoff));

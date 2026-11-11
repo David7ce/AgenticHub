@@ -30,8 +30,8 @@ estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 VS Code's Custom Endpoint still pointed at `127.0.0.1:3010` after `bridge/` was deleted, so
 every model there was dead. `bridge/` is restored from history (text chat only, no
 `tool_calls`: the agent owns its tools), Codex is added and Hermes dropped. Context windows
-are per-model in `config.json`: claude 1M, opencode 1M, codex 500K (its ceiling is 872K via
-`model_context_window`). OpenCode stays the daily surface; the bridge is for VS Code Chat
+are per-model in `config.json`: claude 1M, opencode 1M, codex 872K (raised from the 500K default via
+`model_context_window` in ~/.codex/config.toml). OpenCode stays the daily surface; the bridge is for VS Code Chat
 context (@workspace, browser DOM). VS Code's Copilot harness still caps BYOK at 128K
 (vscode#336797).
 

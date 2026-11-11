@@ -21,7 +21,7 @@
         "id": "codex",
         "agent": "codex",
         "label": "Codex (existing login)",
-        "contextWindow": 500000,
+        "contextWindow": 872000,
         "maxOutputTokens": 128000
       },
       {
