@@ -798,13 +798,9 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       await client.newSession({ cwd: sessionCwd, meta: model.sessionMeta ?? null });
     }
 
-    // What the agent lets a client configure (model, mode, effort...): ids and
-    // values only, so the audit shows which knobs exist without guessing.
-    entry.configOptions = (client.configOptions ?? []).map((o) => ({
-      id: o.id,
-      current: o.currentValue ?? null,
-      values: (o.options ?? []).flatMap((g) => (g.options ? g.options : [g])).map((v) => v.value ?? v.id).filter(Boolean),
-    }));
+    // Which knobs the agent offers (id and current value only: the full value lists,
+    // 76 models for OpenCode, would bloat every audit line).
+    entry.configOptions = (client.configOptions ?? []).map((o) => ({ id: o.id, current: o.currentValue ?? null }));
 
     // Config options for this turn: the model's fixed `set` plus the effort the
     // client asked for (VS Code sends reasoning_effort when the model declares

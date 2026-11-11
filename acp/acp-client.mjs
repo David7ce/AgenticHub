@@ -17,26 +17,8 @@
 // fs/write_text_file, all terminal/* methods, elicitation/create. Agents
 // keep using their own file/tool access; the hub does not proxy it yet.
 
-import { spawn, spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
-
-// child.kill() signals one PID. On Windows the child is usually a wrapper --
-// cmd.exe for an npx shim, wsl.exe for OpenCode -- whose own children survive
-// the signal. fanout-acp.mjs already tree-kills for that reason; the
-// single-agent path has to match it, or a cancelled run keeps editing.
-function killTree(child) {
-  if (!child || child.killed || child.pid == null) return;
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
-      stdio: 'ignore',
-      windowsHide: true,
-    });
-    return;
-  }
-  try {
-    child.kill('SIGTERM');
-  } catch {}
-}
+import { killTree, spawnAgentProcess } from './process-utils.mjs';
 
 export const ACP_PROTOCOL_VERSION = 1;
 export const CLIENT_INFO = {
@@ -104,33 +86,12 @@ export class AcpClient {
   start() {
     if (this.#child) return this;
 
-    // Node cannot spawn .cmd/.bat wrappers directly on Windows (EINVAL
-    // since the CVE-2024-27980 fix), and passing args with shell:true
-    // triggers a deprecation warning. Run the wrapper through cmd.exe
-    // instead. Registry args are static and trusted; refuse anything that
-    // would need cmd quoting rather than hand-rolling it.
-    if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(this.command)) {
-      const line = [this.command, ...this.args];
-      if (line.some((part) => /[\s"&|<>^%]/.test(part))) {
-        throw new Error(
-          `refusing to shell out to ${this.command}: registry args contain cmd metacharacters`,
-        );
-      }
-      this.#child = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', line.join(' ')], {
-        cwd: this.spawnCwd,
-        env: { ...process.env, ...this.env },
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsVerbatimArguments: true,
-        windowsHide: true,
-      });
-    } else {
-      this.#child = spawn(this.command, this.args, {
-        cwd: this.spawnCwd,
-        env: { ...process.env, ...this.env },
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true,
-      });
-    }
+    this.#child = spawnAgentProcess({
+      command: this.command,
+      args: this.args,
+      cwd: this.spawnCwd,
+      env: { ...process.env, ...this.env },
+    });
 
     this.#child.on('error', (err) => {
       this.#settleAll(err);

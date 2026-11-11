@@ -23,6 +23,8 @@ const TEST_DIRS = [
   'agent-hub/hubctl/tests',
   'agent-hub/mcp/tests',
   'agent-hub/chatmgr/test',
+  'agent-hub/bridge/tests',
+  'agent-hub/ahp/tests',
 ];
 
 // `node --test <dir>` is not supported on this Node, so the files are listed.

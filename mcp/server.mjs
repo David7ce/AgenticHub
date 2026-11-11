@@ -35,8 +35,9 @@ import { openIndex, reindex, search as searchIndex } from '../hubctl/search.mjs'
 import { gatherStatus, readInflight, renderStatus } from '../hubctl/hubctl.mjs';
 
 import {
-  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, killTree, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor,
+  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor,
 } from './hub-process.mjs';
+import { killTree } from '../acp/process-utils.mjs';
 
 
 async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd, effort }) {

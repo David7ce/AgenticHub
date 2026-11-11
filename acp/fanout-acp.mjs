@@ -16,7 +16,8 @@
 // 1 otherwise. Same statuses as hub-acp.mjs.
 
 
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { killTree } from './process-utils.mjs';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -159,17 +160,6 @@ function splitConfig(change) {
   return { agent, config: `${id}=${value}` };
 }
 
-function killTree(child) {
-  if (!child.pid) return;
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-  } else {
-    // The agent is a grandchild; take down the child's process group
-    // members first, then the child itself.
-    spawnSync('pkill', ['-TERM', '-P', String(child.pid)], { stdio: 'ignore' });
-    child.kill('SIGTERM');
-  }
-}
 
 
 function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, label = agent, cwd = null }) {

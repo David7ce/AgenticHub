@@ -1,7 +1,8 @@
 // hub-process.mjs — how the MCP server runs the hub's own scripts: paths, timeouts,
 // spawning with captured streams, tree-kill, and the hub-acp argument list.
 
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { killTree } from '../acp/process-utils.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,21 +69,6 @@ export function spawnHub(script, args, { input = '', env } = {}) {
   return { child, exit };
 }
 
-// Same tree-kill reasoning as acp-client: a wrapper (cmd.exe, wsl.exe) dying
-// first leaves the agent editing behind a "finished" job.
-export function killTree(child) {
-  if (!child || child.killed || child.pid == null) return;
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
-      stdio: 'ignore',
-      windowsHide: true,
-    });
-    return;
-  }
-  try {
-    child.kill('SIGTERM');
-  } catch {}
-}
 
 export function parseHubJson(exit, label) {
   const { code, stdout, stderr } = exit;

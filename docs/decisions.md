@@ -43,9 +43,13 @@ What a gateway does **not** give: it is "a protocol bridge, not a sandbox" (agen
 MCP forwarding and no multi-user policy, and it launches providers with `npx --yes` (unpinned). It also skips
 `consent.json`, the audit log and the spend caps, which the hub must keep. Plan if we pilot it: generate the gateway's
 `providers` from `acp/agents.json` (same pinned versions), and launch each through a thin ACP stdio proxy that checks
-the consent grant and writes the `runs.jsonl` line, so the gate is not bypassed. Not verified: how VS Code renders a
-gateway session end to end here, and the proxy (not written). Hermes is now registered in the hub (`hermes acp --check`
-OK) with its grant disabled.
+the consent grant and writes the `runs.jsonl` line, so the gate is not bypassed.
+
+**Piloted the same day** (`ahp/`): the proxy and the config generator are written and tested, and a headless client built on
+the official `@microsoft/agent-host-protocol` 1.0.0 created sessions and ran turns on OpenCode and Claude through the
+gateway; the audit lines appeared (Claude 0.17 USD for a trivial turn). Auditing is per turn: the host stops providers
+abruptly, so an exit hook never ran. Not verified: how VS Code renders a gateway session end to end. Hermes is registered
+in the hub (`hermes acp --check` OK) with its grant disabled.
 
 ## 2026-11-11 — The bridge returns as a second surface
 
