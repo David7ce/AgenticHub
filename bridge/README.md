@@ -35,6 +35,16 @@ through `conhost --headless` so no window flashes. Logs: `logs/bridge-run.log`,
 `runOn: folderOpen` task: the Custom Endpoint config is user-wide, so the
 bridge has to be up whichever workspace is open.
 
+### Stopping it
+
+Stop it with `taskkill /PID <pid> /T /F` (the `/T` matters). Without it the agent
+processes it pooled (Codex's `app-server`, Claude's adapter) are orphaned and keep
+their sessions "running", which blocks deleting them from chatmgr. Left alone, the
+bridge closes idle agents by itself after 60 s (checked 2026-11-11: Codex exits
+after about 54 s and releases its lock). Each turn still leaves one session in the
+agent's own store, under `logs/hub-bridge`; chatmgr marks those as automated and
+`chatmgr prune-automated` removes them.
+
 ## Which VS Code surface for what
 
 VS Code chat has two levels. The **harness** selector (Copilot, Local, Claude,
