@@ -34,7 +34,7 @@ lives in the second level only.
 | Anything that must reach this machine from Cloud | Not possible | Cloud runs remotely and cannot see loopback |
 
 Costs of the bridge path: every request opens a fresh agent session (Claude
-loads about 44K tokens of its own prompt, tools and MCP before your text), and
+loads about 14K tokens with the shipped `sessionMeta`, 44K without it), and
 the Local harness, the one that honors the configured window, is deprecated
 and is removed in February 2027.
 
@@ -161,6 +161,7 @@ files. Model defaults per agent live in `agent-hub/roster.md`.
 | `agents.timeoutMs`           | Per-turn ceiling (default 300000)                             |
 | `agents.consent`             | Consent file; defaults to `../consent.json`, `false` disables |
 | `agents.models[]`            | `{ id, agent, label?, systemPrompt? }`                        |
+| `agents.models[].sessionMeta` | Sent as ACP `session/new` `_meta`. For Claude: `{"claudeCode":{"options":{"settingSources":[],"tools":["Read","Glob","Grep"]}}}` keeps a chat turn at about 14K tokens of start-up context instead of 44K (measured 2026-11-11: trivial turn 44K → 13.7K, 0.06 → 0.01 USD) and the agent can still read attached files by path; it cannot edit or run commands |
 | `providers.<name>.type`      | `openai` or `anthropic` (optional API-key mode)               |
 | `providers.<name>.baseUrl`   | Without the trailing API path                                 |
 | `providers.<name>.apiKeyEnv` | Env var holding that provider's key                           |

@@ -15,7 +15,19 @@
         "agent": "claude",
         "label": "Claude via AgentHub",
         "contextWindow": 1000000,
-        "maxOutputTokens": 64000
+        "maxOutputTokens": 64000,
+        "sessionMeta": {
+          "claudeCode": {
+            "options": {
+              "settingSources": [],
+              "tools": [
+                "Read",
+                "Glob",
+                "Grep"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "codex",

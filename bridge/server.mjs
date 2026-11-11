@@ -215,6 +215,8 @@ export function loadConfig(configPath) {
         systemPrompt: model.systemPrompt ?? null,
         contextWindow: model.contextWindow ?? null,
         maxOutputTokens: model.maxOutputTokens ?? null,
+        // Agent-specific session options sent as session/new `_meta`.
+        sessionMeta: model.sessionMeta ?? null,
       });
     }
   }
@@ -759,7 +761,7 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
     attach(client);
 
     try {
-      await client.newSession({ cwd: sessionCwd });
+      await client.newSession({ cwd: sessionCwd, meta: model.sessionMeta ?? null });
     } catch {
       // A long-lived process may reject a new session. Stop it fully before
       // starting a clean one: two agent processes contending for the same
@@ -770,7 +772,7 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       client = await acquireAgent(agent, config, { fresh: true });
       checkedOut = true;
       attach(client);
-      await client.newSession({ cwd: sessionCwd });
+      await client.newSession({ cwd: sessionCwd, meta: model.sessionMeta ?? null });
     }
 
     if (streaming) {

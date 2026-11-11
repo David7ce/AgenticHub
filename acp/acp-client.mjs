@@ -193,10 +193,10 @@ export class AcpClient {
     return this.request('authenticate', { methodId }, { timeoutMs: 60_000 });
   }
 
-  async newSession({ cwd, mcpServers = [], additionalDirectories = [] }) {
+  async newSession({ cwd, mcpServers = [], additionalDirectories = [], meta = null }) {
     const result = await this.request(
       'session/new',
-      this.#sessionParams({ cwd, mcpServers, additionalDirectories }),
+      this.#sessionParams({ cwd, mcpServers, additionalDirectories, meta }),
       { timeoutMs: 120_000 },
     );
     if (!result?.sessionId) throw new Error('session/new returned no sessionId');
@@ -247,8 +247,9 @@ export class AcpClient {
     return result;
   }
 
-  #sessionParams({ sessionId, cwd, mcpServers, additionalDirectories }) {
+  #sessionParams({ sessionId, cwd, mcpServers, additionalDirectories, meta = null }) {
     const params = { cwd, mcpServers };
+    if (meta) params._meta = meta; // agent-specific session options (e.g. claudeCode.options)
     if (sessionId) params.sessionId = sessionId;
     if (
       additionalDirectories.length &&
