@@ -162,6 +162,7 @@ files. Model defaults per agent live in `agent-hub/roster.md`.
 | `agents.consent`             | Consent file; defaults to `../consent.json`, `false` disables |
 | `agents.models[]`            | `{ id, agent, label?, systemPrompt? }`                        |
 | `agents.models[].sessionMeta` | Sent as ACP `session/new` `_meta`. For Claude: `{"claudeCode":{"options":{"settingSources":[],"tools":["Read","Glob","Grep"]}}}` keeps a chat turn at about 14K tokens of start-up context instead of 44K (measured 2026-11-11: trivial turn 44K → 13.7K, 0.06 → 0.01 USD) and the agent can still read attached files by path; it cannot edit or run commands |
+| `agents.models[].streamReasoning` | `true` forwards the agent's thought summaries as `reasoning_content` deltas (DeepSeek-style). Claude needs `thinking: {type: "adaptive", display: "summarized"}` in `sessionMeta` or it emits none; Codex emits none through ACP today. Verified on the wire 2026-11-11 (9 reasoning chunks); how VS Code renders the field is not verified |
 | `providers.<name>.type`      | `openai` or `anthropic` (optional API-key mode)               |
 | `providers.<name>.baseUrl`   | Without the trailing API path                                 |
 | `providers.<name>.apiKeyEnv` | Env var holding that provider's key                           |
@@ -198,8 +199,7 @@ turn skips agent startup because the initialized process is still pooled.
 - **Tool calling in agent mode.** Not a translation gap: the agent owns and
   executes its tools, so VS Code cannot drive them through `tool_calls`. Agent
   mode stays chat-only. Provider `openai` mode already supports tools.
-- **Streaming thoughts.** Only `agent_message_chunk` is forwarded; reasoning
-  chunks are dropped.
+- **Streaming thoughts.** Opt-in per model (`streamReasoning`); see the config reference.
 - **Cloud sessions.** They run on managed compute and cannot reach this
   loopback endpoint; use Local or a remote session whose agent host is this
   machine.

@@ -24,10 +24,15 @@
                 "Read",
                 "Glob",
                 "Grep"
-              ]
+              ],
+              "thinking": {
+                "type": "adaptive",
+                "display": "summarized"
+              }
             }
           }
-        }
+        },
+        "streamReasoning": true
       },
       {
         "id": "codex",

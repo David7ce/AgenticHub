@@ -217,6 +217,7 @@ export function loadConfig(configPath) {
         maxOutputTokens: model.maxOutputTokens ?? null,
         // Agent-specific session options sent as session/new `_meta`.
         sessionMeta: model.sessionMeta ?? null,
+        streamReasoning: model.streamReasoning === true,
       });
     }
   }
@@ -738,10 +739,21 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       if (res.writableEnded) return;
       if (msg.method !== "session/update") return;
       const update = msg.params?.update;
+      if (update?.sessionUpdate) {
+        entry.updateTypes = entry.updateTypes ?? {};
+        entry.updateTypes[update.sessionUpdate] = (entry.updateTypes[update.sessionUpdate] ?? 0) + 1;
+      }
       if (update?.sessionUpdate === "usage_update" && Number.isFinite(update.used)) {
         reported = { ...(reported ?? {}), contextUsed: update.used, contextSize: update.size ?? null };
         const amount = update.cost?.amount;
         if (Number.isFinite(amount)) reported.cost = { amount, currency: update.cost.currency ?? "USD" };
+      }
+      if (update?.sessionUpdate === "agent_thought_chunk") {
+        // Opt-in (streamReasoning): DeepSeek-style `reasoning_content` deltas.
+        if (streaming && model.streamReasoning && update.content?.type === "text" && update.content.text) {
+          res.write(chunk(id, created, model.id, { reasoning_content: update.content.text }));
+        }
+        return;
       }
       if (update?.sessionUpdate !== "agent_message_chunk") return;
       if (update.content?.type !== "text") return;
