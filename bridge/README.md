@@ -17,6 +17,24 @@ provider token. It spawns the same client you use from a terminal, and that
 client uses the login it already has. It also honors the hub's
 `consent.json`, so an agent the hub would refuse to run cannot be run here.
 
+## Keeping it running (Windows)
+
+The bridge is a normal process, so nothing starts it by itself. `hubctl doctor`
+and `brief` warn when it is down. To not think about it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File agent-hub	oolsegister-bridge-task.ps1          # once
+powershell -ExecutionPolicy Bypass -File agent-hub	oolsegister-bridge-task.ps1 -Remove  # undo
+```
+
+That registers a per-user, non-elevated Task Scheduler task that runs
+`tools/run-bridge.ps1` at logon and every 5 minutes. The launcher does nothing
+when `/health` already answers, so the repeat is a self-healing check, and it runs
+through `conhost --headless` so no window flashes. Logs: `logs/bridge-run.log`,
+`bridge-stdout.log`, `bridge-stderr.log`. Use a task, not a VS Code
+`runOn: folderOpen` task: the Custom Endpoint config is user-wide, so the
+bridge has to be up whichever workspace is open.
+
 ## Which VS Code surface for what
 
 VS Code chat has two levels. The **harness** selector (Copilot, Local, Claude,
