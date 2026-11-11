@@ -21,7 +21,9 @@ VS Code Agents window ──AHP/WebSocket──> ahp-acp-gateway ──stdio─�
 | `gen-config.mjs` | Writes `logs/ahp-gateway.json` from `acp/agents.json` and `consent.json`: only agents with an enabled grant become providers, each launched through the proxy; the gateway's other built-ins are switched off; loopback with a strict Origin allowlist |
 | `consent-proxy.mjs` | ACP stdio proxy. Refuses to start the agent when the grant is not valid (enabled, `overseerAck`, expiry, daily caps); starts the real command; relays every line; writes one `logs/runs.jsonl` line per finished turn (`transport: "ahp"`, stop reason, the cost that turn added) |
 | `permission-clamp.mjs` | Applies the grant's `writeTrees` to each session (below) |
-| `../tools/run-ahp-gateway.ps1` | Idempotent launcher: regenerates the config and starts the pinned gateway (`0.2.2`) when `/healthz` is down |
+| `gateway-run.mjs` | Starts the pinned gateway from its local install (`logs/ahp-gateway-pkg`) with `gateway-patch.mjs` applied |
+| `gateway-patch.mjs` | Three local changes to the third-party gateway: idempotent `createSession`, `subscribe` that declines windowed delivery instead of failing, and a request log without values (below) |
+| `../tools/run-ahp-gateway.ps1` | Idempotent launcher: installs the pinned gateway (exact version, `--ignore-scripts`), regenerates the config and starts `gateway-run.mjs` when `/healthz` is down |
 
 Why a proxy: a host that launches agents itself would skip the consent gate, the audit log
 and the spend caps. The gateway is "a protocol bridge, not a sandbox" (its own words), and
@@ -65,6 +67,25 @@ Registry (`acp/agents.json`): `permissionModes.restricted` and `.attended` are `
 Verified live with all three agents, in a folder under the trees and in one outside them.
 **To let an agent work in a project, add the folder to its `attendedWriteTrees` (or `writeTrees`) in
 `consent.json`.**
+
+## Why the gateway is patched, and why a pre-release
+
+First real use in VS Code's Agents window (2026-11-11, VS Code 1.146, gateway 0.2.2) was unusable, and the
+agents were fine. Measured in `logs/ahp-gateway-rpc.log`:
+
+- VS Code asks to create a session that already exists (a repeat after a slow create: 3-4 s). The gateway
+  answered "Session already exists" and the first message never started. Patched: a repeat succeeds once the
+  session is ready (a different provider on the same URI still fails).
+- VS Code offers windowed delivery (`flowControl`) in `subscribe`. The spec says the server accepts it or the
+  subscription uses ordinary delivery; the gateway failed the whole call and VS Code retried forever (41,000 in
+  2.5 minutes). Patched: the offer is declined.
+- ~100 `chat/isReadChanged` dispatches per second on one chat (the session and chat read flags disagreeing).
+  Fixed upstream on 2026-11-10 and 2026-11-11 and not in 0.2.2, so the launcher pins the pre-release of that
+  commit, `0.2.3-next.202611110657.0d297c2` (same three dependencies, no install scripts). Go back to a stable
+  version once 0.2.3 ships.
+
+With the three in place the log is a few dozen lines in 25 s instead of thousands. The log keeps method, session
+suffix, parameter names, action type and timing, never values, and collapses identical requests per second.
 
 ## Run it
 

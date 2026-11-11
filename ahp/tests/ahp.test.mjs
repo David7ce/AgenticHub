@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { checkGate, createStats, lineSplitter, parseArgs, turnRecord } from '../consent-proxy.mjs';
 import { createClamp } from '../permission-clamp.mjs';
 import { GATEWAY_BUILTINS, buildConfig } from '../gen-config.mjs';
+import { patchGateway } from '../gateway-patch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROXY = join(HERE, '..', 'consent-proxy.mjs');
@@ -385,4 +386,103 @@ test('--all adds agents without a grant, which then refuse at start-up', () => {
   const registry = { agents: { hermes: { label: 'Hermes' } } };
   const cfg = buildConfig({ registry, consent: { grants: { hermes: { enabled: false } } }, all: true });
   assert.deepEqual(cfg.providers.filter((p) => p.enabled !== false).map((p) => p.id), ['hermes']);
+});
+
+// ---- the gateway patch (idempotent createSession, request log) ----------------------------
+
+function fakeServer() {
+  class Server {
+    constructor() { this.sessions = new Map(); this.created = 0; }
+    get store() { return { getSession: (uri) => this.sessions.get(uri) ?? null }; }
+    async createSession(_connection, params) {
+      if (this.sessions.has(params.channel)) throw new Error('Session already exists');
+      this.sessions.set(params.channel, { provider: params.provider, state: { lifecycle: 'creating' } });
+      this.created++;
+      await delay(40); // the agent starting
+      this.sessions.get(params.channel).state.lifecycle = 'ready';
+      return null;
+    }
+    async handle(_connection, request) {
+      if (request.method === 'boom') throw new Error('nope');
+      return request.method === 'createSession' ? this.createSession(null, request.params) : 'ok';
+    }
+  }
+  return Server;
+}
+
+test('patched createSession: a repeat of a session that exists is answered as success once it is ready', async () => {
+  const Server = fakeServer();
+  const events = [];
+  patchGateway(Server, { log: (e) => events.push(e), pollMs: 5 });
+  const server = new Server();
+  const params = { channel: 'ahp-session:/abcdef12', provider: 'opencode' };
+  const first = server.createSession(null, params); // still creating when the repeat arrives
+  await delay(5);
+  assert.equal(await server.createSession(null, params), null, 'the repeat waits for the first and succeeds');
+  assert.equal(await first, null);
+  assert.equal(await server.createSession(null, params), null, 'and again once it is ready');
+  assert.equal(server.created, 1, 'the agent was started once');
+  assert.deepEqual(events.filter((e) => e.event === 'createSession-repeat').map((e) => e.lifecycle), ['creating', 'ready']);
+});
+
+test('patched createSession: a different provider on an existing URI still gets the gateway error, a new URI still creates', async () => {
+  const Server = fakeServer();
+  patchGateway(Server);
+  const server = new Server();
+  await server.createSession(null, { channel: 'ahp-session:/aaaaaaaa', provider: 'opencode' });
+  await assert.rejects(server.createSession(null, { channel: 'ahp-session:/aaaaaaaa', provider: 'claude' }), /already exists/);
+  await server.createSession(null, { channel: 'ahp-session:/bbbbbbbb', provider: 'claude' });
+  assert.equal(server.created, 2);
+});
+
+test('patched subscribe declines a windowed-delivery offer instead of failing, and leaves other subscribes alone', async () => {
+  const seen = [];
+  class Server {
+    async subscribe(_connection, params) {
+      if (params.flowControl !== undefined) throw new Error('Windowed subscriptions are not implemented');
+      seen.push(params);
+      return { snapshot: { resource: params.channel } };
+    }
+    async handle() { return null; }
+    async createSession() { return null; }
+  }
+  patchGateway(Server);
+  const server = new Server();
+  const offered = { channel: 'ahp-chat:/abc', flowControl: { receive: { windowBytes: 65536, maximumFrameBytes: 4096 } } };
+  const result = await server.subscribe(null, offered);
+  assert.deepEqual(result, { snapshot: { resource: 'ahp-chat:/abc' } });
+  assert.equal(result.flowControl, undefined, 'the offer is declined: no flowControl in the result');
+  assert.deepEqual(seen[0], { channel: 'ahp-chat:/abc' });
+  assert.deepEqual(offered.flowControl.receive.windowBytes, 65536, 'the caller object is not mutated');
+  await server.subscribe(null, { channel: 'ahp-root://' });
+  assert.equal(seen.length, 2);
+});
+
+test('patched handle keeps the action type and collapses a burst of identical requests into one line a second', async () => {
+  const Server = fakeServer();
+  const events = [];
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  const request = { method: 'dispatchAction', params: { channel: 'ahp-chat:/12345678', action: { type: 'chat/turnStarted', text: 'private' } } };
+  for (let i = 0; i < 50; i++) await server.handle(null, request);
+  await server.handle(null, { ...request, params: { ...request.params, action: { type: 'chat/draftChanged' } } });
+  const rpc = events.filter((e) => e.event === 'rpc');
+  assert.ok(rpc.length <= 4, `one line per type and second, got ${rpc.length}`);
+  assert.deepEqual([...new Set(rpc.map((e) => e.action))].sort(), ['chat/draftChanged', 'chat/turnStarted']);
+  assert.ok(!JSON.stringify(events).includes('private'));
+});
+
+test('patched handle logs method, session suffix, parameter names and timing, never values, and rethrows errors', async () => {
+  const Server = fakeServer();
+  const events = [];
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  await server.handle(null, { id: 7, method: 'dispatchAction', params: { channel: 'ahp-chat:/12345678', action: { text: 'secret words' } } });
+  await assert.rejects(server.handle(null, { id: 8, method: 'boom', params: {} }), /nope/);
+  const rpc = events.filter((e) => e.event === 'rpc');
+  assert.deepEqual(rpc[0].keys, ['channel', 'action']);
+  assert.equal(rpc[0].channel, '12345678');
+  assert.ok(typeof rpc[0].ms === 'number');
+  assert.equal(rpc[1].error, 'nope');
+  assert.ok(!JSON.stringify(events).includes('secret words'), 'no parameter values are logged');
 });

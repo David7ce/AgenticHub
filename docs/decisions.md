@@ -25,6 +25,13 @@ in git history.
 is documentation, never the control. Codex reports no cost, so its daily cap counts the
 estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 
+## 2026-11-11 — The AHP gateway runs patched and on a pre-release
+
+VS Code 1.146's Agents window looped against gateway 0.2.2 (repeat `createSession`, rejected `flowControl` offers,
+an `isReadChanged` storm). The hub now starts the gateway from a pinned local install through `ahp/gateway-run.mjs`
+with `ahp/gateway-patch.mjs`, on `0.2.3-next.202611110657.0d297c2` (upstream's fixes of 2026-11-10/11). See
+`ahp/README.md`. Revisit when 0.2.3 is released.
+
 ## 2026-11-11 — Two top surfaces (Claude Code, OpenCode); AHP on trial
 
 See [`harness.md`](harness.md): the hub centralises governance and orchestration, not the models, and the chat UIs are cut
