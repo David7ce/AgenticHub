@@ -1,0 +1,36 @@
+{
+  "host": "127.0.0.1",
+  "port": 3010,
+  "authTokenEnv": "AGENT_HUB_BRIDGE_TOKEN",
+  "auditLog": "../../logs/bridge.jsonl",
+  "systemPrompt": null,
+  "agents": {
+    "registry": "../acp/agents.json",
+    "cwd": "..",
+    "permission": "deny",
+    "timeoutMs": 300000,
+    "models": [
+      {
+        "id": "claude",
+        "agent": "claude",
+        "label": "Claude (existing login)",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      },
+      {
+        "id": "codex",
+        "agent": "codex",
+        "label": "Codex (existing login)",
+        "contextWindow": 500000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "opencode",
+        "agent": "opencode",
+        "label": "OpenCode (existing login)",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    ]
+  }
+}
