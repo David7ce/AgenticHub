@@ -17,6 +17,26 @@ provider token. It spawns the same client you use from a terminal, and that
 client uses the login it already has. It also honors the hub's
 `consent.json`, so an agent the hub would refuse to run cannot be run here.
 
+## Which VS Code surface for what
+
+VS Code chat has two levels. The **harness** selector (Copilot, Local, Claude,
+Codex, Cloud) picks the agent runtime; inside Copilot/Local the **model**
+picker lists providers (Copilot, Custom Endpoint, OpenRouter). This bridge
+lives in the second level only.
+
+| You want | Use | Why |
+|---|---|---|
+| Claude with tools, edits, full 1M | **Claude harness** | Native Agent SDK and login; no per-request session start-up |
+| Codex with tools and edits | **Codex harness** (experimental; needs the Codex extension) | Same, native |
+| OpenCode / DeepSeek in VS Code chat | **This bridge**, model "OpenCode via AgentHub" | OpenCode has no harness; text chat only |
+| Claude/Codex answers inside the Copilot harness, with `@workspace` and editor context | This bridge | Text chat, `toolCalling: false` |
+| Anything that must reach this machine from Cloud | Not possible | Cloud runs remotely and cannot see loopback |
+
+Costs of the bridge path: every request opens a fresh agent session (Claude
+loads about 44K tokens of its own prompt, tools and MCP before your text), and
+the Local harness, the one that honors the configured window, is deprecated
+and is removed in February 2027.
+
 ## What it does
 
 - `GET /v1/models` — the models this bridge exposes.
@@ -74,32 +94,32 @@ process could call it.
   {
     "name": "AgentHub",
     "vendor": "customendpoint",
-    "apiKey": "${input:agentHubBridgeToken}",
+    "apiKey": "<the bridge's authToken>",
     "apiType": "chat-completions",
     "models": [
       {
         "id": "claude",
-        "name": "Claude (existing login)",
+        "name": "Claude via AgentHub",
         "url": "http://127.0.0.1:3010/v1/chat/completions",
         "toolCalling": false,
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "maxOutputTokens": 64000
       },
       {
-        "id": "opencode",
-        "name": "OpenCode (existing login)",
+        "id": "codex",
+        "name": "Codex via AgentHub",
         "url": "http://127.0.0.1:3010/v1/chat/completions",
         "toolCalling": false,
-        "contextWindow": 128000,
-        "maxOutputTokens": 8192
+        "contextWindow": 872000,
+        "maxOutputTokens": 128000
       },
       {
-        "id": "hermes",
-        "name": "Hermes (existing login)",
+        "id": "opencode",
+        "name": "OpenCode via AgentHub",
         "url": "http://127.0.0.1:3010/v1/chat/completions",
         "toolCalling": false,
-        "contextWindow": 262144,
-        "maxOutputTokens": 8192
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
       }
     ]
   }

@@ -13,21 +13,21 @@
       {
         "id": "claude",
         "agent": "claude",
-        "label": "Claude (existing login)",
+        "label": "Claude via AgentHub",
         "contextWindow": 1000000,
         "maxOutputTokens": 64000
       },
       {
         "id": "codex",
         "agent": "codex",
-        "label": "Codex (existing login)",
+        "label": "Codex via AgentHub",
         "contextWindow": 872000,
         "maxOutputTokens": 128000
       },
       {
         "id": "opencode",
         "agent": "opencode",
-        "label": "OpenCode (existing login)",
+        "label": "OpenCode via AgentHub",
         "contextWindow": 1000000,
         "maxOutputTokens": 64000
       }
