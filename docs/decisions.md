@@ -32,8 +32,14 @@ every model there was dead. `bridge/` is restored from history (text chat only, 
 `tool_calls`: the agent owns its tools), Codex is added and Hermes dropped. Context windows
 are per-model in `config.json`: claude 1M, opencode 1M, codex 872K (raised from the 500K default via
 `model_context_window` in ~/.codex/config.toml). OpenCode stays the daily surface; the bridge is for VS Code Chat
-context (@workspace, browser DOM). VS Code's Copilot harness still caps BYOK at 128K
-(vscode#336797).
+context (@workspace, browser DOM). VS Code's Copilot harness may still cap BYOK at 128K
+(vscode#336797; not re-measured: attachments and big pastes reach the bridge as
+file paths, which the agent reads itself). Windows the agents themselves report
+over ACP (usage_update.size): claude 1,000,000, opencode 1,000,000, codex 828,400
+(= 95% of the 872K set in ~/.codex/config.toml). Start-up context per turn: claude
+13.7K (with sessionMeta, 44K without), opencode 16.2K, codex 20.4K. The Claude
+harness in VS Code needs Copilot or an Anthropic API key, not the subscription
+login, so Claude on a subscription goes through this bridge.
 
 ## 2026-11-08 — The hub is canonical on Windows
 
