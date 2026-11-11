@@ -34,7 +34,14 @@ rl.on("line", (line) => {
   if (method === "session/new") {
     log("session");
     if (message.params?._meta) log(`meta:${JSON.stringify(message.params._meta)}`);
-    send({ jsonrpc: "2.0", id, result: { sessionId: "fake-session", configOptions: [] } });
+    // FAKE_ACP_MODE_OPTION=1 advertises a permission-mode option, as real agents do.
+    const configOptions = process.env.FAKE_ACP_MODE_OPTION
+      ? [{
+          id: "mode", name: "Mode", type: "select", currentValue: "auto",
+          options: ["default", "plan", "auto"].map((value) => ({ value, name: value })),
+        }]
+      : [];
+    send({ jsonrpc: "2.0", id, result: { sessionId: "fake-session", configOptions } });
     return;
   }
   if (method === "session/prompt") {

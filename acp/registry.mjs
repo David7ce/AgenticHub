@@ -53,6 +53,7 @@ export function resolveAgent(registry, name) {
     notes: entry.notes,
     defaultConfig: entry.defaultConfig,
     effort: entry.effort,
+    permissionModes: entry.permissionModes,
   };
 }
 

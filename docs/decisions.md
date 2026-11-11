@@ -48,7 +48,16 @@ the consent grant and writes the `runs.jsonl` line, so the gate is not bypassed.
 **Piloted the same day** (`ahp/`): the proxy and the config generator are written and tested, and a headless client built on
 the official `@microsoft/agent-host-protocol` 1.0.0 created sessions and ran turns on OpenCode and Claude through the
 gateway; the audit lines appeared (Claude 0.17 USD for a trivial turn). Auditing is per turn: the host stops providers
-abruptly, so an exit hook never ran. Not verified: how VS Code renders a gateway session end to end. Hermes is registered
+abruptly, so an exit hook never ran. Not verified: how VS Code renders a gateway session end to end.
+
+**Permissions through AHP are not gated by AHP (measured the same day):** OpenCode, Claude and Codex each wrote a file
+without asking in their default modes, because the gateway only relays the requests an agent chooses to make. The proxy
+therefore applies the grant itself (`ahp/permission-clamp.mjs`): a session outside `limits.writeTrees` is forced into the
+agent's restricted mode (`permissionModes` in `agents.json`: Claude `plan`, Codex `read-only`, OpenCode `plan`), the client
+sees only the allowed modes, edit/delete/move/execute/switch_mode permission requests are answered no, an agent with no
+restricted mode is refused, and a failure to restrict fails closed. Verified live: no file was created by any of the three
+outside the trees. Consequence for the owner: Claude has no `writeTrees`, so through VS Code it edits nothing except in the
+scratch folder until a tree is added to its grant. Hermes is registered
 in the hub (`hermes acp --check` OK) with its grant disabled.
 
 ## 2026-11-11 — The bridge returns as a second surface

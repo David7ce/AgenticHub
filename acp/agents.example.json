@@ -4,6 +4,7 @@
   "agents": {
     "opencode": {
       "label": "OpenCode",
+      "permissionModes": { "restricted": { "force": "plan", "allow": ["plan"] } },
       "command": "opencode",
       "args": [
         "acp"
@@ -39,6 +40,7 @@
     "claude": {
       "agentFallbacks": ["codex", "opencode"],
       "label": "Claude Agent (ACP adapter)",
+      "permissionModes": { "restricted": { "force": "plan", "allow": ["plan"] } },
       "command": "npx",
       "args": [
         "-y",
@@ -56,6 +58,7 @@
     },
     "codex": {
       "label": "Codex (ACP adapter)",
+      "permissionModes": { "restricted": { "force": "read-only", "allow": ["read-only"] } },
       "command": "npx",
       "args": [
         "-y",

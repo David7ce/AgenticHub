@@ -1,6 +1,6 @@
 /**
- * AHP integration tests: the consent proxy and the gateway config generator.
- * No network and no real agents: a fake ACP agent stands in.
+ * AHP integration tests: the consent proxy, the permission clamp and the gateway config
+ * generator. No network and no real agents: a fake ACP agent stands in.
  *
  *   node --test agent-hub/ahp/tests/ahp.test.mjs
  */
@@ -11,7 +11,8 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkGate, createStats, lineTap, parseArgs, turnRecord } from '../consent-proxy.mjs';
+import { checkGate, createStats, lineSplitter, parseArgs, turnRecord } from '../consent-proxy.mjs';
+import { createClamp } from '../permission-clamp.mjs';
 import { GATEWAY_BUILTINS, buildConfig } from '../gen-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -19,58 +20,67 @@ const PROXY = join(HERE, '..', 'consent-proxy.mjs');
 const FAKE = join(HERE, '..', '..', 'bridge', 'tests', 'fixtures', 'fake-acp-agent.mjs');
 const FUTURE = new Date(Date.now() + 30 * 86_400_000).toISOString();
 const NOTHING_SPENT = { usd: 0, tokens: 0 };
+const OPEN_TREE = 'D:/work';
+const MODES = { restricted: { force: 'plan', allow: ['plan'] } };
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const grant = (extra = {}) => ({
   enabled: true,
   overseerAck: true,
   expires: FUTURE,
-  limits: { maxPermission: 'allow-reads' },
+  limits: { maxPermission: 'allow-all', writeTrees: [OPEN_TREE] },
   ...extra,
 });
 
-function workspace(consent) {
+function workspace(consent, { modes = MODES } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'ahp-proxy-'));
   const registry = join(dir, 'agents.json');
   const consentFile = join(dir, 'consent.json');
   const log = join(dir, 'runs.jsonl');
   const fakeLog = join(dir, 'fake.log');
-  writeFileSync(
-    registry,
-    JSON.stringify({ agents: { fake: { command: process.execPath, args: [FAKE], env: { FAKE_ACP_LOG: fakeLog } } } }),
-  );
+  const entry = {
+    command: process.execPath,
+    args: [FAKE],
+    env: { FAKE_ACP_LOG: fakeLog, FAKE_ACP_MODE_OPTION: '1' },
+  };
+  if (modes) entry.permissionModes = modes;
+  writeFileSync(registry, JSON.stringify({ agents: { fake: entry } }));
   writeFileSync(consentFile, JSON.stringify(consent));
   return { dir, registry, consentFile, log, fakeLog };
 }
 
-// Runs the proxy as a child, feeds it ACP lines, closes stdin and collects everything.
-function runProxy(ws, lines, { waitMs = 600 } = {}) {
-  return new Promise((resolve) => {
-    const child = spawn(
-      process.execPath,
-      [PROXY, '--agent', 'fake', '--registry', ws.registry, '--consent', ws.consentFile],
-      { env: { ...process.env, AGENT_HUB_LOG: ws.log }, stdio: ['pipe', 'pipe', 'pipe'] },
-    );
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (d) => (stdout += d));
-    child.stderr.on('data', (d) => (stderr += d));
-    child.on('exit', (code) => resolve({ code, stdout, stderr }));
-    child.stdin.on('error', () => {}); // a refused proxy exits before we finish writing
-    for (const line of lines) child.stdin.write(`${JSON.stringify(line)}\n`);
-    setTimeout(() => child.stdin.end(), waitMs);
-  });
+// Runs the proxy as a child and feeds it ACP lines one by one (a client waits for each
+// reply before using its result), then closes stdin and collects everything.
+async function runProxy(ws, lines, { settleMs = 400, gapMs = 150 } = {}) {
+  const child = spawn(
+    process.execPath,
+    [PROXY, '--agent', 'fake', '--registry', ws.registry, '--consent', ws.consentFile],
+    { env: { ...process.env, AGENT_HUB_LOG: ws.log }, stdio: ['pipe', 'pipe', 'pipe'] },
+  );
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (d) => (stdout += d));
+  child.stderr.on('data', (d) => (stderr += d));
+  child.stdin.on('error', () => {}); // a refused proxy exits before we finish writing
+  const exited = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
+  for (const line of lines) {
+    child.stdin.write(`${JSON.stringify(line)}\n`);
+    await delay(gapMs);
+  }
+  await delay(settleMs);
+  child.stdin.end();
+  const code = await exited;
+  return { code, stdout, stderr, replies: stdout.trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) };
 }
 
-const acpTurn = [
-  { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: 1 } },
-  { jsonrpc: '2.0', id: 2, method: 'session/new', params: { cwd: 'D:/work/tree', mcpServers: [] } },
-  {
-    jsonrpc: '2.0',
-    id: 3,
-    method: 'session/prompt',
-    params: { sessionId: 'fake-session', prompt: [{ type: 'text', text: 'EXTRAS' }] },
-  },
-];
+const newSession = (cwd, id = 2) => ({ jsonrpc: '2.0', id, method: 'session/new', params: { cwd, mcpServers: [] } });
+const init = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: 1 } };
+const prompt = (id = 3) => ({
+  jsonrpc: '2.0',
+  id,
+  method: 'session/prompt',
+  params: { sessionId: 'fake-session', prompt: [{ type: 'text', text: 'EXTRAS' }] },
+});
 
 test('parseArgs requires --agent and rejects unknown flags', () => {
   assert.equal(parseArgs(['--agent', 'claude']).agent, 'claude');
@@ -78,12 +88,12 @@ test('parseArgs requires --agent and rejects unknown flags', () => {
   assert.throws(() => parseArgs(['--agent', 'x', '--yolo']));
 });
 
-test('lineTap reads JSON lines across chunk boundaries and ignores noise', () => {
+test('lineSplitter yields complete lines across chunk boundaries, tolerates CRLF and blank lines', () => {
   const seen = [];
-  const tap = lineTap((m) => seen.push(m));
-  tap(Buffer.from('{"a":1}\nnot json\n{"b"'));
-  tap(Buffer.from(':2}\n\n'));
-  assert.deepEqual(seen, [{ a: 1 }, { b: 2 }]);
+  const split = lineSplitter((l) => seen.push(l));
+  split(Buffer.from('{"a":1}\nnot json\r\n{"b"'));
+  split(Buffer.from(':2}\n\n'));
+  assert.deepEqual(seen, ['{"a":1}', 'not json', '{"b":2}']);
 });
 
 test('a turn ends when the agent answers its session/prompt, and adds only the cost since the last one', () => {
@@ -126,10 +136,117 @@ test('checkGate follows the grant: enabled, acknowledged, not expired, under the
   assert.match(gate({ fake: grant({ limits: { maxDailyUsd: 1 } }) }, { usd: 1, tokens: 0 }).reason, /daily cap/);
 });
 
+// ---- the permission clamp, as a pure state machine ---------------------------------------
+
+const modeOption = (current = 'auto') => ({
+  id: 'mode', type: 'select', currentValue: current,
+  options: ['default', 'plan', 'auto'].map((value) => ({ value })),
+});
+const opened = (id, sessionId = 's1') => ({ jsonrpc: '2.0', id, result: { sessionId, configOptions: [modeOption()] } });
+
+test('clamp: a session under writeTrees is left alone', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
+  assert.equal(clamp.fromClient(newSession('D:/work/tree', 5)).forward, true);
+  const verdict = clamp.fromAgent(opened(5));
+  assert.equal(verdict.msg, undefined, 'response not rewritten');
+  assert.equal(verdict.inject, undefined);
+  assert.equal(clamp.restrictedSessions(), 0);
+});
+
+test('clamp: outside writeTrees the mode is forced, the options are cut and a later switch is refused', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
+  assert.equal(clamp.fromClient(newSession('D:/elsewhere', 5)).forward, true);
+  const verdict = clamp.fromAgent(opened(5));
+  const mode = verdict.msg.result.configOptions.find((o) => o.id === 'mode');
+  assert.equal(mode.currentValue, 'plan');
+  assert.deepEqual(mode.options.map((o) => o.value), ['plan']);
+  assert.deepEqual(verdict.inject.map((m) => [m.method, m.params.configId, m.params.value]), [['session/set_config_option', 'mode', 'plan']]);
+  // The proxy's own request is answered by the agent; that reply must not reach the client.
+  assert.equal(clamp.fromAgent({ jsonrpc: '2.0', id: verdict.inject[0].id, result: { configOptions: [] } }).forward, false);
+
+  const denied = clamp.fromClient({ jsonrpc: '2.0', id: 9, method: 'session/set_config_option', params: { sessionId: 's1', configId: 'mode', value: 'auto' } });
+  assert.equal(denied.forward, false);
+  assert.equal(denied.reply.error.code, -32602);
+  assert.match(denied.reply.error.message, /not allowed/);
+  assert.equal(clamp.fromClient({ jsonrpc: '2.0', id: 10, method: 'session/set_config_option', params: { sessionId: 's1', configId: 'mode', value: 'plan' } }).forward, true);
+  assert.equal(clamp.fromClient({ jsonrpc: '2.0', id: 11, method: 'session/set_mode', params: { sessionId: 's1', modeId: 'auto' } }).forward, false);
+  // Other options (model, effort) are not the clamp's business.
+  assert.equal(clamp.fromClient({ jsonrpc: '2.0', id: 12, method: 'session/set_config_option', params: { sessionId: 's1', configId: 'model', value: 'x' } }).forward, true);
+});
+
+test('clamp: grouped mode options are filtered inside their groups', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
+  clamp.fromClient(newSession('D:/elsewhere', 5));
+  const grouped = { jsonrpc: '2.0', id: 5, result: { sessionId: 's1', configOptions: [{
+    id: 'mode', type: 'select', currentValue: 'auto',
+    options: [{ group: 'g', options: [{ value: 'plan' }, { value: 'auto' }] }],
+  }] } };
+  const mode = clamp.fromAgent(grouped).msg.result.configOptions[0];
+  assert.deepEqual(mode.options[0].options.map((o) => o.value), ['plan']);
+});
+
+test('clamp: no registered restricted mode means a restricted session is refused, not left open', () => {
+  const clamp = createClamp({ agent: 'hermes', limits: grant().limits, modes: undefined });
+  const verdict = clamp.fromClient(newSession('D:/elsewhere', 5));
+  assert.equal(verdict.forward, false);
+  assert.match(verdict.reply.error.message, /no restricted mode registered/);
+  // ...while a session under writeTrees still opens.
+  assert.equal(clamp.fromClient(newSession('D:/work/x', 6)).forward, true);
+});
+
+test('clamp: a grant without writeTrees restricts everything outside the scratch folder', () => {
+  const clamp = createClamp({ agent: 'a', limits: { maxPermission: 'allow-all', writeTrees: [] }, modes: MODES });
+  clamp.fromClient(newSession('D:/work/tree', 5));
+  assert.ok(clamp.fromAgent(opened(5)).inject, 'restricted');
+  const scratch = join(tmpdir(), 'ahp-scratch');
+  clamp.fromClient(newSession(scratch, 6));
+  assert.equal(clamp.fromAgent(opened(6, 's2')).inject, undefined, 'the scratch folder stays open');
+});
+
+test('clamp: a restricted session cannot widen itself through a permission request (switch_mode, edit, execute...)', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
+  clamp.fromClient(newSession('D:/elsewhere', 5));
+  clamp.fromAgent(opened(5));
+  const ask = (id, kind, sessionId = 's1') => ({
+    jsonrpc: '2.0', id, method: 'session/request_permission',
+    params: { sessionId, toolCall: { toolCallId: 't', kind }, options: [
+      { optionId: 'yes', name: 'Approve', kind: 'allow_once' },
+      { optionId: 'no', name: 'Reject', kind: 'reject_once' },
+    ] },
+  });
+  const verdict = clamp.fromAgent(ask(30, 'switch_mode'));
+  assert.equal(verdict.forward, false, 'the person is not even asked');
+  assert.deepEqual(verdict.answer, { jsonrpc: '2.0', id: 30, result: { outcome: { outcome: 'selected', optionId: 'no' } } });
+  for (const [i, kind] of ['edit', 'delete', 'move', 'execute'].entries()) {
+    assert.equal(clamp.fromAgent(ask(40 + i, kind)).forward, false, `${kind} is refused here`);
+  }
+  // Read-only requests still go to the person, and so does another session's.
+  assert.equal(clamp.fromAgent(ask(31, 'read')).forward, true);
+  assert.equal(clamp.fromAgent(ask(32, 'switch_mode', 'other')).forward, true);
+  // With no reject option the answer is a cancellation, never an approval.
+  const bare = { ...ask(33, 'switch_mode'), params: { ...ask(33, 'switch_mode').params, options: [{ optionId: 'yes', kind: 'allow_once' }] } };
+  assert.deepEqual(clamp.fromAgent(bare).answer.result.outcome, { outcome: 'cancelled' });
+});
+
+test('clamp: if the restricted mode cannot be set, the session is refused rather than left permissive', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
+  clamp.fromClient(newSession('D:/elsewhere', 5));
+  const sent = clamp.fromAgent(opened(5)).inject[0];
+  const verdict = clamp.fromAgent({ jsonrpc: '2.0', id: sent.id, error: { code: -32602, message: 'unknown mode plan' } });
+  assert.equal(verdict.forward, false);
+  assert.match(verdict.failed, /unknown mode/);
+  const prompt = clamp.fromClient({ jsonrpc: '2.0', id: 8, method: 'session/prompt', params: { sessionId: 's1', prompt: [] } });
+  assert.equal(prompt.forward, false);
+  assert.match(prompt.reply.error.message, /will not run/);
+  // Another session is not affected.
+  assert.equal(clamp.fromClient({ jsonrpc: '2.0', id: 9, method: 'session/prompt', params: { sessionId: 'other', prompt: [] } }).forward, true);
+});
+
+// ---- the proxy as a process --------------------------------------------------------------
+
 test('the proxy passes ACP through untouched and writes one audit line per turn, with its cost', async () => {
   const ws = workspace({ fake: grant() });
-  const { stdout } = await runProxy(ws, acpTurn);
-  const replies = stdout.trim().split('\n').map((l) => JSON.parse(l));
+  const { replies } = await runProxy(ws, [init, newSession('D:/work/tree'), prompt()]);
   assert.ok(replies.some((m) => m.id === 1 && m.result?.agentInfo?.name === 'fake-acp'), 'initialize answered');
   assert.ok(replies.some((m) => m.id === 3 && m.result?.stopReason === 'end_turn'), 'prompt answered');
   const text = replies
@@ -137,6 +254,9 @@ test('the proxy passes ACP through untouched and writes one audit line per turn,
     .map((m) => m.params.update.content.text)
     .join('');
   assert.equal(text, 'Hello from fake');
+  const opened = replies.find((m) => m.id === 2);
+  assert.equal(opened.result.configOptions[0].currentValue, 'auto', 'not clamped under writeTrees');
+  assert.ok(!readFileSync(ws.fakeLog, 'utf8').includes('set:mode'), 'no mode forced under writeTrees');
   const audit = readFileSync(ws.log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.equal(audit.length, 1);
   assert.equal(audit[0].agent, 'fake');
@@ -148,9 +268,30 @@ test('the proxy passes ACP through untouched and writes one audit line per turn,
   assert.equal(audit[0].cost.amount, 0.5);
 });
 
+test('outside writeTrees the proxy forces the restricted mode, shows only the allowed modes and refuses a switch', async () => {
+  const ws = workspace({ fake: grant() });
+  const attempt = { jsonrpc: '2.0', id: 9, method: 'session/set_config_option', params: { sessionId: 'fake-session', configId: 'mode', value: 'auto' } };
+  const { replies } = await runProxy(ws, [init, newSession('D:/elsewhere'), attempt]);
+  const events = readFileSync(ws.fakeLog, 'utf8');
+  assert.match(events, /set:mode=plan/, 'the agent was put in plan mode');
+  assert.ok(!events.includes('set:mode=auto'), 'the switch never reached the agent');
+  const mode = replies.find((m) => m.id === 2).result.configOptions[0];
+  assert.equal(mode.currentValue, 'plan');
+  assert.deepEqual(mode.options.map((o) => o.value), ['plan']);
+  assert.equal(replies.find((m) => m.id === 9).error.code, -32602);
+  assert.ok(!replies.some((m) => String(m.id).startsWith('hubproxy')), 'the proxy\'s own request stays internal');
+});
+
+test('a restricted session with no restricted mode registered is refused before it reaches the agent', async () => {
+  const ws = workspace({ fake: grant() }, { modes: null });
+  const { replies } = await runProxy(ws, [init, newSession('D:/elsewhere')]);
+  assert.match(replies.find((m) => m.id === 2).error.message, /no restricted mode registered/);
+  assert.ok(!readFileSync(ws.fakeLog, 'utf8').includes('session'), 'session/new never reached the agent');
+});
+
 test('a refused grant never starts the agent and is audited with the reason', async () => {
   const ws = workspace({ fake: grant({ enabled: false }) });
-  const { code, stderr } = await runProxy(ws, acpTurn, { waitMs: 100 });
+  const { code, stderr } = await runProxy(ws, [init, newSession('D:/work/tree')], { settleMs: 50, gapMs: 20 });
   assert.equal(code, 3);
   assert.match(stderr, /refused by the hub gate/);
   assert.equal(existsSync(ws.fakeLog), false, 'the fake agent was never launched');
@@ -158,6 +299,8 @@ test('a refused grant never starts the agent and is audited with the reason', as
   assert.equal(audit.status, 'refused');
   assert.match(audit.reason, /no consent recorded/);
 });
+
+// ---- the gateway configuration -----------------------------------------------------------
 
 test('buildConfig makes providers only for granted agents, behind the proxy, and switches the other built-ins off', () => {
   const registry = { agents: { claude: { label: 'Claude' }, codex: { label: 'Codex' }, hermes: { label: 'Hermes' } } };

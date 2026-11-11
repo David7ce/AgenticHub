@@ -1,33 +1,36 @@
 #!/usr/bin/env node
-// consent-proxy.mjs -- an ACP stdio proxy that keeps the hub's gate in front of
-// an agent that a third-party host (the AHP gateway) starts on its own.
+// consent-proxy.mjs -- an ACP stdio proxy that keeps the hub's gate in front of an agent
+// that a third-party host (the AHP gateway) starts on its own.
 //
 //   node consent-proxy.mjs --agent claude [--registry FILE] [--consent FILE]
 //
-// A host that launches ACP agents by itself would skip consent.json, the audit
-// log and the spend caps. The gateway is configured to launch this proxy
-// instead of the agent; the proxy
-//   1. checks the grant (enabled, overseerAck, expiry, daily caps) and refuses
-//      to start the agent when it does not pass,
-//   2. starts the real command from the registry (same pinned version the hub
-//      uses) and pipes stdin/stdout/stderr through untouched,
-//   3. watches the JSON lines without changing them and writes one line to
-//      logs/runs.jsonl (transport "ahp") for every turn that ends, with the stop
-//      reason and the cost that turn added. Per turn, not at exit: the host
-//      stops providers abruptly, and an exit hook would never run.
-// Permission requests are not auto-answered here: the AHP client (VS Code)
-// shows them to the person, which is what the grant's maxPermission would
-// otherwise stand in for, so the check uses the lowest non-deny level.
+// A host that launches ACP agents by itself would skip consent.json, the audit log and the
+// spend caps. The gateway is configured to launch this proxy instead of the agent; the proxy
+//   1. checks the grant (enabled, overseerAck, expiry, daily caps) and refuses to start the
+//      agent when it does not pass,
+//   2. starts the real command from the registry (same pinned version the hub uses) and
+//      relays stdin/stdout/stderr, forwarding every line untouched unless a rule below applies,
+//   3. writes one line to logs/runs.jsonl (transport "ahp") for every turn that ends, with the
+//      stop reason and the cost that turn added. Per turn, not at exit: the host stops
+//      providers abruptly, and an exit hook would never run,
+//   4. applies the grant's limits to every session (permission-clamp.mjs): outside
+//      `limits.writeTrees` the agent is forced into its restricted mode, because the gateway
+//      relays permission requests but adds no gate, and agents in their default modes write
+//      without asking (measured 2026-11-11).
+// The start-up check uses the lowest non-deny level; the per-session check in the clamp
+// decides whether a session may write.
 
 import { pathToFileURL } from 'node:url';
-import { CONSENT_PATH, testConsent } from '../acp/consent.mjs';
+import { CONSENT_PATH, readConsent, testConsent } from '../acp/consent.mjs';
 import { DEFAULT_REGISTRY, LOG_PATH } from '../acp/hub-env.mjs';
 import { killTree, spawnAgentProcess } from '../acp/process-utils.mjs';
 import { loadRegistry, resolveAgent } from '../acp/registry.mjs';
 import { nowIso, writeLog } from '../acp/run-record.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
+import { createClamp } from './permission-clamp.mjs';
 
 export const EXIT_REFUSED = 3;
+const NL = String.fromCharCode(10);
 
 export function parseArgs(argv) {
   const out = { agent: null, registry: DEFAULT_REGISTRY, consent: CONSENT_PATH };
@@ -42,10 +45,9 @@ export function parseArgs(argv) {
   return out;
 }
 
-// The grant check. `permission: 'allow-reads'` is the lowest non-deny level: the
-// person answers each permission request in the client, so maxPermission and
-// writeTrees (which bound unattended runs) are not what limits this path, but
-// enabled, overseerAck, expiry and the daily caps still are.
+// The grant check. `permission: 'allow-reads'` is the lowest non-deny level; whether a
+// session may write is decided per session by the clamp, but enabled, overseerAck, expiry
+// and the daily caps apply to the agent as a whole.
 export function checkGate({ agent, consent = CONSENT_PATH, logPath = LOG_PATH, spent = {} }) {
   return testConsent(agent, consent, {
     permission: 'allow-reads',
@@ -54,27 +56,32 @@ export function checkGate({ agent, consent = CONSENT_PATH, logPath = LOG_PATH, s
   });
 }
 
-// Splits a byte stream into JSON lines for observation only; never alters it.
-export function lineTap(onMessage) {
+// Cuts a byte stream into complete lines (ACP is one JSON object per line).
+export function lineSplitter(onLine) {
   let buffer = '';
   return (chunk) => {
     buffer += chunk.toString('utf8');
     let nl;
-    while ((nl = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, nl).trim();
+    while ((nl = buffer.indexOf(NL)) >= 0) {
+      const line = buffer.slice(0, nl).replace(/\r$/, '');
       buffer = buffer.slice(nl + 1);
-      if (!line) continue;
-      try {
-        onMessage(JSON.parse(line));
-      } catch {
-        // Not JSON (an agent banner, say): nothing to learn from it.
-      }
+      if (line.trim()) onLine(line);
     }
   };
 }
 
-// What the proxy learns while the two sides talk. `onTurn` fires when the agent
-// answers a session/prompt request, with what that turn added.
+const parse = (line) => {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null; // not JSON (an agent banner, say): forwarded as it is
+  }
+};
+
+const send = (stream, value) => stream.write(`${typeof value === 'string' ? value : JSON.stringify(value)}${NL}`);
+
+// What the proxy learns while the two sides talk. `onTurn` fires when the agent answers a
+// session/prompt request, with what that turn added.
 export function createStats({ onTurn = () => {} } = {}) {
   const pending = new Map(); // JSON-RPC id of a session/prompt -> sessionId
   const costBySession = new Map();
@@ -142,7 +149,7 @@ export function main(argv = process.argv.slice(2)) {
   try {
     opts = parseArgs(argv);
   } catch (error) {
-    process.stderr.write(`consent-proxy: ${error.message}\n`);
+    process.stderr.write(`consent-proxy: ${error.message}${NL}`);
     return process.exit(2);
   }
 
@@ -150,13 +157,13 @@ export function main(argv = process.argv.slice(2)) {
   try {
     resolved = resolveAgent(loadRegistry(opts.registry), opts.agent);
   } catch (error) {
-    process.stderr.write(`consent-proxy: ${error.message}\n`);
+    process.stderr.write(`consent-proxy: ${error.message}${NL}`);
     return process.exit(2);
   }
 
   const gate = checkGate({ agent: opts.agent, consent: opts.consent });
   if (!gate.ok) {
-    process.stderr.write(`consent-proxy: ${opts.agent} refused by the hub gate: ${gate.reason}\n`);
+    process.stderr.write(`consent-proxy: ${opts.agent} refused by the hub gate: ${gate.reason}${NL}`);
     writeLog({ time: nowIso(), agent: opts.agent, transport: 'ahp', status: 'refused', reason: gate.reason });
     return process.exit(EXIT_REFUSED);
   }
@@ -182,12 +189,30 @@ export function main(argv = process.argv.slice(2)) {
     process.exit(code ?? 1);
   };
 
-  const watchClient = lineTap((msg) => stats.fromClient(msg));
-  const watchAgent = lineTap((msg) => stats.fromAgent(msg));
-  process.stdin.on('data', watchClient);
-  child.stdout.on('data', watchAgent);
-  process.stdin.pipe(child.stdin);
-  child.stdout.pipe(process.stdout);
+  const grant = readConsent(opts.consent).grants?.[opts.agent];
+  const clamp = createClamp({ agent: opts.agent, limits: grant?.limits, modes: resolved.permissionModes });
+
+  // Client -> agent: observe, apply the clamp, forward the original line untouched.
+  process.stdin.on('data', lineSplitter((line) => {
+    const msg = parse(line);
+    if (msg) stats.fromClient(msg);
+    const verdict = msg ? clamp.fromClient(msg) : { forward: true };
+    if (verdict.reply) send(process.stdout, verdict.reply);
+    if (verdict.forward) send(child.stdin, line);
+  }));
+  // Agent -> client: observe, maybe rewrite, and send the clamp's own requests to the agent.
+  child.stdout.on('data', lineSplitter((line) => {
+    const msg = parse(line);
+    if (msg) stats.fromAgent(msg);
+    const verdict = msg ? clamp.fromAgent(msg) : { forward: true };
+    if (verdict.forward) send(process.stdout, verdict.msg ?? line);
+    for (const request of verdict.inject ?? []) send(child.stdin, request);
+    if (verdict.answer) send(child.stdin, verdict.answer);
+    if (verdict.failed) {
+      process.stderr.write(`consent-proxy: could not restrict ${opts.agent}: ${verdict.failed}${NL}`);
+      writeLog({ time: nowIso(), agent: opts.agent, transport: 'ahp', status: 'error', sessionId: verdict.sessionId, reason: `could not restrict: ${verdict.failed}` });
+    }
+  }));
   child.stderr.pipe(process.stderr);
 
   child.stdin.on('error', () => {}); // the agent may exit before we stop writing
