@@ -18,7 +18,7 @@ $ErrorActionPreference = "Stop"
 
 $hub = Split-Path -Parent $PSScriptRoot                       # ...\agent-hub
 $root = Split-Path -Parent $hub
-$logDir = Join-Path $root "logs"
+$logDir = Join-Path (Join-Path $root "projects") "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $log = Join-Path $logDir "ahp-gateway-run.log"
 $config = Join-Path $logDir "ahp-gateway.json"

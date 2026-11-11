@@ -18,7 +18,7 @@ $ErrorActionPreference = "Stop"
 
 $hub = Split-Path -Parent $PSScriptRoot                       # ...\agent-hub
 if (-not $Config) { $Config = Join-Path $hub "bridge\config.json" }
-$logDir = Join-Path (Split-Path -Parent $hub) "logs"
+$logDir = Join-Path (Join-Path (Split-Path -Parent $hub) "projects") "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $log = Join-Path $logDir "bridge-run.log"
 
