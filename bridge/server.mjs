@@ -296,6 +296,22 @@ function audit(config, entry) {
     mkdirSync(dirname(config.auditLog), { recursive: true });
     rotateIfNeeded(config.auditLog);
     appendFileSync(config.auditLog, `${JSON.stringify(entry)}\n`);
+    // Agents that report a dollar cost (Claude) also leave a hub-shaped line in
+    // runs.jsonl so daily caps and `hubctl spend` see bridge traffic. Codex and
+    // OpenCode are priced from their own session stores instead.
+    if (entry.cost && String(entry.provider).startsWith("acp:")) {
+      appendFileSync(
+        join(dirname(config.auditLog), "runs.jsonl"),
+        `${JSON.stringify({
+          time: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+          agent: String(entry.provider).slice(4),
+          transport: "bridge",
+          status: entry.status,
+          model: entry.model,
+          cost: entry.cost,
+        })}\n`,
+      );
+    }
   } catch {
     // Auditing must never take the request down with it.
   }
@@ -722,6 +738,8 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
       const update = msg.params?.update;
       if (update?.sessionUpdate === "usage_update" && Number.isFinite(update.used)) {
         reported = { ...(reported ?? {}), contextUsed: update.used, contextSize: update.size ?? null };
+        const amount = update.cost?.amount;
+        if (Number.isFinite(amount)) reported.cost = { amount, currency: update.cost.currency ?? "USD" };
       }
       if (update?.sessionUpdate !== "agent_message_chunk") return;
       if (update.content?.type !== "text") return;
@@ -797,6 +815,7 @@ async function runAcpCompletion({ res, config, model, payload, systemPrompt, con
   const usage = reported?.input != null
     ? { prompt_tokens: reported.input, completion_tokens: reported.output, total_tokens: reported.input + reported.output }
     : { prompt_tokens: Math.ceil(promptChars / 4), completion_tokens: Math.ceil(text.length / 4), total_tokens: Math.ceil((promptChars + text.length) / 4) };
+  if (reported?.cost) entry.cost = reported.cost;
   entry.usage = { ...usage, source: reported?.input != null ? "agent" : "estimate", contextUsed: reported?.contextUsed ?? null, contextSize: reported?.contextSize ?? null };
 
   if (streaming) {
