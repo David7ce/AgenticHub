@@ -102,7 +102,7 @@ TUI-only plugins are configured in `~/.config/opencode/cli.json`:
 
 ```json
 {
-  "plugins": ["D:/Workspaces/AgentHub/agent-hub/chatmgr"]
+  "plugins": ["D:/Workspaces/AgenticHub/agent-hub/chatmgr"]
 }
 ```
 

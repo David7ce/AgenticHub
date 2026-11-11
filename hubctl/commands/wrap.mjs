@@ -108,7 +108,7 @@ export async function runWrap(argv) {
   const issues = report.checks.filter((c) => c.level !== "ok");
   const watchFile = join(STATE_DIR, "working", "repos-vigilados.txt");
   const watched = existsSync(watchFile) ? parseWatchList(readFileSync(watchFile, "utf8"), resolve(ROOT, "..")) : [];
-  const dirty = [ROOT, ...watched.filter((d) => resolve(d) !== resolve(ROOT))].map(gitDirty);
+  const dirty = [...new Set([ROOT, STATE_DIR, ...watched].map((d) => resolve(d)))].map(gitDirty);
   const runs = pickRuns(existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "", sinceIso);
 
   const draft = buildDraft({ now, commits, runs, issues, dirty });

@@ -61,7 +61,7 @@ line to `projects/logs/runs.jsonl`, exactly like
 ```json
 {
   "mcpServers": {
-    "agent-hub": { "type": "stdio", "command": "node", "args": ["D:\\Workspaces\\AgentHub\\agent-hub\\mcp\\server.mjs"] }
+    "agent-hub": { "type": "stdio", "command": "node", "args": ["D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] }
   }
 }
 ```
@@ -72,7 +72,7 @@ line to `projects/logs/runs.jsonl`, exactly like
 **OpenCode** — `opencode.json`:
 
 ```json
-{ "mcp": { "agent-hub": { "type": "local", "command": ["node", "D:\\Workspaces\\AgentHub\\agent-hub\\mcp\\server.mjs"] } } }
+{ "mcp": { "agent-hub": { "type": "local", "command": ["node", "D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] } } }
 ```
 
 **Zed** — `context_servers` in `settings.json`, with the same `command`/`args`.

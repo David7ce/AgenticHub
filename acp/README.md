@@ -325,7 +325,7 @@ until a task needs it.
 | Agent | Result |
 |---|---|
 | OpenCode 2.1.4 (WSL) | full turn, `ACP_OK`, ≈$0.001; MCP tool round-trip |
-| OpenCode via `wsl.exe` (hub on Windows) | full turn, `WIN_WSL_ACP_OK`; cwd `D:\Workspaces\AgentHub` → `/mnt/d/Workspaces/AgentHub` |
+| OpenCode via `wsl.exe` (hub on Windows) | full turn, `WIN_WSL_ACP_OK`; cwd `D:\Workspaces\AgenticHub` → `/mnt/d/Workspaces/AgenticHub` |
 | OpenCode 2.2.6 (native Windows, 2026-11-09) | probe ok; full turn `OPENCODE_NATIVO_OK`, 12.2 s; `doctor` 14 ok / 0 fail |
 | Claude adapter 0.97.0 (Windows) | **Full turn, 2026-10-27: `CLAUDE_ACP_RETEST_OK`, 12.9s, $0.2275.** The two earlier failures (23:32 `session limit · resets 12:50am`, 00:06 a 120s timeout still inside that same window) were the account's own session limit, not a transport bug — confirmed by retrying after the reset: same latency as the `hub.ps1` CLI path (11.6s), clean response. Likely self-inflicted by running several Claude-backed processes against the same account at once. |
 | Hermes 0.22.5 (Windows, histórico) | full turn, `HERMES_ACP_OK`; se retiró del registro el 2026-11-08 |

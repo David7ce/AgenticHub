@@ -115,7 +115,7 @@ export function gatherBrief({
   const watched = existsSync(watchFile)
     ? parseWatchList(readFileSync(watchFile, "utf8"), resolve(root, ".."))
     : [];
-  const repos = [root, ...watched.filter((dir) => resolve(dir) !== resolve(root))].map(dirty);
+  const repos = [...new Set([root, stateDir, ...watched].map((dir) => resolve(dir)))].map(dirty);
 
   const runs = parseRuns(existsSync(logPath) ? readFileSync(logPath, "utf8") : "", 5);
   const agents = summarizeConsent(readJson(consentPath)).map((row) => row.name);

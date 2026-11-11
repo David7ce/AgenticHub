@@ -56,7 +56,7 @@ y falla con `-32603` en modelos 6.x. `doctor` falla si vuelve a aparecer.
 auditar, justo lo que el paquete mantenido ya hace. Si 2.6.0 no negocia ACP v1,
 se para y se reporta.
 
-Consentimiento: `allow-all` solo bajo `D:/Workspaces/AgentHub` o el temp del
+Consentimiento: `allow-all` solo bajo `D:/Workspaces/AgenticHub` o el temp del
 bench, con 0,50 USD por llamada. Retención: `unknown`.
 
 ## Entrada y salida del router

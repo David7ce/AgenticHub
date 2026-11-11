@@ -1,7 +1,7 @@
 // paths.mjs — the one place that knows how Windows and WSL spell the same file.
 //
 // Two processes on this machine see the same disk through different names:
-// a Windows child gets `D:\Workspaces\AgentHub`, a WSL child gets `/mnt/d/Workspaces/AgentHub`, and
+// a Windows child gets `D:\Workspaces\AgenticHub`, a WSL child gets `/mnt/d/Workspaces/AgenticHub`, and
 // a path inside the Linux filesystem has no Windows form at all except through
 // the `\\wsl.localhost\<distro>` share. Every boundary that hands a path to a
 // child process goes through here, so a mistake is a failing test rather than
@@ -49,9 +49,9 @@ const stripTrailing = (p) => {
 
 /**
  * Any Windows spelling -> the WSL spelling.
- *   D:\Workspaces\AgentHub          -> /mnt/d/Workspaces/AgentHub
+ *   D:\Workspaces\AgenticHub          -> /mnt/d/Workspaces/AgenticHub
  *   \\wsl.localhost\Ubuntu\home\x  -> /home/x
- *   /mnt/d/Workspaces/AgentHub        -> unchanged
+ *   /mnt/d/Workspaces/AgenticHub        -> unchanged
  */
 export function toWsl(p) {
   const style = styleOf(p);
@@ -75,9 +75,9 @@ export function toWsl(p) {
 
 /**
  * Any WSL/POSIX spelling -> the Windows spelling.
- *   /mnt/d/Workspaces/AgentHub   -> D:\Workspaces\AgentHub
+ *   /mnt/d/Workspaces/AgenticHub   -> D:\Workspaces\AgenticHub
  *   /home/user/x       -> \\wsl.localhost\Ubuntu\home\user\x
- *   D:\Workspaces\AgentHub       -> unchanged
+ *   D:\Workspaces\AgenticHub       -> unchanged
  *
  * `distro` is only needed for paths outside /mnt, where Windows has no drive
  * letter and must go through the WSL share.

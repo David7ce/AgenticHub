@@ -8,7 +8,7 @@
           "cmd.exe",
           "/c",
           "node",
-          "D:\\Workspaces\\AgentHub\\agent-hub\\mcp\\server.mjs"
+          "D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"
         ]
       }
     }

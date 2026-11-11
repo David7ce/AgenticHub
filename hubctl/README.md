@@ -34,11 +34,11 @@ The loopback services bind `127.0.0.1` **on Windows**. A WSL
 process cannot reach them, so run `hubctl` from a Windows terminal:
 
 ```powershell
-node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs status
-node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs live
-node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs brief   # start of a session
-node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs search "seclogon"   # full-text over runs, notes, git
-node D:\Workspaces\AgentHub\agent-hub\hubctl\hubctl.mjs wrap   # end of a session: JOURNAL draft
+node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs status
+node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs live
+node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs brief   # start of a session
+node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs search "seclogon"   # full-text over runs, notes, git
+node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs wrap   # end of a session: JOURNAL draft
 ```
 
 From WSL it still shows agents, worktrees, egress and the run log, and prints a
@@ -136,7 +136,7 @@ The database is opened read-only and only `session_message`, `session_v2` and
 `project` are queried. `account`/`credential` are never touched.
 
 Global OpenCode config now launches the Windows hub with
-`cmd.exe /c node D:\Workspaces\AgentHub\agent-hub\mcp\server.mjs`, so
+`cmd.exe /c node D:\Workspaces\AgenticHub\agent-hub\mcp\server.mjs`, so
 OpenCode can reach the hub from any repository. Codex CLI has the same MCP
 server; use `codex exec --approve-for-me` for non-interactive MCP calls.
 
@@ -157,8 +157,8 @@ anything moving" without a daemon:
 runs · 1
   1234  opencode  AgentHub         prompt  2s silent  12 tools  deepseek-v4.1-flash
 trees · 1 locked
-  D:\Workspaces\AgentHub  opencode(1234)  held  3m
-  D:\Workspaces\AgentHub  4 change(s), last 3s ago
+  D:\Workspaces\AgenticHub  opencode(1234)  held  3m
+  D:\Workspaces\AgenticHub  4 change(s), last 3s ago
 external · 0
   none from this side of the WSL/Windows boundary
 recent · 5

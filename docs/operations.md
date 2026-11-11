@@ -76,8 +76,8 @@ node agent-hub/hubctl/hubctl.mjs run claude --model sonnet --prompt "..."
 node agent-hub/hubctl/hubctl.mjs run claude --model sonnet --permission deny --prompt "Revisa este diff"
 
 # Codex: probe (initialize + session/new, sin prompt) y prueba mínima
-node agent-hub/acp/hub-acp.mjs --agent codex --probe --cwd D:\Workspaces\AgentHub
-node agent-hub/acp/hub-acp.mjs --agent codex --prompt "Reply with exactly: CODEX_OK" --cwd D:\Workspaces\AgentHub --permission deny --json
+node agent-hub/acp/hub-acp.mjs --agent codex --probe --cwd D:\Workspaces\AgenticHub
+node agent-hub/acp/hub-acp.mjs --agent codex --prompt "Reply with exactly: CODEX_OK" --cwd D:\Workspaces\AgenticHub --permission deny --json
 node agent-hub/hubctl/hubctl.mjs models --codex   # última versión por familia vs models.json
 
 # varios agentes, cada uno en su worktree
@@ -145,7 +145,7 @@ Se conservan si tienen cambios. `--force` descarta trabajo: pide permiso antes.
 | `agent-hub` no conecta en OpenCode | `cmd.exe`/`node` no resuelven o ruta mala; `opencode mcp list`. |
 | Claude falla con “Authentication required” | El hub está corriendo en WSL; debe correr en Windows. |
 | Codex `-32603` | Se está lanzando el viejo `@zed-industries/codex-acp`; `doctor` lo marca como FAIL. Usar `@agentclientprotocol/codex-acp@2.6.0`. |
-| Codex `denied: allow-all is not granted` | `cwd` fuera de `D:/Workspaces/AgentHub` y del temp del bench; es el límite del grant. |
+| Codex `denied: allow-all is not granted` | `cwd` fuera de `D:/Workspaces/AgenticHub` y del temp del bench; es el límite del grant. |
 | Codex sin Terra/Luna en `session/new` | No inventarlos: usar Sol y documentarlo; `hubctl models --codex` muestra lo que conoce el Codex local. |
 | Hermes falla en `set_config_option` | Modelo sin prefijo `nous:`; además ya no es worker. |
 | Timeout largo | `hubctl live` muestra `silent`; cancelar no esperar 40 min. |
