@@ -1,11 +1,11 @@
-# AgentHub
+# AgenticHub
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > The GitHub repository and this folder share a name;
 > the older `AI-PC` name is retired.
 
-AgentHub is the **control room** for this machine's AI-agent workspace: the
+AgenticHub is the **control room** for this machine's AI-agent workspace: the
 local agent hub and the inventory of repositories under `D:\Workspaces`. It is
 not a general notes vault. Domain documentation lives in the external
 [AI-vault](file:///D:/Knowledge/Vault/Markdown-vault/AI-vault/), project state
