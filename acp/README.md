@@ -104,9 +104,12 @@ not all live in the same environment:
 - **claude** — Claude Code is not itself an ACP server; the first-party
   adapter `@agentclientprotocol/claude-agent-acp` wraps the Claude Agent
   SDK. It needs Claude credentials in the environment that runs it.
-- **hermes** — removed from the registry on 2026-11-08. The binary remains
-  installed as a manual experiment; its free models answer text but their
-  tool use is not dependable.
+- **hermes** — removed from the registry on 2026-11-08, registered again on
+  2026-11-11 so a client (the AHP gateway, see `docs/decisions.md`) can reach it
+  through the same pinned list. `hermes acp --check` is OK (0.23.0), its grant in
+  `consent.example.json` is **disabled** and it is not a routing target: its free
+  models answer text but tool use is not dependable, and Nous may train on what
+  it receives.
 
 `--list` reports whether the launcher resolves on this platform. For
 `npx`-based entries that means the launcher exists, not that the package
@@ -160,8 +163,8 @@ remain.
     node agent-hub/acp/router.mjs --prompt "..." --force claude  # skip the heuristic
 
 Two workers are routing targets: `opencode` (cheap, fast) and `claude`
-(expensive, strongest reasoning). Hermes was removed from the registry;
-Codex is blocked by its adapter. The hub itself is the orchestrator — no
+(expensive, strongest reasoning). Hermes is registered but disabled and never
+routed; Codex is blocked by its adapter. The hub itself is the orchestrator — no
 registered agent decomposes tasks.
 
 The pick starts as a fixed rule list against the prompt text, not a model

@@ -25,6 +25,28 @@ in git history.
 is documentation, never the control. Codex reports no cost, so its daily cap counts the
 estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 
+## 2026-11-11 — AHP is the way into VS Code's native chat (reviewed, not built yet)
+
+Reviewed https://microsoft.github.io/agent-host-protocol/ (spec v1.0.0, MIT, repo pushed the same day). AHP is the
+coordination layer between a host and N clients; ACP is the 1:1 layer between a host and an agent, and a host uses ACP
+downstream. VS Code's Agents window is the reference client and connects to any host through the user setting
+`chat.remoteAgentHosts` (`[{ "name", "address": "127.0.0.1:8765/ahp" }]`, present in this build). So the way to see Claude,
+Codex, OpenCode, Hermes and Pi in VS Code's own chat **with their tools** is an AHP host in front of ACP agents, not
+more text-only endpoints and not a stale ACP-client extension (`formulahendry/vscode-acp`: last push 2026-05-16).
+
+Hosts that already exist (all MIT, active in Nov 2026): `ahp-acp-gateway` 0.2.2 (npm; deps: official ACP SDK, official AHP
+lib, ws; no install scripts; Node >= 24; built-in providers claude, codex, opencode, hermes, pi, copilot...; loopback by
+default; permission requests never auto-approved; SQLite sessions, replay, diffs, native model/effort pickers), `ahpd`
+(plugin-driven, users and usage tracking), `pi-ahp`, `hydra-ahp`. Terminal clients: `ahpx`, `ahpc` (CLI/TUI and an MCP server).
+
+What a gateway does **not** give: it is "a protocol bridge, not a sandbox" (agents run with the user's rights), it has no
+MCP forwarding and no multi-user policy, and it launches providers with `npx --yes` (unpinned). It also skips
+`consent.json`, the audit log and the spend caps, which the hub must keep. Plan if we pilot it: generate the gateway's
+`providers` from `acp/agents.json` (same pinned versions), and launch each through a thin ACP stdio proxy that checks
+the consent grant and writes the `runs.jsonl` line, so the gate is not bypassed. Not verified: how VS Code renders a
+gateway session end to end here, and the proxy (not written). Hermes is now registered in the hub (`hermes acp --check`
+OK) with its grant disabled.
+
 ## 2026-11-11 — The bridge returns as a second surface
 
 *Addendum (later the same day):* the bridge also maps VS Code's `reasoning_effort` onto each agent's own

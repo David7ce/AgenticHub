@@ -300,9 +300,12 @@ test('the shipped registry puts the paid DeepSeek before the free one', async ()
   assert.equal(chain[0], 'opencode-go/deepseek-v4.1-flash', 'paid first');
   assert.equal(chain[1], 'opencode/deepseek-v4.1-flash-free', 'free is the fallback');
   assert.ok(chain.length >= 3);
-  // Hermes is no longer a worker. Codex uses the maintained adapter, pinned,
-  // never the frozen @zed-industries one.
-  assert.equal(agents.hermes, undefined);
+  // Hermes may be registered (2026-11-11, so ACP clients can reach it) but is never
+  // a routing target and its example grant must ship disabled. Codex uses the
+  // maintained adapter, pinned, never the frozen @zed-industries one.
+  assert.equal(agents.hermes.command, 'hermes');
+  const exampleConsent = JSON.parse(readFileSync(join(base, '..', '..', 'consent.example.json'), 'utf8'));
+  assert.equal(exampleConsent.hermes.enabled, false);
   assert.ok(agents.codex.args.includes('@agentclientprotocol/codex-acp@2.6.0'));
   const launched = JSON.stringify([agents.codex.command, agents.codex.args, agents.codex.platforms]);
   assert.ok(!launched.includes('@zed-industries/codex-acp'));

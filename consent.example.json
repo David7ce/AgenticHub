@@ -41,5 +41,19 @@
       "maxBudgetUsd": 1,
       "maxDailyTokens": 2000000
     }
+  },
+  "hermes": {
+    "enabled": false,
+    "overseerAck": false,
+    "grantedBy": null,
+    "grantedAt": null,
+    "expires": "2027-01-01T00:00:00Z",
+    "scope": "Experimento manual. Retencion de Nous: puede entrenar; solo arboles sin credenciales.",
+    "limits": {
+      "maxPermission": "allow-reads",
+      "writeTrees": [],
+      "maxBudgetUsd": 0,
+      "maxDailyTokens": 500000
+    }
   }
 }

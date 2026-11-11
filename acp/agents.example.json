@@ -79,6 +79,14 @@
           "max": "max"
         }
       }
+    },
+    "hermes": {
+      "label": "Hermes Agent",
+      "command": "hermes",
+      "args": [
+        "acp"
+      ],
+      "notes": "Hermes Agent 0.23.0 habla ACP por stdio (`hermes acp --check` OK, 2026-11-11) y usa su propio login. Los modelos gratuitos de Nous pueden entrenar con lo que envias (models.json: nous, retention may-train): no lo uses en arboles con credenciales ni material sensible. Consentimiento desactivado por defecto; lo activas tu. Sin mapeo de esfuerzo: sus opciones no estan verificadas."
     }
   }
 }

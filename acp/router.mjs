@@ -12,8 +12,9 @@
 // what hub-acp.mjs already does for one agent run.
 //
 // Two workers are routing targets: opencode (cheap, fast) and claude
-// (expensive, strongest reasoning). Hermes was removed from the registry on
-// 2026-11-08; Codex is blocked by its ACP adapter. The hub itself orchestrates
+// (expensive, strongest reasoning). Hermes is registered (2026-11-11) but has no
+// enabled model in models.json, so it is never a routing target; Codex is blocked
+// by its ACP adapter. The hub itself orchestrates
 // -- no registered agent decomposes tasks.
 //
 // Why a rule list and not a model call to classify the task: a classifier
