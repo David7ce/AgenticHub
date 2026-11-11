@@ -175,7 +175,8 @@ export function main(argv = process.argv.slice(2)) {
     command: resolved.command,
     args: resolved.args,
     cwd: process.cwd(),
-    env: { ...process.env, ...resolved.env },
+    // attendedEnv: settings for a person at the keyboard (VS Code), never for hub dispatch.
+    env: { ...process.env, ...resolved.env, ...resolved.attendedEnv },
   });
 
   let finished = false;

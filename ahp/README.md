@@ -29,30 +29,42 @@ its built-in providers use unpinned `npx --yes`.
 
 ## The permission clamp
 
-**Measured 2026-11-11:** through the gateway, OpenCode (`build`), Claude (`auto`) and Codex
-(`agent`) each created a file in the working folder **without asking**. AHP relays the
-permission requests an agent chooses to make; it adds no gate, and the hub's own gate only
-ever worked by answering such requests. So the proxy applies the grant itself, as the hub does
-for its own runs:
+**Measured 2026-11-11:** through the gateway OpenCode (`build`), Claude (`auto`) and Codex (`agent`)
+each created a file in the working folder **without asking**. AHP relays the permission requests an
+agent chooses to make; it adds no gate, and the hub's own gate only ever worked by answering such
+requests. So the proxy applies the grant itself. The policy chosen by the owner (2026-11-11) for a
+person at the keyboard is **edit freely, ask before commands, read-only elsewhere**:
 
-- A session whose working directory is under `limits.writeTrees` (or the scratch folder) is
-  left alone: the agent's own mode and prompts apply.
-- Any other session is **restricted**. Right after `session/new|load|resume` the proxy sets
-  the agent's restricted mode, rewrites the reply so the client only sees the allowed modes,
-  refuses a later switch, and answers *no* to permission requests that would edit, delete,
-  move or execute, or leave the mode (Claude's "Approve Plan"; Codex asking before an edit).
-  Read-type requests still reach the person.
-- An agent with no restricted mode in the registry cannot be restricted, so such a session is
-  refused (fail closed). Hermes is in this case until someone verifies its modes.
+| | Working folder under the writable trees (open) | Anywhere else (restricted) |
+|---|---|---|
+| Claude | mode `acceptEdits`: edits free, commands ask (harmless ones such as `echo` do not) | `plan`; "Approve Plan" refused |
+| Codex | `workspace-write`: edits and commands free inside the folder; the sandbox confines it and asks to leave it (checked: a write outside was blocked) | `read-only`; edits refused |
+| OpenCode | `build` plus an `ask` rule for `shell` (`attendedEnv`): edits free, **every** shell command asks | `plan` |
 
-The modes live in `acp/agents.json` (`permissionModes.restricted = { force, allow }`):
-Claude `plan`, Codex `read-only`, OpenCode `plan`.
+Codex cannot separate edits from commands (its presets are sandboxes, and `approval_policy = "never"`
+stays as it is for the hub), so for it "controlled" means confined, not asked. OpenCode's ask rule is
+coarser than Claude's: it asks for every command.
 
-Verified live in a folder outside every `writeTrees`: the three agents' `mode` option shows only
-the restricted mode, no file was created, Claude's turn ends `cancelled` after its plan is
-refused, Codex's after its edit is refused. **To let an agent write in a project, add the
-folder to that agent's `limits.writeTrees` in `consent.json`** (today Claude has none, so Claude
-edits nothing through this path except in the scratch folder; that is your call, not mine).
+- The writable trees are `limits.attendedWriteTrees` when the grant has it, else `limits.writeTrees`,
+  plus the scratch folder. `attendedWriteTrees` exists so that a folder can be opened for the person at
+  VS Code without opening it for unattended hub runs (today Claude: AgentHub and charstudio there, none
+  in `writeTrees`).
+- Right after `session/new|load|resume` the proxy sets the mode of the class, rewrites the reply so
+  the client only sees the allowed modes, and refuses a later switch to another one.
+- In a restricted session the proxy also answers *no* to permission requests that would edit, delete,
+  move or execute, or leave the mode (Claude's "Approve Plan"; Codex asking before an edit). In an open
+  session those requests reach the person.
+- An agent with no restricted mode in the registry cannot be restricted, so such a session is refused
+  (fail closed); if setting the mode fails, every prompt of that session is refused. Hermes is in the
+  first case.
+
+Registry (`acp/agents.json`): `permissionModes.restricted` and `.attended` are `{ force, allow }`;
+`attendedEnv` is extra environment only for agents the proxy starts (OpenCode's inline
+`OPENCODE_CONFIG_CONTENT` with the `ask` rule and the `.env` denies).
+
+Verified live with all three agents, in a folder under the trees and in one outside them.
+**To let an agent work in a project, add the folder to its `attendedWriteTrees` (or `writeTrees`) in
+`consent.json`.**
 
 ## Run it
 
@@ -75,7 +87,7 @@ chat until the session is disposed.
 
 ## Verified
 
-- `node --test agent-hub/ahp/tests/ahp.test.mjs` (16): proxy pass-through, per-turn audit with
+- `node --test agent-hub/ahp/tests/ahp.test.mjs` (21): proxy pass-through, per-turn audit with
   cost deltas, refusal before the agent starts, the clamp (pure and through the proxy with a
   fake agent), config generation.
 - Headless client (the official `@microsoft/agent-host-protocol` 1.0.0): `initialize` lists

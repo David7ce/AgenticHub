@@ -242,6 +242,48 @@ test('clamp: if the restricted mode cannot be set, the session is refused rather
   assert.equal(clamp.fromClient({ jsonrpc: '2.0', id: 9, method: 'session/prompt', params: { sessionId: 'other', prompt: [] } }).forward, true);
 });
 
+const ATTENDED = { force: 'acceptEdits', allow: ['default', 'acceptEdits', 'plan'] };
+const ATTENDED_MODES = { restricted: MODES.restricted, attended: ATTENDED };
+const ask = (id, kind, sessionId = 's1') => ({
+  jsonrpc: '2.0', id, method: 'session/request_permission',
+  params: { sessionId, toolCall: { toolCallId: 't', kind }, options: [
+    { optionId: 'yes', name: 'Approve', kind: 'allow_once' },
+    { optionId: 'no', name: 'Reject', kind: 'reject_once' },
+  ] },
+});
+
+test('clamp: attendedWriteTrees, not writeTrees, decide which sessions are open for an attended client', () => {
+  const limits = { maxPermission: 'allow-all', writeTrees: [], attendedWriteTrees: [OPEN_TREE] };
+  const clamp = createClamp({ agent: 'a', limits, modes: ATTENDED_MODES });
+  clamp.fromClient(newSession('D:/work/tree', 5));
+  assert.equal(clamp.fromAgent(opened(5)).inject.length, 1, 'an attended session is still put in its attended mode');
+  assert.equal(clamp.restrictedSessions(), 0, 'but it is not restricted');
+  clamp.fromClient(newSession('D:/other', 6));
+  clamp.fromAgent(opened(6, 's2'));
+  assert.equal(clamp.restrictedSessions(), 1, 'outside the attended trees it is');
+  // With no attendedWriteTrees the grant's writeTrees apply as before.
+  const plain = createClamp({ agent: 'a', limits: { maxPermission: 'allow-all', writeTrees: [OPEN_TREE] }, modes: MODES });
+  assert.equal(plain.fromClient(newSession('D:/work/x', 7)).forward, true);
+  assert.equal(plain.fromAgent(opened(7)).inject, undefined);
+});
+
+test('clamp: an open session gets the attended mode, hides the modes outside its list and still lets edit/execute requests reach the person', () => {
+  const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: ATTENDED_MODES });
+  clamp.fromClient(newSession('D:/work/tree', 5));
+  const verdict = clamp.fromAgent(opened(5));
+  const mode = verdict.msg.result.configOptions.find((o) => o.id === 'mode');
+  assert.equal(mode.currentValue, 'acceptEdits');
+  assert.deepEqual(mode.options.map((o) => o.value), ['default', 'plan']);
+  assert.deepEqual(verdict.inject.map((m) => m.params.value), ['acceptEdits']);
+  const set = (id, value) => ({ jsonrpc: '2.0', id, method: 'session/set_config_option', params: { sessionId: 's1', configId: 'mode', value } });
+  assert.equal(clamp.fromClient(set(9, 'auto')).forward, false, 'cannot leave for a permissive mode');
+  assert.equal(clamp.fromClient(set(10, 'bypassPermissions')).forward, false);
+  assert.equal(clamp.fromClient(set(11, 'plan')).forward, true, 'a stricter mode is fine');
+  // The person is the control here: edits and commands are put to them, not refused.
+  assert.equal(clamp.fromAgent(ask(30, 'edit')).forward, true);
+  assert.equal(clamp.fromAgent(ask(31, 'execute')).forward, true);
+});
+
 // ---- the proxy as a process --------------------------------------------------------------
 
 test('the proxy passes ACP through untouched and writes one audit line per turn, with its cost', async () => {
@@ -280,6 +322,25 @@ test('outside writeTrees the proxy forces the restricted mode, shows only the al
   assert.deepEqual(mode.options.map((o) => o.value), ['plan']);
   assert.equal(replies.find((m) => m.id === 9).error.code, -32602);
   assert.ok(!replies.some((m) => String(m.id).startsWith('hubproxy')), 'the proxy\'s own request stays internal');
+});
+
+test('through the proxy an attended session is put in the attended mode, a restricted one in the restricted mode', async () => {
+  const modes = { restricted: MODES.restricted, attended: { force: 'default', allow: ['default', 'plan'] } };
+  const ws = workspace({ fake: grant() }, { modes });
+  const { replies } = await runProxy(ws, [init, newSession('D:/work/tree')]);
+  assert.match(readFileSync(ws.fakeLog, 'utf8'), /set:mode=default/);
+  const mode = replies.find((m) => m.id === 2).result.configOptions[0];
+  assert.equal(mode.currentValue, 'default');
+  assert.deepEqual(mode.options.map((o) => o.value), ['default', 'plan']);
+});
+
+test('attendedEnv reaches the agent the proxy starts, and only there', async () => {
+  const ws = workspace({ fake: grant() });
+  const registry = JSON.parse(readFileSync(ws.registry, 'utf8'));
+  registry.agents.fake.attendedEnv = { FAKE_ATTENDED_ENV: 'ask-shell' };
+  writeFileSync(ws.registry, JSON.stringify(registry));
+  await runProxy(ws, [init]);
+  assert.match(readFileSync(ws.fakeLog, 'utf8'), /attended-env:ask-shell/);
 });
 
 test('a restricted session with no restricted mode registered is refused before it reaches the agent', async () => {

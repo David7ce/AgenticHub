@@ -77,9 +77,10 @@ fino es la *ejecución controlada*:
 | Agente | Cómo actúa hoy | Control que hay |
 |---|---|---|
 | Claude Code (nativo) | Modo por defecto: **pregunta** antes de editar y de ejecutar | 3 reglas deny globales (Raindrop) y 7 de proyecto (`.env`) |
-| Claude por el adaptador ACP (hub, bridge, AHP) | Arranca en modo `auto`, más abierto que el nativo | `writeTrees` + clamp (modo `plan` fuera) |
-| Codex | `approval_policy = "never"` (tu decisión del 2026-11-09) y sandbox de Windows `unelevated` | `writeTrees` y topes del hub; **sin** regla `.env` |
-| OpenCode | Modo `build`: edita y ejecuta sin preguntar | Solo reglas `.env` en su configuración global; `writeTrees` del hub |
+| Claude por el adaptador ACP (hub, bridge) | Arranca en modo `auto`, más abierto que el nativo | `writeTrees` |
+| Claude por AHP | `acceptEdits` en las carpetas concedidas (edita libre, pregunta comandos); `plan` fuera | `attendedWriteTrees` + clamp |
+| Codex | `approval_policy = "never"` (tu decisión del 2026-11-09) y sandbox de Windows `unelevated` | `writeTrees` y topes del hub; sandbox `workspace-write` por AHP (fuera de la carpeta bloquea y pide permiso); **sin** regla `.env` |
+| OpenCode | Modo `build`: edita y ejecuta sin preguntar | Reglas `.env` globales y `writeTrees` del hub; **por AHP** pregunta antes de cada comando (`attendedEnv`) |
 | Hub (ejecuciones desatendidas) | `writeTrees`, presupuesto, tiempo, auditoría, worktrees | La puerta de `consent.json` |
 
 Red: salida permitida por política aceptada; los agentes ACP del hub no están cubiertos por el sandbox

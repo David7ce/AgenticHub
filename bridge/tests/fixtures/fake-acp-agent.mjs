@@ -24,6 +24,7 @@ rl.on("line", (line) => {
 
   if (method === "initialize") {
     log("initialize");
+    if (process.env.FAKE_ATTENDED_ENV) log(`attended-env:${process.env.FAKE_ATTENDED_ENV}`);
     send({
       jsonrpc: "2.0",
       id,

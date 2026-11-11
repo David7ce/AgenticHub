@@ -115,6 +115,10 @@ not all live in the same environment:
 `npx`-based entries that means the launcher exists, not that the package
 is cached yet.
 
+Two entry fields are read only by the AHP proxy (`ahp/`), never by hub dispatch:
+`permissionModes` (`restricted` / `attended`, each `{ force, allow }`: the agent's own mode names) and
+`attendedEnv` (extra environment for sessions a person attends). See `ahp/README.md`.
+
 ## Fan-out
 
     node agent-hub/acp/fanout-acp.mjs --agents opencode,claude \

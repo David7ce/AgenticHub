@@ -54,6 +54,8 @@ export function resolveAgent(registry, name) {
     defaultConfig: entry.defaultConfig,
     effort: entry.effort,
     permissionModes: entry.permissionModes,
+    // Extra environment only for attended sessions started through the AHP proxy.
+    attendedEnv: entry.attendedEnv,
   };
 }
 
