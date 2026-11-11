@@ -26,8 +26,9 @@ lives in the second level only.
 
 | You want | Use | Why |
 |---|---|---|
-| Claude with tools, edits, full 1M | **Claude harness** | Native Agent SDK and login; no per-request session start-up |
-| Codex with tools and edits | **Codex harness** (experimental; needs the Codex extension) | Same, native |
+| Claude with tools, edits, full 1M, billed to Copilot or an Anthropic API key | **Claude harness** | Native Agent SDK. It needs a GitHub Copilot sign-in or `ANTHROPIC_API_KEY`; it does **not** use the Claude Code subscription login |
+| Claude through your Claude Code subscription | **This bridge**, model "Claude via AgentHub" | The ACP adapter uses the existing login, no API key; text chat only |
+| Codex with tools and edits | **Codex harness** (experimental) | Accepts a ChatGPT account or Copilot Pro+; the extension integration adds it to the Chat view |
 | OpenCode / DeepSeek in VS Code chat | **This bridge**, model "OpenCode via AgentHub" | OpenCode has no harness; text chat only |
 | Claude/Codex answers inside the Copilot harness, with `@workspace` and editor context | This bridge | Text chat, `toolCalling: false` |
 | Anything that must reach this machine from Cloud | Not possible | Cloud runs remotely and cannot see loopback |

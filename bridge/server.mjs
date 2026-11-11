@@ -1024,6 +1024,16 @@ export function createBridgeServer(config) {
     }
 
     if (!authorized(req, config)) {
+      // Never the token itself: only whether one arrived and how long it was.
+      const header = String(req.headers.authorization ?? "");
+      audit(config, {
+        ts: new Date().toISOString(),
+        status: "auth-failed",
+        method: req.method,
+        path: url.pathname,
+        authHeader: header ? `${header.split(" ")[0]} (${header.length} chars)` : "absent",
+        expectedLength: (expectedToken(config) ?? "").length + 7,
+      });
       sendError(res, 401, "missing or invalid bearer token", "authentication_error");
       return;
     }
