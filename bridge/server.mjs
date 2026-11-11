@@ -231,6 +231,8 @@ export function loadConfig(configPath) {
     host: raw.host ?? "127.0.0.1",
     port: Number(raw.port ?? 3010),
     authTokenEnv: raw.authTokenEnv ?? null,
+    // Literal token for a local, git-ignored config.json; wins over authTokenEnv.
+    authToken: typeof raw.authToken === "string" && raw.authToken ? raw.authToken : null,
     systemPrompt: raw.systemPrompt ?? null,
     auditLog,
     providers,
@@ -276,9 +278,13 @@ function readBody(req) {
   });
 }
 
+function expectedToken(config) {
+  return config.authToken ?? (config.authTokenEnv ? process.env[config.authTokenEnv] : undefined);
+}
+
 function authorized(req, config) {
-  if (!config.authTokenEnv) return true;
-  const expected = process.env[config.authTokenEnv];
+  if (!config.authToken && !config.authTokenEnv) return true;
+  const expected = expectedToken(config);
   if (!expected) return true; // env not set: fall back to loopback-only
   const header = req.headers.authorization ?? "";
   return header === `Bearer ${expected}`;
@@ -923,7 +929,9 @@ export function checkReport(config) {
     }
   }
 
-  if (config.authTokenEnv) {
+  if (config.authToken) {
+    lines.push("  auth: bearer token from config.authToken");
+  } else if (config.authTokenEnv) {
     const set = Boolean(process.env[config.authTokenEnv]);
     lines.push(
       `  auth: bearer token from ${config.authTokenEnv}` +
@@ -1023,10 +1031,10 @@ async function main() {
 
   const server = createBridgeServer(config);
   server.listen(port, config.host, () => {
-    const auth = config.authTokenEnv ? `bearer token from ${config.authTokenEnv}` : "no bearer token (loopback only)";
+    const auth = config.authToken ? "bearer token from config" : config.authTokenEnv ? `bearer token from ${config.authTokenEnv}` : "no bearer token (loopback only)";
     console.log(`agent-hub bridge on http://${config.host}:${port} — ${config.models.length} model(s), ${auth}`);
-    if (!config.authTokenEnv) {
-      console.warn("warning: no authTokenEnv configured; any local process can call this bridge.");
+    if (!config.authToken && !config.authTokenEnv) {
+      console.warn("warning: no authToken/authTokenEnv configured; any local process can call this bridge.");
     }
     for (const model of config.models) {
       if (model.kind !== "provider") continue;

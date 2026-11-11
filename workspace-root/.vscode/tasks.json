@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "AgentHub bridge",
+      "type": "shell",
+      "command": "node agent-hub/bridge/server.mjs --config agent-hub/bridge/config.json",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated" }
+    }
+  ]
+}
