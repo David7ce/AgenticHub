@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { compareCodexCatalog, gatherDoctor, latestCodexModels, renderDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
-import { HUB, LOCKS_DIR, ROOT, readJson, useColor, yellow } from "../common.mjs";
+import { HUB, LOCKS_DIR, ROOT, STATE_DIR, readJson, useColor, yellow } from "../common.mjs";
 import { readInflight } from "./status.mjs";
 
 function defaultCodexCache() {
@@ -51,6 +51,7 @@ export async function runModels(argv) {
 export async function runDoctor(argv) {
   const report = gatherDoctor({
     root: ROOT,
+    stateDir: STATE_DIR,
     hub: HUB,
     readJson,
     inflight: readInflight(),

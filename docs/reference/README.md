@@ -13,8 +13,8 @@ Reference material that is not tied to one category or one task.
 | [`agent/README.md`](agent/README.md) | The session-baton convention (the batons themselves are personal and git-ignored). |
 
 Hub-specific docs (routing, consent, ACP, MCP server) live under
-[`../agent-hub/docs/`](../agent-hub/docs/README.md), which also says which of
+[`docs/`](../README.md), which also says which of
 those documents is current.
 
 The rules for *using* this workspace — where a task goes, when to stop and ask —
-are in [`../AGENTS.md`](../AGENTS.md).
+are in [`AGENTS.md`](../../AGENTS.md).

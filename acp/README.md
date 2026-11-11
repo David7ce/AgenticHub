@@ -90,7 +90,7 @@ is only the new turn). Both need the agent's matching capability — all
 three agents advertised `loadSession` and `sessionCapabilities.resume`
 on 2026-10-29. Use the same `--cwd`, and pass `--model`/`--config` again
 if the session doesn't retain its config. Session ids are in each result
-header and in `logs/runs.jsonl`.
+header and in `projects/logs/runs.jsonl`.
 
 ## Registry
 
@@ -150,7 +150,7 @@ its own `git worktree add --detach` checkout under
 there, so two agents cannot overwrite each other's files. After the run, a
 worktree with changes is **kept** and reported (JSON `worktree` /
 `worktreeKept`, a "Kept worktrees" section in the merged file, stderr, and
-`logs/runs.jsonl`); a clean one is removed. Worktrees start from `HEAD`, so
+`projects/logs/runs.jsonl`); a clean one is removed. Worktrees start from `HEAD`, so
 uncommitted changes in the main working tree are not copied in, and the
 starting cwd must be inside a git repository. Without the flag, behaviour is
 unchanged: every agent shares the cwd it was given.
@@ -195,7 +195,7 @@ work to the weekly Claude quota. Scope and consequence survived because
 they are about what a mistake costs, not about how hard the ask looks.
 
 On top of the prompt rules, `router.mjs` reads the last 24 h of
-`logs/runs.jsonl`: an agent with recent failures/timeouts (15 min) is
+`projects/logs/runs.jsonl`: an agent with recent failures/timeouts (15 min) is
 skipped in favour of a healthy one, and a prompt that would escalate to
 `claude` stays on `opencode` once claude's 24 h spend passes
 `--cost-ceiling` (default $2.00; `--force claude` overrides). Live
@@ -281,10 +281,10 @@ the tool's `HUB_MCP_OK`.
 - **Consent gate.** The `../consent.json` check —
   enabled, overseer-acknowledged, unexpired — and it runs
   before anything spawns, including `--probe`.
-- **Audit.** One JSON line per run in `../../logs/runs.jsonl` (shared
+- **Audit.** One JSON line per run in `projects/logs/runs.jsonl` (shared
   by every entry point). Records include status, session id, stop reason,
   duration, cost when reported, permission decisions, and a truncated
-  prompt/output. `logs/*.jsonl` and `results/` are gitignored.
+  prompt/output. `projects/logs/*.jsonl` and `results/` are gitignored.
 - **Results.** Non-empty answers are saved to
   [`../results/`](../results/) as `<stamp>-<agent>-acp.md`, with the
   session id and stop reason in the header. `--no-save` skips this.

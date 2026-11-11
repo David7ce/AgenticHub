@@ -26,7 +26,7 @@ aplica igual.
 
 ## Cola de tareas
 
-`hubctl tasks` es la cola fina: un SQLite local (`logs/hub.db`), sin daemon y sin
+`hubctl tasks` es la cola fina: un SQLite local (`projects/logs/hub.db`), sin daemon y sin
 grafo de dependencias. No lanza agentes por su cuenta: cada tarea pasa por
 `hub-acp`, así que consentimiento, `writeTrees`, presupuesto y auditoría siguen
 en el mismo sitio. Cada tarea corre en su propio worktree; el árbol vivo no se
@@ -42,7 +42,7 @@ node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence diff.patch
 Estados: `queued → running → review → done`; `blocked` y `cancelled` se
 recuperan con `retry`. `review` no es `done`: cerrar exige `--evidence`. Cada
 línea de auditoría de una tarea lleva `taskId`, y el resultado completo queda en
-`logs/tasks/<id>.json`. El claim es una transacción `BEGIN IMMEDIATE`, así que dos
+`projects/logs/tasks/<id>.json`. El claim es una transacción `BEGIN IMMEDIATE`, así que dos
 terminales no cogen la misma fila.
 
 ## Si se acaba la cuota de Claude
@@ -113,7 +113,7 @@ node agent-hub/hubctl/hubctl.mjs doctor          # coherencia de config; empieza
   `OPENCODE_DB`/`--db` la sobrescriben. Claude es cost-only; los runs desde 2026-11-08 llevan `cwd` y
   salen con proyecto, los anteriores quedan `unknown`. Codex queda para la
   siguiente fase.
-- `logs/runs.jsonl`: auditoría completa; no se edita.
+- `projects/logs/runs.jsonl`: auditoría completa; no se edita.
 
 ## Bench
 
@@ -172,4 +172,4 @@ Se conservan si tienen cambios. `--force` descarta trabajo: pide permiso antes.
 
 - `results/fake-*` y `results/codex-*` no son evidencia útil.
 - `results/bench/` se puede vaciar; los informes están en `bench/`.
-- No borrar líneas de `logs/runs.jsonl` ni worktrees con cambios sin permiso.
+- No borrar líneas de `projects/logs/runs.jsonl` ni worktrees con cambios sin permiso.

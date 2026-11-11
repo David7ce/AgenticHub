@@ -4,7 +4,7 @@
 #   git config core.hooksPath .githooks
 #
 # The bench dry-run is skipped here on purpose: it copies the tree and takes
-# ~6 s, which is too slow for every commit. `node agent-hub/tools/check.mjs`
+# ~6 s, which is too slow for every commit. `node tools/check.mjs`
 # runs it, and that is what a release or a real review should use.
 # Git exports GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE to hooks, and the tests that
 # build throwaway repositories would inherit them and operate on this one
@@ -13,6 +13,6 @@ unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_A
 
 # Credentials first: a failing test can be fixed in the next commit, a leaked
 # key has already left the machine once it is in history.
-node agent-hub/tools/secret-scan.mjs || exit 1
+node tools/secret-scan.mjs || exit 1
 
-exec node agent-hub/tools/check.mjs --no-bench
+exec node tools/check.mjs --no-bench

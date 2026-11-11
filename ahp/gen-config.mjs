@@ -18,12 +18,12 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CONSENT_PATH, readConsent } from '../acp/consent.mjs';
-import { DEFAULT_REGISTRY, ROOT } from '../acp/hub-env.mjs';
+import { DEFAULT_REGISTRY, STATE_DIR } from '../acp/hub-env.mjs';
 import { loadRegistry } from '../acp/registry.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const PROXY = join(HERE, 'consent-proxy.mjs');
-export const DEFAULT_OUT = join(ROOT, 'logs', 'ahp-gateway.json');
+export const DEFAULT_OUT = join(STATE_DIR, 'logs', 'ahp-gateway.json');
 
 // ahp-acp-gateway 0.2.2 built-in provider ids (its ahp-acp-gateway.default.json).
 export const GATEWAY_BUILTINS = [

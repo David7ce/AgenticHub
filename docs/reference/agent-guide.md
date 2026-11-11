@@ -1,7 +1,7 @@
 # Working with agents in this workspace
 
 A short guide for the person at the keyboard. The rules agents must follow are in
-[`../AGENTS.md`](../AGENTS.md); this page is how to *use* them well.
+[`AGENTS.md`](../../AGENTS.md); this page is how to *use* them well.
 
 ## Pick the agent
 
@@ -11,7 +11,7 @@ A short guide for the person at the keyboard. The rules agents must follow are i
 | Hard reasoning, risky changes, review | **Claude Code** | Strongest; its quota is the scarce one, so spend it where it matters |
 | A second strong opinion, or Claude is out of quota | **Codex** | Independent model family; runs commands under a sandbox |
 
-Per-model detail and the routing rules: [`../agent-hub/docs/routing.md`](../agent-hub/docs/routing.md).
+Per-model detail and the routing rules: [`docs/routing.md`](../routing.md).
 Tool references: [Claude Code](claude-code-reference.md) ·
 [Codex](codex-reference.md) · [OpenCode](opencode-reference.md).
 
@@ -36,7 +36,7 @@ node agent-hub/hubctl/hubctl.mjs handoff codex --cwd <repo> --note "what to do n
 ```
 
 From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
-`route`. Everything is logged to `logs/runs.jsonl`.
+`route`. Everything is logged to `projects/logs/runs.jsonl`.
 
 ## When something looks wrong
 
@@ -45,9 +45,9 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 | An agent was refused | `hubctl doctor` — consent expired, path outside `writeTrees`, daily cap |
 | Costs look off | `hubctl spend` and `hubctl usage` |
 | End of a session: draft the JOURNAL entry | `hubctl wrap` prints it; `--write --yes` files it and moves the marker; `--mark` moves only the marker |
-| Did we already hit this before | `hubctl search "text"` (runs, notes, git; `--since`, `--source`; index `logs/index.db` rebuilds itself) |
+| Did we already hit this before | `hubctl search "text"` (runs, notes, git; `--since`, `--source`; index `projects/logs/index.db` rebuilds itself) |
 | Verify a diff an agent could not test | `hubctl verify <worktree>` (runs the repo's own tests; `--cmd` overrides) |
-| Start of a session: what is the state | `hubctl brief` (≤40 lines; `--json`; watch more repos in `working/repos-vigilados.txt`) |
+| Start of a session: what is the state | `hubctl brief` (≤40 lines; `--json`; watch more repos in `projects/working/repos-vigilados.txt`) |
 | Which agent is working right now | `hubctl live` |
 | Leftover checkouts and old backups | `hubctl clean` (dry run) |
 | Too many old conversations | the `/chats` panel in OpenCode |
@@ -56,5 +56,5 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 ## What does not belong here
 
 Personal state (the owner's roadmap, handoff and journal) lives in the git-ignored
-`working/` folder, so a fork gets a clean, generic repo. General notes and research
+`projects/working/` folder, so a fork gets a clean, generic repo. General notes and research
 live in the external knowledge vault, not in this repository.

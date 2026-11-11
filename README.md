@@ -11,7 +11,7 @@ machine, behind one consent gate and one audit log. Windows 11 + WSL2.
 - **Agents:** Claude Code, OpenCode and Codex, each over ACP (Agent Client Protocol).
 - **Surface:** OpenCode is the daily chat surface; the hub is what it calls through MCP.
 - **Governance:** `consent.json` (who may run, where they may write, how much they may
-  spend), `logs/runs.jsonl` (one line per attempt), `hubctl doctor` (does it all agree).
+  spend), `projects/logs/runs.jsonl` (one line per attempt), `hubctl doctor` (does it all agree).
 
 Who does what, and why: [`docs/routing.md`](docs/routing.md). Which document is
 current: [`docs/README.md`](docs/README.md).
@@ -72,7 +72,7 @@ Every call — including denied ones — is checked against `consent.json` first
 agent must be `enabled`, `overseerAck`-ed and unexpired, and the request must fit
 its `limits` (`maxPermission`, `writeTrees`, `maxBudgetUsd`, `maxDailyUsd`, and
 `maxDailyTokens` for flat subscriptions such as Codex).
-Otherwise nothing runs. Every attempt appends one JSON line to `logs/runs.jsonl`
+Otherwise nothing runs. Every attempt appends one JSON line to `projects/logs/runs.jsonl`
 (rotated past 10 MB). Revoke an agent by setting `enabled` to `false`.
 
 ## Tests

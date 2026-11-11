@@ -1,15 +1,19 @@
 # Operating instructions for AI agents working in this directory
 
 For you, the agent — Claude Code, Codex, OpenCode or any other. If you are a
-human, read [`README.md`](README.md) and [`docs/agent-guide.md`](docs/agent-guide.md).
+human, read [`README.md`](README.md) and [`agent-hub/docs/reference/agent-guide.md`](agent-hub/docs/reference/agent-guide.md).
 
 ## What this directory is
 
-AgentHub is the **control room** for this machine's agent workspace:
+AgentHub is the **control room** for this machine's agent workspace. This folder
+is not a repository: it holds two, each with its own `.git`, and the launcher
+files agents and editors read from here (`AGENTS.md`, `CLAUDE.md`, `.mcp.json`,
+`opencode.json`, `.claude/`, `.vscode/`; tracked copies live in
+`agent-hub/workspace-root/`).
 
 - [`agent-hub/`](agent-hub/) — the local swarm: ACP dispatcher, consent gate, MCP
   server, `hubctl` control room, conversation manager, routing and audit log.
-- [`repos/`](repos/) — the inventory of repositories under `D:\Workspaces` and the
+- [`projects/`](projects/) — the inventory of repositories under `D:\Workspaces` and the
   generated repos/heatmap pages.
 
 It is not a general documentation workspace. General notes and research live in the
@@ -20,26 +24,26 @@ in each project repo; scripts and installers live in the toolbox repo.
 
 0. Run `node agent-hub/hubctl/hubctl.mjs brief` first: doctor, dirty repos, last runs,
    today's spend and the pending list in ≤40 lines.
-1. No task given? Read [`working/ROADMAP.md`](working/ROADMAP.md) for open items.
+1. No task given? Read [`projects/working/ROADMAP.md`](projects/working/ROADMAP.md) for open items.
 2. Touching `agent-hub/`: read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md). Touching
-   `repos/`: read [`repos/README.md`](repos/README.md).
+   `projects/`: read [`projects/README.md`](projects/README.md).
 3. Touching a project repo: read **its** `AGENTS.md` and `docs/agent/HANDOFF.md`
    first, and update the handoff before you finish.
 4. Do not recreate `categories/` here. General docs go to the vault; project docs
    stay with the project.
 
-## `working/` — personal, never published
+## `projects/working/` — personal, never published
 
 Everything that is the owner's and not the hub itself lives in
-[`working/`](working/), which git ignores wholesale: `ROADMAP.md`, the session
+[`projects/working/`](projects/working/), which git ignores wholesale: `ROADMAP.md`, the session
 batons (`HANDOFF.md`, `JOURNAL.md`), `lecciones.md` and `git-backup.md`. A fork
 clones it empty. Local **config** that code reads stays next to the code
-(`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `repos/local/`), also
+(`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `projects/local/`), also
 ignored, each with a tracked `*.example` or README to copy from. Keep anything
-personal or machine-specific in `working/` or a `*.local.*` file — never in a
+personal or machine-specific in `projects/working/` or a `*.local.*` file — never in a
 tracked file.
 
-Keep `working/ROADMAP.md` current: add what the user mentions and you cannot do now,
+Keep `projects/working/ROADMAP.md` current: add what the user mentions and you cannot do now,
 keep a blocked item with its blocker spelled out, and delete finished items instead
 of leaving them checked off.
 
@@ -51,7 +55,7 @@ leaves a transcript the next harness cannot read. So the state goes in files:
 - A **project repo** keeps `AGENTS.md` (entry point), `docs/agent/HANDOFF.md`
   (current state, uncommitted work, exact next step) and `docs/agent/JOURNAL.md`
   (append-only, newest first). If a repo has no `AGENTS.md`, add one.
-- **This workspace's** baton is `working/HANDOFF.md` and `working/JOURNAL.md`: read
+- **This workspace's** baton is `projects/working/HANDOFF.md` and `projects/working/JOURNAL.md`: read
   them at the start, update them before finishing. They stay out of git.
 
 **One writing orchestrator per working tree.** Read-only sessions may overlap. Give
@@ -63,9 +67,9 @@ another session's pending work into a commit without naming it.
 ## While working
 
 - `agent-hub/` is infrastructure; do not move it into a task folder.
-- `repos/dist/` is generated: edit `cli.mjs`, `src/` or `test/`, rebuild with
-  `node repos/cli.mjs build` and `node repos/cli.mjs heatmap`, never hand-edit `dist/`.
-- `logs/` is local and never versioned (except its README). `logs/runs.jsonl` is the
+- `projects/dist/` is generated: edit `cli.mjs`, `src/` or `test/`, rebuild with
+  `node projects/cli.mjs build` and `node projects/cli.mjs heatmap`, never hand-edit `dist/`.
+- `projects/logs/` is local and never versioned (except its README). `projects/logs/runs.jsonl` is the
   append-only audit log; run evidence goes there named by task and date, and the
   final evidence goes to the project repo.
 - Every subdirectory gets a README saying what it is and which platform or tool it

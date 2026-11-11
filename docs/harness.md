@@ -50,7 +50,7 @@ Hecha por quien tiene VS Code delante, con el host AgentHub y la carpeta de un p
 en `writeTrees` del agente:
 
 1. Salen los agentes concedidos y el selector de modelo del agente.
-2. Un turno de texto responde y deja su línea en `logs/runs.jsonl` (`transport: "ahp"`).
+2. Un turno de texto responde y deja su línea en `projects/logs/runs.jsonl` (`transport: "ahp"`).
 3. Una edición dentro de `writeTrees` se aplica y se ve el diff.
 4. La misma petición en una carpeta fuera de `writeTrees` **no** escribe (modo restringido).
 5. El selector de esfuerzo (o la opción de modo) aparece y cambia el comportamiento.

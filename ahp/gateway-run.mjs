@@ -15,9 +15,9 @@ import { parseArgs } from 'node:util';
 import { patchGateway } from './gateway-patch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(HERE, '..', '..');
-export const PACKAGE_DIR = join(ROOT, 'logs', 'ahp-gateway-pkg', 'node_modules', 'ahp-acp-gateway', 'dist', 'src');
-const RPC_LOG = join(ROOT, 'logs', 'ahp-gateway-rpc.log');
+const STATE_DIR = process.env.AGENT_HUB_STATE ? resolve(process.env.AGENT_HUB_STATE) : join(resolve(HERE, '..', '..'), 'projects');
+export const PACKAGE_DIR = join(STATE_DIR, 'logs', 'ahp-gateway-pkg', 'node_modules', 'ahp-acp-gateway', 'dist', 'src');
+const RPC_LOG = join(STATE_DIR, 'logs', 'ahp-gateway-rpc.log');
 
 const { values } = parseArgs({ options: { config: { type: 'string', short: 'c' } }, strict: true });
 

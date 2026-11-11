@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { gatherDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
-import { HUB, LOCKS_DIR, LOG_PATH, ROOT, readJson } from "../common.mjs";
+import { HUB, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson } from "../common.mjs";
 import { readInflight } from "./status.mjs";
 import { gitDirty, parseWatchList } from "./brief.mjs";
 import { resolve } from "node:path";
@@ -84,8 +84,8 @@ export function insertEntry(journal, draft) {
 }
 
 export async function runWrap(argv) {
-  const markerPath = join(ROOT, "working", ".ultimo-wrap");
-  const journalPath = join(ROOT, "working", "JOURNAL.md");
+  const markerPath = join(STATE_DIR, "working", ".ultimo-wrap");
+  const journalPath = join(STATE_DIR, "working", "JOURNAL.md");
   const now = new Date();
   const head = git(ROOT, ["rev-parse", "HEAD"])?.trim() ?? null;
   const writeMarker = () => writeFileSync(markerPath, `${now.toISOString()}\n${head ?? ""}\n`);
@@ -104,9 +104,9 @@ export async function runWrap(argv) {
   const commits = (git(ROOT, ["log", "--format=%h%x1f%s", ...range]) ?? "")
     .split("\n").filter(Boolean).map((l) => { const [hash, subject] = l.split("\x1f"); return { hash, subject }; });
 
-  const report = gatherDoctor({ root: ROOT, hub: HUB, readJson, inflight: readInflight(), locks: readLocks(LOCKS_DIR), fast: true, codexCache: null });
+  const report = gatherDoctor({ root: ROOT, stateDir: STATE_DIR, hub: HUB, readJson, inflight: readInflight(), locks: readLocks(LOCKS_DIR), fast: true, codexCache: null });
   const issues = report.checks.filter((c) => c.level !== "ok");
-  const watchFile = join(ROOT, "working", "repos-vigilados.txt");
+  const watchFile = join(STATE_DIR, "working", "repos-vigilados.txt");
   const watched = existsSync(watchFile) ? parseWatchList(readFileSync(watchFile, "utf8"), resolve(ROOT, "..")) : [];
   const dirty = [ROOT, ...watched.filter((d) => resolve(d) !== resolve(ROOT))].map(gitDirty);
   const runs = pickRuns(existsSync(LOG_PATH) ? readFileSync(LOG_PATH, "utf8") : "", sinceIso);

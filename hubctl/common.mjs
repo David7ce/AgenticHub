@@ -12,15 +12,20 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const HUB = resolve(HERE, "..");
-export const ROOT = resolve(HUB, "..");
+// ROOT is the hub's own repository (git, hooks, docs); the state folder is separate.
+export const ROOT = HUB;
+export const WORKSPACE_DIR = resolve(HUB, "..");
+export const STATE_DIR = process.env.AGENT_HUB_STATE
+  ? resolve(process.env.AGENT_HUB_STATE)
+  : join(WORKSPACE_DIR, "projects");
 export const HUBCTL_ENTRY = join(HERE, "hubctl.mjs");
 export const LOG_PATH = process.env.AGENT_HUB_LOG
   ? resolve(process.env.AGENT_HUB_LOG)
-  : join(ROOT, "logs", "runs.jsonl");
+  : join(STATE_DIR, "logs", "runs.jsonl");
 export const CONSENT_PATH = join(HUB, "consent.json");
 export const TASKS_DB = process.env.AGENT_HUB_TASKS_DB
   ? resolve(process.env.AGENT_HUB_TASKS_DB)
-  : join(ROOT, "logs", "hub.db");
+  : join(STATE_DIR, "logs", "hub.db");
 export const INFLIGHT_DIR = process.env.AGENT_HUB_INFLIGHT
   ? resolve(process.env.AGENT_HUB_INFLIGHT)
   : join(HUB, "results", "inflight");

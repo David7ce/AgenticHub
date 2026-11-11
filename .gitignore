@@ -1,1 +1,27 @@
-results/
+# Everything tracked here is generic: a fork gets a working, impersonal repo.
+# Machine-specific config stays next to the code that reads it, with a tracked
+# *.example or README to copy from. Personal notes and run logs live in the
+# sibling projects/ repo (working/, logs/), never here.
+
+# Local machine configuration
+/consent.json
+/acp/agents.json
+/mcp/*.local.json
+/bridge/config.json
+
+# Local run output
+/results/
+/chatmgr/backups/
+
+node_modules/
+.playwright-mcp/
+__pycache__/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Media never belongs in this repo
+**/*.mp4
+**/*.zip

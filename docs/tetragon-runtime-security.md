@@ -56,7 +56,7 @@ Two caveats matter more than the table:
 
 ## Adopted now
 
-`hub-acp.mjs` now records the run's tool activity in `logs/runs.jsonl`
+`hub-acp.mjs` now records the run's tool activity in `projects/logs/runs.jsonl`
 alongside the existing permission decisions:
 
 - `toolCount` — total distinct tool calls seen.

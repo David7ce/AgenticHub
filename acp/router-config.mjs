@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STATE_DIR } from './hub-env.mjs';
 
 export const HERE = dirname(fileURLToPath(import.meta.url));
 // Local registry first; a fresh clone runs with the shipped example.
@@ -9,7 +10,7 @@ export const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
   ? join(HERE, 'agents.json')
   : join(HERE, 'agents.example.json');
 export const HUB = join(HERE, 'hub-acp.mjs');
-export const DEFAULT_LOG = join(HERE, '..', '..', 'logs', 'runs.jsonl');
+export const DEFAULT_LOG = join(STATE_DIR, 'logs', 'runs.jsonl');
 export const MODELS_PATH = join(HERE, '..', 'models.json');
 
 export const CHEAP_AGENT = 'opencode';

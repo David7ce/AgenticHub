@@ -255,8 +255,8 @@ function gitOut(root, args) {
   return r.status === 0 ? r.stdout.trim() : null;
 }
 
-function handoffInputs(root) {
-  const file = join(root, 'working', 'HANDOFF.md');
+function handoffInputs(root, stateDir) {
+  const file = join(stateDir, 'working', 'HANDOFF.md');
   if (!existsSync(file)) return null;
   const ct = gitOut(root, ['log', '-1', '--format=%ct']);
   return {
@@ -285,17 +285,17 @@ export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright'])
 function listCurrentDocs(root) {
   // The owner's batons (ROADMAP, HANDOFF, JOURNAL) live in working/ and are not
   // checked here: they are personal and git-ignored, not part of the public tree.
-  const docs = ['AGENTS.md', 'README.md', 'CLAUDE.md', 'docs/agent/README.md'];
+  const docs = ['AGENTS.md', 'README.md', 'docs/reference/agent/README.md'];
   const walk = (dir) => {
     if (!existsSync(dir)) return;
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
-      if (name === 'history' || name === 'node_modules' || name === 'results') continue;
+      if (name === 'history' || name === 'node_modules' || name === 'results' || name === 'workspace-root' || name.startsWith('.')) continue;
       if (statSync(full).isDirectory()) walk(full);
       else if (name.endsWith('.md')) docs.push(relative(root, full));
     }
   };
-  walk(join(root, 'agent-hub'));
+  walk(root);
   return [...new Set(docs)].map((p) => join(root, p)).filter((p) => existsSync(p));
 }
 
@@ -362,7 +362,7 @@ export function checkFrontier(catalog) {
   return on.map((m) => row('models', 'warn', `${m.id} is frontier but enabled for routing; it should be explicit-only`));
 }
 
-export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = false, codexCache = null }) {
+export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'), hub, readJson, inflight, locks, fast = false, codexCache = null }) {
   const consent = readJson(join(hub, 'consent.json'));
   const localRegistry = join(hub, 'acp', 'agents.json');
   const usingExample = !existsSync(localRegistry);
@@ -374,7 +374,7 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   else if (usingExample) checks.push(row('registry', 'warn', 'using agents.example.json; copy it to acp/agents.json and set your agent paths'));
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
-  if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(root, 'logs', 'runs.jsonl'))));
+  if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(stateDir, 'logs', 'runs.jsonl'))));
   if (consent) checks.push(...checkDailyTokens(consent, (name) => spentTokensToday(name)));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
@@ -388,10 +388,10 @@ export function gatherDoctor({ root, hub, readJson, inflight, locks, fast = fals
   checks.push(...checkLeftovers(inflight, locks));
   const bridgeConfig = readJson(join(hub, 'bridge', 'config.json'));
   if (bridgeConfig) checks.push(...checkBridge(true, probeBridge(bridgeConfig.port ?? 3010)));
-  const gatewayConfig = readJson(join(root, 'logs', 'ahp-gateway.json'));
+  const gatewayConfig = readJson(join(stateDir, 'logs', 'ahp-gateway.json'));
   if (gatewayConfig) checks.push(...checkGateway(true, probeLocal(gatewayConfig.listener?.port ?? 8765, '/healthz')));
   checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));
-  const handoff = handoffInputs(root);
+  const handoff = handoffInputs(root, stateDir);
   if (handoff) checks.push(...checkHandoffFresh(handoff));
   // OpenCode starts its MCP servers lazily; on a loaded machine the first listing
   // can say "not connected" for a server that is a moment from ready. Look up to

@@ -16,10 +16,10 @@ lives in each project repository, and scripts live in the toolbox.
 | Path                       | What it is                                                                                                                              |
 |----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
 | [`agent-hub/`](agent-hub/) | Swarm dispatcher, consent gate, MCP server, ACP adapters, routing and audit log                                                         |
-| [`repos/`](repos/)         | Repository inventory and the generated Repos/Heatmap pages                                                                              |
-| [`docs/`](docs/)           | Generic docs; `docs/agent/` documents the session-baton convention                                                                      |
-| [`logs/`](logs/)           | Agent audit log and final task evidence (local, ignored)                                                                                |
-| `working/`                 | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and plans. A fork clones it empty   |
+| [`projects/`](projects/)         | Repository inventory and the generated Repos/Heatmap pages                                                                              |
+| [`agent-hub/docs/`](agent-hub/docs/) | Hub docs; `docs/reference/` has the agent references and the session-baton convention                                                                      |
+| [`projects/logs/`](projects/logs/)           | Agent audit log and final task evidence (local, ignored)                                                                                |
+| `projects/working/`                 | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and plans. A fork clones it empty   |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate
@@ -30,11 +30,11 @@ toolbox repo. Neither is required to run the hub.
 Both are single self-contained HTML files — no server, no ports. They are
 generated from *this* machine's repositories, so they are ignored by git:
 
-- **Repos** — `repos/dist/repos.html`
-- **Heatmap** — `repos/dist/heatmap.html`
+- **Repos** — `projects/dist/repos.html`
+- **Heatmap** — `projects/dist/heatmap.html`
 
-Regenerate with `node repos/cli.mjs build` and `node repos/cli.mjs heatmap`.
-Both pages share `repos/dist/repos.json`, so they report the same repository
+Regenerate with `node projects/cli.mjs build` and `node projects/cli.mjs heatmap`.
+Both pages share `projects/dist/repos.json`, so they report the same repository
 inventory; rebuild them to refresh the snapshot. The repos page shows avatars
 for owner, project and the repo's own account when it differs; the heatmap
 keeps owner and project marks. Avatars fall back to a generic mark offline.
@@ -56,8 +56,8 @@ habits.
 The documentation works on any OS. The repository toolkit requires Node.js and
 Git; the agent hub also requires configured agent executables (Claude Code,
 OpenCode, Codex), whose adapters have platform-specific prerequisites. See
-[workspace configuration](docs/workspace-configuration.md); the docs index
-([`docs/`](docs/README.md)) starts with a guide to working with the agents.
+[workspace configuration](agent-hub/docs/reference/workspace-configuration.md); the docs index
+([`agent-hub/docs/`](agent-hub/docs/README.md)) starts with a guide to working with the agents.
 
 ## For agents
 
@@ -70,7 +70,7 @@ current, and when to stop and ask.
 - [`agent-hub/`](agent-hub/) — a working swarm: one prompt fanned out to Claude
   Code, OpenCode and Codex over ACP, with routing, quota failover, a consent
   gate with enforced limits, an MCP server and an audit log.
-- `repos/` — a live inventory of every repository under `D:\Workspaces`,
+- `projects/` — a live inventory of every repository under `D:\Workspaces`,
   regenerated from the filesystem rather than hand-maintained.
 - Toolbox examples (a separate repo): desktop setup,
   RGB/cooler troubleshooting, OMR and other machine-level work; their

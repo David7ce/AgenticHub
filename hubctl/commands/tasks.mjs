@@ -27,7 +27,7 @@ import {
   retryTask,
   setTaskWorktree,
 } from "../tasks.mjs";
-import { HUB_ACP, ROOT, TASKS_DB, stamp } from "../common.mjs";
+import { HUB_ACP, ROOT, STATE_DIR, TASKS_DB, stamp } from "../common.mjs";
 
 const TASK_USAGE = `usage: hubctl tasks <command>
 
@@ -111,7 +111,7 @@ async function runOneTask(db, task, opts) {
   const ok = code === 0 && result?.ok === true;
   const cost = costAmount(result?.cost);
 
-  const evidenceDir = join(ROOT, "logs", "tasks");
+  const evidenceDir = join(STATE_DIR, "logs", "tasks");
   mkdirSync(evidenceDir, { recursive: true });
   const evidence = join(evidenceDir, `${task.id}.json`);
   writeFileSync(

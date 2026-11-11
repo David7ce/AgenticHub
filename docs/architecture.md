@@ -17,7 +17,7 @@ Windows
                          ├──────▶ │  hub-mcp      │  stdio JSON-RPC
   PowerShell / hubctl ───┘        │  (server.mjs) │
                                   └──────┬────────┘
-                                         │ consent.json + logs/runs.jsonl
+                                         │ consent.json + projects/logs/runs.jsonl
                                   ┌──────▼────────┐
                                   │  hub-acp      │  ACP Client
                                   └──┬───────┬────┘
@@ -56,7 +56,7 @@ negocia v1. No hay shim propio.
 | `acp/paths.mjs` | Única traducción Windows ↔ WSL. |
 | `hubctl/` | `status`, `live`, `report`, `run`, `attach`, `worktree`, `bench`, `usage`. |
 | `bench/` | Regresión del harness y bench de colaboración. |
-| `../logs/runs.jsonl` | Auditoría append-only; una línea por intento terminado. |
+| `projects/logs/runs.jsonl` | Auditoría append-only; una línea por intento terminado. |
 
 ## Ciclo de una llamada
 
@@ -67,14 +67,14 @@ negocia v1. No hay shim propio.
 5. Mientras trabaja, escribe `results/inflight/<pid>.json` con agente, árbol,
    modelo, herramientas, `updated` y último tool. `hubctl live` lo lee.
 6. Si el permiso es `allow-all`, reclama el lock del árbol antes de escribir.
-7. Al terminar, escribe una línea en `logs/runs.jsonl` y borra el inflight.
+7. Al terminar, escribe una línea en `projects/logs/runs.jsonl` y borra el inflight.
 8. Si hay timeout, envía `session/cancel` y espera; `cancelAck: false` significa
    que el árbol puede seguir vivo.
 
 ## Memoria y estado
 
 - **Consentimiento**: `consent.json`, por agente.
-- **Auditoría**: `logs/runs.jsonl`; rota a los 10 MB.
+- **Auditoría**: `projects/logs/runs.jsonl`; rota a los 10 MB.
 - **En vuelo**: `results/inflight/<pid>.json`; se borra al salir.
 - **Locks**: `results/locks/*.lock`.
 - **Worktrees**: `.git/agent-worktrees/`; solo se conservan si hay cambios.

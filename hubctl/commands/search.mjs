@@ -6,10 +6,10 @@
  */
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT } from "../common.mjs";
+import { ROOT, STATE_DIR } from "../common.mjs";
 import { openIndex, reindex, search } from "../search.mjs";
 
-const INDEX_PATH = process.env.AGENT_HUB_INDEX || join(ROOT, "logs", "index.db");
+const INDEX_PATH = process.env.AGENT_HUB_INDEX || join(STATE_DIR, "logs", "index.db");
 
 export async function runSearch(argv) {
   const words = [];
@@ -33,7 +33,7 @@ export async function runSearch(argv) {
   if (opts.rebuild) rmSync(INDEX_PATH, { force: true });
   const db = openIndex(INDEX_PATH);
   try {
-    reindex(db, { logsDir: join(ROOT, "logs"), workingDir: join(ROOT, "working"), repo: ROOT });
+    reindex(db, { logsDir: join(STATE_DIR, "logs"), workingDir: join(STATE_DIR, "working"), repo: ROOT });
     if (!words.length) return;
     const hits = search(db, words.join(" "), opts);
     if (opts.json) {

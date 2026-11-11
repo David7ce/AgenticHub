@@ -108,6 +108,6 @@ grant: `limits.writeTrees`, the budget, and one writer per tree.
 
 ## Conversation manager (TUI plugin)
 
-[`../agent-hub/chatmgr/`](../agent-hub/chatmgr/README.md) adds a panel to OpenCode
+[`chatmgr/`](../../chatmgr/README.md) adds a panel to OpenCode
 (`/conversations`, or `/chats`) listing every agent's conversations (OpenCode,
 Codex, Claude Code, Hermes) in one place, with preview and batch delete.

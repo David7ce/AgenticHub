@@ -7,7 +7,12 @@ import { fileURLToPath } from 'node:url';
 
 export const HERE = dirname(fileURLToPath(import.meta.url));
 export const HUB_DIR = resolve(HERE, '..');
-export const ROOT = resolve(HUB_DIR, '..');
+// The folder that holds agent-hub/ and projects/. Not a repository.
+export const WORKSPACE_DIR = resolve(HUB_DIR, '..');
+// Per-machine state (logs/, working/) lives in projects/, never in a repo's tracked files.
+export const STATE_DIR = process.env.AGENT_HUB_STATE
+  ? resolve(process.env.AGENT_HUB_STATE)
+  : join(WORKSPACE_DIR, 'projects');
 export const RESULTS_DIR = process.env.AGENT_HUB_RESULTS
   ? resolve(process.env.AGENT_HUB_RESULTS)
   : join(HUB_DIR, 'results');
@@ -16,7 +21,7 @@ export const LOCKS_DIR = process.env.AGENT_HUB_LOCKS
   : join(RESULTS_DIR, 'locks');
 export const LOG_PATH = process.env.AGENT_HUB_LOG
   ? resolve(process.env.AGENT_HUB_LOG)
-  : join(ROOT, 'logs', 'runs.jsonl');
+  : join(STATE_DIR, 'logs', 'runs.jsonl');
 // Local registry first; a fresh clone runs with the shipped example.
 export const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
   ? join(HERE, 'agents.json')

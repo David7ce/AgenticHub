@@ -18,10 +18,10 @@ VS Code Agents window ──AHP/WebSocket──> ahp-acp-gateway ──stdio─�
 
 | File | What it does |
 |---|---|
-| `gen-config.mjs` | Writes `logs/ahp-gateway.json` from `acp/agents.json` and `consent.json`: only agents with an enabled grant become providers, each launched through the proxy; the gateway's other built-ins are switched off; loopback with a strict Origin allowlist |
-| `consent-proxy.mjs` | ACP stdio proxy. Refuses to start the agent when the grant is not valid (enabled, `overseerAck`, expiry, daily caps); starts the real command; relays every line; writes one `logs/runs.jsonl` line per finished turn (`transport: "ahp"`, stop reason, the cost that turn added) |
+| `gen-config.mjs` | Writes `projects/logs/ahp-gateway.json` from `acp/agents.json` and `consent.json`: only agents with an enabled grant become providers, each launched through the proxy; the gateway's other built-ins are switched off; loopback with a strict Origin allowlist |
+| `consent-proxy.mjs` | ACP stdio proxy. Refuses to start the agent when the grant is not valid (enabled, `overseerAck`, expiry, daily caps); starts the real command; relays every line; writes one `projects/logs/runs.jsonl` line per finished turn (`transport: "ahp"`, stop reason, the cost that turn added) |
 | `permission-clamp.mjs` | Applies the grant's `writeTrees` to each session (below) |
-| `gateway-run.mjs` | Starts the pinned gateway from its local install (`logs/ahp-gateway-pkg`) with `gateway-patch.mjs` applied |
+| `gateway-run.mjs` | Starts the pinned gateway from its local install (`projects/logs/ahp-gateway-pkg`) with `gateway-patch.mjs` applied |
 | `gateway-patch.mjs` | Three local changes to the third-party gateway: idempotent `createSession`, `subscribe` that declines windowed delivery instead of failing, and a request log without values (below) |
 | `../tools/run-ahp-gateway.ps1` | Idempotent launcher: installs the pinned gateway (exact version, `--ignore-scripts`), regenerates the config and starts `gateway-run.mjs` when `/healthz` is down |
 
@@ -71,7 +71,7 @@ Verified live with all three agents, in a folder under the trees and in one outs
 ## Why the gateway is patched, and why a pre-release
 
 First real use in VS Code's Agents window (2026-11-11, VS Code 1.146, gateway 0.2.2) was unusable, and the
-agents were fine. Measured in `logs/ahp-gateway-rpc.log`:
+agents were fine. Measured in `projects/logs/ahp-gateway-rpc.log`:
 
 - VS Code asks to create a session that already exists (a repeat after a slow create: 3-4 s). The gateway
   answered "Session already exists" and the first message never started. Patched: a repeat succeeds once the

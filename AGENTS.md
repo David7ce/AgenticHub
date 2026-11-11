@@ -2,7 +2,7 @@
 
 Entry point for any AI agent working in this directory: what the hub is, how to
 call it, and the rules that are not negotiable. The live state of a particular
-workspace is in `../working/HANDOFF.md` when that local file exists (personal,
+workspace is in `projects/working/HANDOFF.md` when that local file exists (personal,
 git-ignored); this file is the map.
 
 ## What this is
@@ -48,7 +48,7 @@ trees.
 ## How to call an agent
 
 ```bash
-# One agent, through the consent gate (writes one line to logs/runs.jsonl)
+# One agent, through the consent gate (writes one line to projects/logs/runs.jsonl)
 node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
 
 # Let the router pick (same prompt rules and health overlay as router.mjs)
@@ -95,7 +95,7 @@ prints both spellings of a path.
   against the exact request. No grant, no run — including `--probe`. It is local and
   ignored: copy `consent.example.json` and edit it. Never widen a grant to make
   something work. Ask.
-- Every attempt, denied or not, appends one JSON line to `../logs/runs.jsonl`. Past
+- Every attempt, denied or not, appends one JSON line to `projects/logs/runs.jsonl`. Past
   10 MB it rotates to `runs-<timestamp>.jsonl`; nothing is deleted.
 - An `allow-all` run checks `acp/tree-lock.mjs` for another live write run on the
   same cwd. Conflicts reject unless the caller passes `--allow-concurrent-write`;

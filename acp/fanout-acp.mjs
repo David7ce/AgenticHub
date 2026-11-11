@@ -23,6 +23,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { rotateIfNeeded } from './log-rotation.mjs';
+import { STATE_DIR } from './hub-env.mjs';
 
 
 import { createWorktree, removeWorktree, repoInfo, worktreePath, worktreeHasChanges } from './worktree.mjs';
@@ -41,7 +42,7 @@ const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
   : join(HERE, 'agents.example.json');
 const LOG_PATH = process.env.AGENT_HUB_LOG
   ? resolve(process.env.AGENT_HUB_LOG)
-  : resolve(HERE, '..', '..', 'logs', 'runs.jsonl');
+  : join(STATE_DIR, 'logs', 'runs.jsonl');
 const MAX_PROMPT_CHARS = 4000;
 
 const USAGE = `usage: node fanout-acp.mjs --agents NAME[,NAME...] (--prompt TEXT | --prompt -) [options]

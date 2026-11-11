@@ -10,7 +10,7 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
 import { gatherDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
-import { CONSENT_PATH, HUB, LOCKS_DIR, LOG_PATH, ROOT, readJson, summarizeConsent } from "../common.mjs";
+import { CONSENT_PATH, HUB, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson, summarizeConsent } from "../common.mjs";
 import { parseRuns, readInflight } from "./status.mjs";
 
 export const MAX_LINES = 40;
@@ -90,6 +90,7 @@ export function gitDirty(dir) {
 
 export function gatherBrief({
   root = ROOT,
+  stateDir = STATE_DIR,
   hub = HUB,
   logPath = LOG_PATH,
   consentPath = CONSENT_PATH,
@@ -101,6 +102,7 @@ export function gatherBrief({
     doctor ??
     gatherDoctor({
       root,
+      stateDir,
       hub,
       readJson,
       inflight: readInflight(),
@@ -109,7 +111,7 @@ export function gatherBrief({
       codexCache: null,
     });
 
-  const watchFile = join(root, "working", "repos-vigilados.txt");
+  const watchFile = join(stateDir, "working", "repos-vigilados.txt");
   const watched = existsSync(watchFile)
     ? parseWatchList(readFileSync(watchFile, "utf8"), resolve(root, ".."))
     : [];
@@ -119,7 +121,7 @@ export function gatherBrief({
   const agents = summarizeConsent(readJson(consentPath)).map((row) => row.name);
   const spend = Object.fromEntries(agents.map((name) => [name, spentTodayAll(name, logPath, { now })]));
 
-  const handoff = join(root, "working", "HANDOFF.md");
+  const handoff = join(stateDir, "working", "HANDOFF.md");
   const pending = existsSync(handoff) ? pendingSection(readFileSync(handoff, "utf8")) : null;
 
   return {

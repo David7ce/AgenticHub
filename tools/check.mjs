@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // check.mjs — one command that proves the hub still works.
 //
-//   node agent-hub/tools/check.mjs            # tests + bench dry-run
-//   node agent-hub/tools/check.mjs --no-bench # tests only
+//   node tools/check.mjs            # tests + bench dry-run (from the hub repo root)
+//   node tools/check.mjs --no-bench # tests only
 //
 // CI (.github/workflows/checks.yml) repeats this on push; locally it is the guard: every test that makes no
 // model calls, plus the bench's dry run, which proves every task is still
@@ -15,21 +15,20 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB = resolve(HERE, '..');
-const ROOT = resolve(HUB, '..');
 
 const TEST_DIRS = [
-  'agent-hub/acp/tests',
-  'agent-hub/tools/tests',
-  'agent-hub/hubctl/tests',
-  'agent-hub/mcp/tests',
-  'agent-hub/chatmgr/test',
-  'agent-hub/bridge/tests',
-  'agent-hub/ahp/tests',
+  'acp/tests',
+  'tools/tests',
+  'hubctl/tests',
+  'mcp/tests',
+  'chatmgr/test',
+  'bridge/tests',
+  'ahp/tests',
 ];
 
 // `node --test <dir>` is not supported on this Node, so the files are listed.
 const TEST_FILES = TEST_DIRS.flatMap((dir) =>
-  readdirSync(join(ROOT, dir))
+  readdirSync(join(HUB, dir))
     .filter((name) => name.endsWith('.test.mjs'))
     .sort()
     .map((name) => join(dir, name)),
@@ -51,7 +50,7 @@ function failureDetail(output) {
   return lines.slice(-60).join('\n');
 }
 
-function run(label, args, cwd = ROOT) {
+function run(label, args, cwd = HUB) {
   const started = Date.now();
   const result = spawnSync(process.execPath, args, { cwd, encoding: 'utf8' });
   const seconds = ((Date.now() - started) / 1000).toFixed(1);

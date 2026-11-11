@@ -103,7 +103,7 @@ there. A session that is open holds a lock in `thread-writer-locks/`.
 ## Models
 
 Codex ships several tiers. This workspace's catalogue
-([`../agent-hub/models.json`](../agent-hub/models.json)) names them by role:
+([`models.json`](../../models.json)) names them by role:
 
 | Role                       | Tier                    |
 |----------------------------|-------------------------|
@@ -128,4 +128,4 @@ node agent-hub/hubctl/hubctl.mjs handoff codex --note "carry on"
 
 The consent gate applies as for every agent: `allow-all` only inside the grant's
 `writeTrees`, a per-call budget, and a daily cap. See
-[`../agent-hub/README.md`](../agent-hub/README.md).
+[`README.md`](../../README.md).

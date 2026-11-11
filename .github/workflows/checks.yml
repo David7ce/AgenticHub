@@ -18,13 +18,7 @@ jobs:
           node-version: 22
 
       - name: Credentials never enter tracked files
-        run: node agent-hub/tools/secret-scan.mjs --all
+        run: node tools/secret-scan.mjs --all
 
       - name: Hub tests and bench dry-run
-        run: node agent-hub/tools/check.mjs
-
-      - name: Repository inventory tests
-        shell: pwsh
-        run: |
-          $files = Get-ChildItem repos/test -Filter *.test.mjs | ForEach-Object { $_.FullName }
-          node --test $files
+        run: node tools/check.mjs

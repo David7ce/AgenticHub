@@ -2,11 +2,11 @@
   "host": "127.0.0.1",
   "port": 3010,
   "authTokenEnv": "AGENT_HUB_BRIDGE_TOKEN",
-  "auditLog": "../../logs/bridge.jsonl",
+  "auditLog": "../../projects/logs/bridge.jsonl",
   "systemPrompt": null,
   "agents": {
     "registry": "../acp/agents.json",
-    "cwd": "../../logs/hub-bridge",
+    "cwd": "../../projects/logs/hub-bridge",
     "permission": "deny",
     "timeoutMs": 300000,
     "models": [

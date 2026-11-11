@@ -37,6 +37,7 @@ test("gatherBrief + renderBrief stay within the line budget and report dirty rep
 
   const brief = gatherBrief({
     root,
+    stateDir: root,
     hub: root,
     logPath: log,
     consentPath: consent,
@@ -71,7 +72,7 @@ test("brief on a real git repo counts uncommitted files", () => {
   const root = mkdtempSync(join(tmpdir(), "brief-git-"));
   spawnSync("git", ["-C", root, "init", "-q"]);
   writeFileSync(join(root, "a.txt"), "x");
-  const brief = gatherBrief({ root, hub: root, logPath: join(root, "none.jsonl"), consentPath: join(root, "none.json"), doctor: doctorOk });
+  const brief = gatherBrief({ root, stateDir: root, hub: root, logPath: join(root, "none.jsonl"), consentPath: join(root, "none.json"), doctor: doctorOk });
   assert.equal(brief.repos[0].changed, 1);
   assert.equal(brief.pending, null);
 });

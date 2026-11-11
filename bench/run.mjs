@@ -45,12 +45,11 @@ function removeTree(dir) {
   }
 }
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB = resolve(HERE, '..');
-const ROOT = resolve(HUB, '..');
 const HUB_ACP = join(HUB, 'acp', 'hub-acp.mjs');
 const TASKS_PATH = join(HERE, 'tasks.json');
 const RESULTS_DIR = join(HUB, 'results', 'bench');
@@ -160,9 +159,11 @@ export function stubFunction(source, symbol) {
 }
 
 function copyWorkspace(dir) {
-  cpSync(join(ROOT, 'agent-hub'), join(dir, 'agent-hub'), {
+  // The tasks address the hub as agent-hub/..., whatever this checkout's folder is called.
+  const SKIP = new Set(['results', '.git', 'node_modules', 'workspace-root']);
+  cpSync(HUB, join(dir, 'agent-hub'), {
     recursive: true,
-    filter: (src) => !src.includes(`${join('agent-hub', 'results')}`),
+    filter: (src) => !SKIP.has(relative(HUB, src).split(sep)[0]),
   });
   git(['init', '-q', '-b', 'main'], dir);
   git(['-c', 'user.email=bench@local', '-c', 'user.name=bench', 'add', '-A'], dir);

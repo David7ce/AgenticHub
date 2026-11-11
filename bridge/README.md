@@ -30,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File agent-hub	oolsegister-bridge-task.ps1 
 That registers a per-user, non-elevated Task Scheduler task that runs
 `tools/run-bridge.ps1` at logon and every 5 minutes. The launcher does nothing
 when `/health` already answers, so the repeat is a self-healing check, and it runs
-through `conhost --headless` so no window flashes. Logs: `logs/bridge-run.log`,
+through `conhost --headless` so no window flashes. Logs: `projects/logs/bridge-run.log`,
 `bridge-stdout.log`, `bridge-stderr.log`. Use a task, not a VS Code
 `runOn: folderOpen` task: the Custom Endpoint config is user-wide, so the
 bridge has to be up whichever workspace is open.
@@ -42,7 +42,7 @@ processes it pooled (Codex's `app-server`, Claude's adapter) are orphaned and ke
 their sessions "running", which blocks deleting them from chatmgr. Left alone, the
 bridge closes idle agents by itself after 60 s (checked 2026-11-11: Codex exits
 after about 54 s and releases its lock). Each turn still leaves one session in the
-agent's own store, under `logs/hub-bridge`; chatmgr marks those as automated. When the
+agent's own store, under `projects/logs/hub-bridge`; chatmgr marks those as automated. When the
 launcher runs (`tools/run-bridge.ps1`, normally from the scheduled task) it deletes
 those idle for over an hour, at most every 30 minutes, without a backup:
 `chatmgr prune-automated --project-match hub-bridge --older-than 1h --yes`. Claude
@@ -92,7 +92,7 @@ and is removed in February 2027.
 - `POST /v1/chat/completions` — validate, run one turn, stream back in
   OpenAI's `choices[0].delta.content` format, ending with `data: [DONE]`.
 - `GET /health` — liveness; no model call.
-- One JSON audit line per request in `logs/bridge.jsonl` (gitignored),
+- One JSON audit line per request in `projects/logs/bridge.jsonl` (gitignored),
   including the agent, permission decisions and stop reason.
 
 ## What it deliberately does not do
