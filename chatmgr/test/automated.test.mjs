@@ -22,6 +22,8 @@ test("automated rows are shown by default and can be hidden", () => {
 import { automatedPath } from "../src/core/automated.mjs";
 test("scratch checkouts under the temp folder are automated, real projects are not", () => {
   assert.ok(automatedPath("C:/Users/d7/AppData/Local/Temp/hub-bench-core-render-module-1RTAJr"));
+  assert.ok(automatedPath("D:/Workspaces/AgentHub/logs/hub-bridge"));
+  assert.ok(automatedPath(String.raw`D:\Workspaces\AgentHub\logs\hub-bridge`));
   assert.ok(automatedPath("C:\\Users\\d7\\AppData\\Local\\Temp\\hub-failover-6Pql0W\\repo"));
   assert.ok(automatedPath("/tmp/hub-mcp-abc"));
   assert.ok(!automatedPath("D:/Workspaces/AgentHub"));

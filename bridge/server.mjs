@@ -197,6 +197,9 @@ export function loadConfig(configPath) {
       }
     }
 
+    // The session cwd is a scratch folder (logs/hub-bridge) so chatmgr can tell
+    // bridge turns from conversations a person opened; create it when missing.
+    try { mkdirSync(cwd, { recursive: true }); } catch { /* the agent reports a bad cwd */ }
     agentMode = { registryPath, registry, cwd, permission, timeoutMs, consent, consentPath };
 
     for (const model of raw.agents.models ?? []) {

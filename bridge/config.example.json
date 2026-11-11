@@ -6,7 +6,7 @@
   "systemPrompt": null,
   "agents": {
     "registry": "../acp/agents.json",
-    "cwd": "..",
+    "cwd": "../../logs/hub-bridge",
     "permission": "deny",
     "timeoutMs": 300000,
     "models": [
