@@ -73,6 +73,16 @@ outside the trees. Consequence for the owner: Claude has no `writeTrees`, so thr
 scratch folder until a tree is added to its grant. Hermes is registered
 in the hub (`hermes acp --check` OK) with its grant disabled.
 
+## 2026-11-12 — Codex is measured by plan usage, not by price
+
+Codex on a ChatGPT plan is flat-rate: a price per token only fed an estimate for the daily token cap. What the plan
+limits is the usage windows, and the Codex app server reports them (`account/rateLimits/read`: percent used, window
+length, reset time). `acp/codex-limits.mjs` reads them with the login Codex already has and keeps only percentages, the
+plan name and reset times. Measured on this account (Plus): **one weekly window, no 5-hour window** (unlike Claude);
+74% used, reset Sat 14 Nov 00:53 local. `hubctl usage` refreshes the reading, `hubctl brief` shows the cached one with its
+age, and `doctor` warns at 85% and fails at 100%. The per-token prices in `models.json` stay as the unit of the daily
+token cap; they do not describe what Codex costs on the plan.
+
 ## 2026-11-11 — The bridge is retired; AHP is the VS Code surface
 
 The acceptance test in `docs/harness.md` passed 6/6 in VS Code's own Agents window (all three agents, host

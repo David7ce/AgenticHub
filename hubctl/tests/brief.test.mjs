@@ -53,6 +53,22 @@ test("gatherBrief + renderBrief stay within the line budget and report dirty rep
   assert.match(text, /AgentHub \(3\)/);
   assert.match(text, /claude \$0\.25/);
   assert.match(text, /puntos más en HANDOFF/);
+  assert.equal(brief.codexLimits, null);
+  assert.doesNotMatch(text, /uso de codex/);
+});
+
+test("renderBrief shows the cached Codex plan usage and how old the reading is", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-limits-"));
+  mkdirSync(join(root, "logs"));
+  const measuredAt = new Date(Date.now() - 12 * 60_000).toISOString();
+  writeFileSync(join(root, "logs", "codex-limits.json"), JSON.stringify({
+    measuredAt, plan: "plus", reached: null,
+    windows: [{ slot: "primary", label: "weekly", usedPercent: 74, windowMins: 10080, resetsAt: "2026-11-14T00:53:35Z" }],
+  }));
+  const consent = join(root, "consent.json");
+  writeFileSync(consent, JSON.stringify({}));
+  const brief = gatherBrief({ root, stateDir: root, hub: root, logPath: join(root, "none.jsonl"), consentPath: consent, doctor: doctorOk, dirty: (dir) => ({ dir, name: "x", missing: false, changed: 0 }) });
+  assert.match(renderBrief(brief), /uso de codex: plus · semanal 74% \(reinicia .*\) · hace 12 min/);
 });
 
 test("summarizePending joins wrapped bullets, drops link targets and keeps one sentence", () => {

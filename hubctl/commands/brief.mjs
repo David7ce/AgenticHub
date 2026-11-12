@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
+import { cacheAgeMs, describeLimits, readLimitsCache } from "../../acp/codex-limits.mjs";
 import { gatherDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
 import { CONSENT_PATH, HUB, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson, summarizeConsent } from "../common.mjs";
@@ -124,8 +125,11 @@ export function gatherBrief({
   const handoff = join(stateDir, "working", "HANDOFF.md");
   const pending = existsSync(handoff) ? pendingSection(readFileSync(handoff, "utf8")) : null;
 
+  const codexLimits = readLimitsCache(join(stateDir, "logs", "codex-limits.json"));
+
   return {
     now: now.toISOString(),
+    codexLimits: codexLimits ? { ...codexLimits, ageMs: cacheAgeMs(codexLimits, now.getTime()) } : null,
     doctor: {
       ok: report.ok,
       counts: report.counts,
@@ -168,6 +172,11 @@ export function renderBrief(brief) {
     .filter(([, usd]) => usd > 0)
     .map(([name, usd]) => `${name} $${usd.toFixed(2)}`);
   lines.push(`gasto hoy: ${spent.length ? spent.join(" · ") : "$0"}`);
+  if (brief.codexLimits) {
+    const minutes = Math.round(brief.codexLimits.ageMs / 60_000);
+    const age = minutes < 90 ? `hace ${minutes} min` : `hace ${Math.round(minutes / 60)} h`;
+    lines.push(clip(`uso de codex: ${describeLimits(brief.codexLimits)} · ${age}`));
+  }
 
   if (brief.pending == null) {
     lines.push("pendiente: no hay working/HANDOFF.md");

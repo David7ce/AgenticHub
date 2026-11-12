@@ -190,3 +190,20 @@ test('withRetries pauses between attempts, stops at the first good result and ca
   withRetries(() => ++once, () => false, { sleep: () => assert.fail('must not sleep after a good first result') });
   assert.equal(once, 1);
 });
+
+import { checkCodexLimits } from '../doctor.mjs';
+test('checkCodexLimits: silent without a fresh reading, ok/warn/fail by the fullest window', () => {
+  const NOW = Date.parse('2026-11-12T12:00:00Z');
+  const cache = (pct, extra = {}) => ({
+    measuredAt: '2026-11-12T11:30:00Z', plan: 'plus', reached: null,
+    windows: [{ slot: 'primary', label: 'weekly', usedPercent: pct, windowMins: 10080, resetsAt: '2026-11-14T00:53:35Z' }], ...extra,
+  });
+  assert.deepEqual(checkCodexLimits(null, { now: NOW }), []);
+  assert.deepEqual(checkCodexLimits({ ...cache(10), measuredAt: '2026-11-10T00:00:00Z' }, { now: NOW }), []); // two days old
+  const ok = checkCodexLimits(cache(74), { now: NOW })[0];
+  assert.equal(ok.level, 'ok');
+  assert.match(ok.detail, /plus · semanal 74%/);
+  assert.equal(checkCodexLimits(cache(88), { now: NOW })[0].level, 'warn');
+  assert.equal(checkCodexLimits(cache(100), { now: NOW })[0].level, 'fail');
+  assert.equal(checkCodexLimits(cache(50, { reached: 'rate_limit_reached' }), { now: NOW })[0].level, 'fail');
+});

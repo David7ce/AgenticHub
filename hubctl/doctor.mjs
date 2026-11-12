@@ -14,6 +14,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
+import { cacheAgeMs, describeLimits, readLimitsCache } from '../acp/codex-limits.mjs';
 
 const DAY = 86_400_000;
 
@@ -107,6 +108,17 @@ export function checkUnpricedCaps(consent, catalog) {
     }
   }
   return out;
+}
+
+// Codex's real allowance: the plan windows the account reports (`hubctl usage` refreshes the reading).
+// Silent when there is no reading or it is a day old: a stale percentage is worse than none.
+export function checkCodexLimits(cache, { now = Date.now(), warnAt = 85, staleMs = 24 * 3_600_000 } = {}) {
+  if (!cache || cacheAgeMs(cache, now) > staleMs) return [];
+  const worst = Math.max(...cache.windows.map((w) => w.usedPercent));
+  const line = describeLimits(cache);
+  if (cache.reached || worst >= 100) return [row('codex-limits', 'fail', `codex has used its plan allowance: ${line}; runs fail until it resets`)];
+  if (worst >= warnAt) return [row('codex-limits', 'warn', `codex is at ${worst}% of a plan window: ${line}`)];
+  return [row('codex-limits', 'ok', `codex plan usage: ${line}`)];
 }
 
 // Same early warning for the token cap used with flat subscriptions (Codex).
@@ -362,6 +374,7 @@ export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'),
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
   if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(stateDir, 'logs', 'runs.jsonl'))));
   if (consent) checks.push(...checkDailyTokens(consent, (name) => spentTokensToday(name)));
+  if (consent?.codex?.enabled) checks.push(...checkCodexLimits(readLimitsCache(join(stateDir, 'logs', 'codex-limits.json'))));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {

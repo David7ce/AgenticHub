@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { estimateGo, humanTokens, opencodeStatsCommand } from '../hubctl.mjs';
+import { codexUsage } from '../commands/usage.mjs';
 
 // The usage estimate is the only local way to see how much of the Go allowance
 // is gone: the provider reports cost 0 for flat-rate models. These pin the
@@ -48,4 +52,22 @@ test('token counts are formatted for the table', () => {
   assert.equal(humanTokens(2_400), '2k');
   assert.equal(humanTokens(42), '42');
   assert.equal(humanTokens(1_200_000_000), '1.2G');
+});
+
+test('codexUsage: a live reading is cached; a failed one falls back to the cache and says why', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'codex-usage-')), 'logs', 'codex-limits.json');
+  const summary = { plan: 'plus', windows: [{ slot: 'primary', label: 'weekly', usedPercent: 74, windowMins: 10080, resetsAt: null }], reached: null };
+  const now = new Date('2026-11-12T12:00:00Z');
+  const live = await codexUsage({ path, now, query: async () => ({ ok: true, summary }) });
+  assert.equal(live.source, 'live');
+  assert.equal(live.summary.windows[0].usedPercent, 74);
+  const down = await codexUsage({ path, now, query: async () => ({ ok: false, error: 'not logged in' }) });
+  assert.equal(down.source, 'cache');
+  assert.equal(down.error, 'not logged in');
+  assert.equal(down.summary.windows[0].usedPercent, 74);
+  const none = await codexUsage({ path: join(path, '..', 'missing.json'), now, query: async () => ({ ok: false, error: 'x' }) });
+  assert.equal(none.source, null);
+  assert.equal(none.summary, null);
+  const offline = await codexUsage({ live: false, path, now });
+  assert.equal(offline.source, 'cache');
 });

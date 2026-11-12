@@ -9,7 +9,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
-import { CONSENT_PATH, LOG_PATH, paint, readJson } from "../common.mjs";
+import {
+  cacheAgeMs, describeLimits, queryCodexLimits, readLimitsCache, writeLimitsCache,
+} from "../../acp/codex-limits.mjs";
+import { CODEX_LIMITS_PATH, CONSENT_PATH, LOG_PATH, paint, readJson } from "../common.mjs";
 
 // Reported cost per agent from logs/runs.jsonl: today and the last 7 days.
 function hubSpend(agent, now = Date.now()) {
@@ -100,6 +103,19 @@ export function humanTokens(n) {
   return String(n);
 }
 
+// Codex is flat-rate: what matters is the share of its plan windows already used. Asks the account
+// (a few seconds); if that fails, falls back to the last cached reading and says so.
+export async function codexUsage({ live = true, path = CODEX_LIMITS_PATH, query = queryCodexLimits, now = new Date() } = {}) {
+  if (live) {
+    const result = await query();
+    if (result.ok) return { source: "live", summary: writeLimitsCache(path, result.summary, now), error: null };
+    const cached = readLimitsCache(path);
+    return { source: cached ? "cache" : null, summary: cached, error: result.error };
+  }
+  const cached = readLimitsCache(path);
+  return { source: cached ? "cache" : null, summary: cached, error: null, ageMs: cacheAgeMs(cached, now.getTime()) };
+}
+
 export async function runUsage(argv) {
   const daysArg = argv.find((arg) => arg.startsWith("--days"));
   const days = daysArg ? Number(daysArg.split("=")[1] ?? argv[argv.indexOf(daysArg) + 1]) : 30;
@@ -107,6 +123,7 @@ export async function runUsage(argv) {
 
   const stats = opencodeStats(days);
   const claude = hubSpend("claude");
+  const codex = await codexUsage({ live: !argv.includes("--no-codex") });
 
   const models = [];
   for (const entry of stats?.models ?? []) {
@@ -127,6 +144,7 @@ export async function runUsage(argv) {
     days,
     opencode: stats ? { sessions: stats.sessions, models } : null,
     claude,
+    codex,
   };
 
   if (asJson) {
@@ -159,8 +177,12 @@ export async function runUsage(argv) {
       );
     }
   }
+  const codexLine = describeLimits(codex.summary);
   lines.push(
     "",
+    codexLine
+      ? `codex      ${codexLine}${codex.source === "cache" ? ` · lectura guardada de ${codex.summary.measuredAt.slice(0, 16).replace("T", " ")} UTC (${codex.error ?? "sin consultar"})` : ""}`
+      : `codex      sin lectura de uso${codex.error ? ` (${codex.error})` : ""}`,
     `claude     $${claude.today.toFixed(2)} today${claude.dailyCap == null ? "" : ` of $${claude.dailyCap}`} · $${claude.week.toFixed(2)} in 7 days (hub runs only)`,
     "",
     paint("2", "Go reports cost 0 for opencode-go models; the estimate prices the tokens at the published table."),

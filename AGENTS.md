@@ -83,7 +83,8 @@ with `git config core.hooksPath .githooks`.
 --json` for scripts). `hubctl doctor` says whether config, consent and docs agree.
 `hubctl spend` / `usage` show cost (Go reports 0, so its tokens are priced against
 the published table; Codex tokens come from its rollouts, priced with the catalogue's
-estimates; Claude's cost comes from the audit log). `hubctl clean` is a dry-run tidy
+estimates, only as the unit of its daily token cap; the real Codex allowance is the plan usage `usage` reads from its
+account, weekly on this Plus plan; Claude's cost comes from the audit log). `hubctl clean` is a dry-run tidy
 of clean worktrees, old backups and orphaned inflight records. `hubctl path <p>`
 prints both spellings of a path.
 
