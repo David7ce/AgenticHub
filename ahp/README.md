@@ -121,8 +121,13 @@ chat until the session is disposed.
 ## Not verified / limits
 
 - Seen in VS Code's Agents window (2026-11-11): the agent, mode and model pickers, the restricted modes, Codex's
-  command confirmation, no process left after deleting a session. Not looked at: diffs of larger edits and how
-  `reasoning_content` is drawn.
+  command confirmation, no process left after deleting a session.
+- Seen on 2026-11-12: the model's reasoning is drawn as plain grey paragraphs inside the chat, streamed as it comes,
+  with no collapsible "thinking" block; a prompt that says "reason step by step" made DeepSeek V4.1 Flash deliberate for
+  five minutes and the turn ended `cancelled`. Not looked at: diffs of larger edits.
+- **The window has its own Agent mode (Interactive / Plan / Autopilot).** With Plan selected the agent answers with a plan
+  and writes nothing, in any folder (the log shows `session/configChanged ... "mode":"plan"` asked by the window). That
+  looked like the permission clamp and was not; pick Interactive or Autopilot before testing an edit.
 - The gateway has no MCP forwarding and no multi-user policy; ACP v1 only. The clamp bounds
   what the agent *asks to do*; it cannot see paths an agent touches inside its own tools, so
   `writeTrees` is a rule about the session's folder, exactly as in the hub.
