@@ -20,7 +20,7 @@ import { runProcess } from "./providers/exec.mjs";
 import { applyFilters, emptyFilter, normalizeFilter } from "./core/filter.mjs";
 import { keyOf, sortConversations } from "./core/model.mjs";
 import { createSelection, selectedConversations } from "./core/selection.mjs";
-import { buildArchivePlan, buildDeletePlan, buildPruneAutomatedPlan, describeArchivePlan, describePlan, parseOlderThan } from "./core/plan.mjs";
+import { buildArchivePlan, buildDeletePlan, buildPruneAutomatedPlan, currentKeyFrom, describeArchivePlan, describePlan, parseOlderThan } from "./core/plan.mjs";
 import { createBackup, removeBackup, restoreBackup } from "./core/backup.mjs";
 import { executeArchive, executeDeletes } from "./core/execute.mjs";
 import { listBackups, pruneBackups } from "./core/backup-store.mjs";
@@ -115,7 +115,7 @@ async function cmdDelete(flags) {
   const selection = createSelection(keys);
   const selected = selectedConversations(selection, conversations);
   const missing = keys.filter((key) => !selected.some((conv) => keyOf(conv) === key));
-  const plan = buildDeletePlan(selected, { currentKey: flags["current-key"] ?? null });
+  const plan = buildDeletePlan(selected, { currentKey: currentKeyFrom(flags) });
 
   if (!flags.yes || flags["dry-run"] === true) {
     return {
@@ -159,7 +159,7 @@ async function cmdPruneAutomated(flags) {
     agents: typeof flags.agent === "string" ? flags.agent.split(",") : null,
     olderThanDays: parseOlderThan(flags["older-than"]),
     projectMatch: typeof flags["project-match"] === "string" ? flags["project-match"] : null,
-    currentKey: flags["current-key"] ?? null,
+    currentKey: currentKeyFrom(flags),
   });
   if (flags.yes !== true) {
     return {

@@ -64,3 +64,15 @@ test("archive plan only takes agents with a single-session archive command", () 
   assert.deepEqual(plan.blocked.map((r) => r.conv.id), ["idle", "h", "busy"]);
   assert.match(describeArchivePlan(plan), /1 archive · 1 unarchive · 3 blocked/);
 });
+
+import { currentKeyFrom } from "../src/core/plan.mjs";
+test("currentKeyFrom: the flag wins, then Claude Code's own session id, else nothing", () => {
+  assert.equal(currentKeyFrom({ "current-key": "codex:x" }, { CLAUDE_CODE_SESSION_ID: "abc" }), "codex:x");
+  assert.equal(currentKeyFrom({}, { CLAUDE_CODE_SESSION_ID: "abc" }), "claude:abc");
+  assert.equal(currentKeyFrom({ "current-key": true }, { CLAUDE_CODE_SESSION_ID: "abc" }), "claude:abc");
+  assert.equal(currentKeyFrom({}, {}), null);
+  // and a bulk delete that names the current session leaves it out
+  const plan = buildDeletePlan([conv("claude", "abc"), conv("claude", "old")], { currentKey: currentKeyFrom({}, { CLAUDE_CODE_SESSION_ID: "abc" }) });
+  assert.deepEqual(plan.items.map((c) => c.id), ["old"]);
+  assert.equal(plan.blocked[0].code, "current-session");
+});

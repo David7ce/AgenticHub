@@ -8,13 +8,13 @@
  *  - orphaned inflight records whose process is gone (a live or unknown pid
  *    stays: from the other side of the WSL boundary "dead" cannot be proven)
  */
-import { existsSync, rmSync, statSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
-import { removeWorktree, repoInfo, worktreeHasChanges } from "../../acp/worktree.mjs";
+import { removeWorktree } from "../../acp/worktree.mjs";
 import { pruneBackups } from "../../chatmgr/src/core/backup-store.mjs";
-import { HUB, ROOT } from "../common.mjs";
-import { countWorktrees, readInflight } from "./status.mjs";
+import { HUB } from "../common.mjs";
+import { readInflight } from "./status.mjs";
+import { agentWorktrees, repoRoots } from "./worktree.mjs";
 
 export function planClean({ worktrees = [], backups = [], inflight = [] } = {}) {
   return {
@@ -32,17 +32,8 @@ export async function runClean(argv) {
   const days = daysIndex === -1 ? 14 : Number(argv[daysIndex + 1]);
   if (!Number.isFinite(days) || days < 0) throw new Error("--days needs a number >= 0");
 
-  const info = repoInfo(ROOT);
-  let worktrees = [];
-  if (info) {
-    const listing = spawnSync("git", ["-C", ROOT, "worktree", "list", "--porcelain"], { encoding: "utf8", windowsHide: true });
-    const { agentCheckouts } = countWorktrees(listing.status === 0 ? listing.stdout : "");
-    worktrees = agentCheckouts.map((entry) => {
-      let ageDays = null;
-      try { ageDays = (Date.now() - statSync(entry.path).mtimeMs) / 86_400_000; } catch { /* gone */ }
-      return { path: entry.path, dirty: worktreeHasChanges(entry.path), ageDays };
-    });
-  }
+  const worktrees = agentWorktrees(repoRoots(argv));
+  const repoOf = new Map(worktrees.map((w) => [w.path, w.repo]));
 
   const backupRoot = join(HUB, "chatmgr", "backups");
   const oldBackups = existsSync(backupRoot) ? pruneBackups(backupRoot, { days, dryRun: true }) : [];
@@ -50,7 +41,7 @@ export async function runClean(argv) {
 
   const done = { worktrees: [], backups: [], inflight: [], failed: [] };
   if (apply) {
-    for (const path of plan.worktrees) (removeWorktree(info.root, path) ? done.worktrees : done.failed).push(path);
+    for (const path of plan.worktrees) (removeWorktree(repoOf.get(path), path) ? done.worktrees : done.failed).push(path);
     if (plan.backups.length) done.backups = pruneBackups(backupRoot, { days });
     for (const file of plan.inflight) {
       try { rmSync(file, { force: true }); done.inflight.push(file); } catch { done.failed.push(file); }

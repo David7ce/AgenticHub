@@ -49,6 +49,9 @@ node agent-hub/chatmgr/src/cli.mjs restore --manifest <backup>/manifest.json
 node agent-hub/chatmgr/src/cli.mjs backup-remove --dir <backup>
 ```
 
+The conversation you are in is never deleted: `--current-key agent:id` names it, and inside Claude Code it is taken from
+`CLAUDE_CODE_SESSION_ID`. With neither, a Claude session idle for ten minutes looks deletable.
+
 ## What each agent can do
 
 Verified on 2026-11-09 against the installed CLIs, not assumed:

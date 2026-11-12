@@ -8,6 +8,17 @@ export const BLOCK = {
   CURRENT: "current-session",
 };
 
+/**
+ * The conversation the caller is in, so a bulk delete never removes it. `--current-key` wins; otherwise
+ * Claude Code exposes its own session id to the commands it runs. Without either, only the activity
+ * window protects it (a Claude session idle for ten minutes would look deletable).
+ */
+export function currentKeyFrom(flags = {}, env = process.env) {
+  if (typeof flags["current-key"] === "string" && flags["current-key"]) return flags["current-key"];
+  const id = env.CLAUDE_CODE_SESSION_ID;
+  return id ? `claude:${id}` : null;
+}
+
 export function blockReason(conv, { currentKey = null } = {}) {
   const caps = PROVIDERS[conv.provider];
   if (!caps) return { code: BLOCK.UNSUPPORTED, message: `unknown provider ${conv.provider}` };
