@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
-import { cacheAgeMs, describeLimits, readLimitsCache } from "../../acp/codex-limits.mjs";
+import { cacheAgeMs, describeLimits, dropReset, readLimitsCache } from "../../acp/codex-limits.mjs";
 import { gatherDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
 import { CONSENT_PATH, HUB, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson, summarizeConsent } from "../common.mjs";
@@ -125,7 +125,7 @@ export function gatherBrief({
   const handoff = join(stateDir, "working", "HANDOFF.md");
   const pending = existsSync(handoff) ? pendingSection(readFileSync(handoff, "utf8")) : null;
 
-  const codexLimits = readLimitsCache(join(stateDir, "logs", "codex-limits.json"));
+  const codexLimits = dropReset(readLimitsCache(join(stateDir, "logs", "codex-limits.json")), now.getTime());
 
   return {
     now: now.toISOString(),

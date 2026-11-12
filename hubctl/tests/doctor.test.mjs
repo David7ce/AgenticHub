@@ -206,4 +206,6 @@ test('checkCodexLimits: silent without a fresh reading, ok/warn/fail by the full
   assert.equal(checkCodexLimits(cache(88), { now: NOW })[0].level, 'warn');
   assert.equal(checkCodexLimits(cache(100), { now: NOW })[0].level, 'fail');
   assert.equal(checkCodexLimits(cache(50, { reached: 'rate_limit_reached' }), { now: NOW })[0].level, 'fail');
+  // the weekly window reset at 00:53 on the 14th: a 92% reading taken the evening before must not warn
+  assert.deepEqual(checkCodexLimits(cache(92, { measuredAt: '2026-11-13T23:00:00Z' }), { now: Date.parse('2026-11-14T10:00:00Z') }), []);
 });

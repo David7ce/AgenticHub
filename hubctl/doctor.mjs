@@ -14,7 +14,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
-import { cacheAgeMs, describeLimits, readLimitsCache } from '../acp/codex-limits.mjs';
+import { cacheAgeMs, describeLimits, dropReset, readLimitsCache } from '../acp/codex-limits.mjs';
 
 const DAY = 86_400_000;
 
@@ -112,8 +112,10 @@ export function checkUnpricedCaps(consent, catalog) {
 
 // Codex's real allowance: the plan windows the account reports (`hubctl usage` refreshes the reading).
 // Silent when there is no reading or it is a day old: a stale percentage is worse than none.
-export function checkCodexLimits(cache, { now = Date.now(), warnAt = 85, staleMs = 24 * 3_600_000 } = {}) {
-  if (!cache || cacheAgeMs(cache, now) > staleMs) return [];
+export function checkCodexLimits(reading, { now = Date.now(), warnAt = 85, staleMs = 24 * 3_600_000 } = {}) {
+  if (!reading || cacheAgeMs(reading, now) > staleMs) return [];
+  const cache = dropReset(reading, now); // a window that reset since the reading no longer counts
+  if (!cache) return [];
   const worst = Math.max(...cache.windows.map((w) => w.usedPercent));
   const line = describeLimits(cache);
   if (cache.reached || worst >= 100) return [row('codex-limits', 'fail', `codex has used its plan allowance: ${line}; runs fail until it resets`)];

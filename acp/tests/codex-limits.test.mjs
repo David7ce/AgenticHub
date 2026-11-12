@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import {
-  cacheAgeMs, describeLimits, mainWindow, queryCodexLimits, readLimitsCache, summarizeLimits, windowLabel, writeLimitsCache,
+  cacheAgeMs, describeLimits, dropReset, queryCodexLimits, readLimitsCache, summarizeLimits, windowLabel, writeLimitsCache,
 } from '../codex-limits.mjs';
 
 const WEEKLY = { usedPercent: 74, windowDurationMins: 10080, resetsAt: 1794617615 };
@@ -33,16 +33,23 @@ test('summarizeLimits: a Plus plan reports only a weekly window', () => {
 test('summarizeLimits keeps both windows when the plan has two and picks the weekly one as main', () => {
   const s = summarizeLimits({ rateLimits: { planType: 'pro', primary: FIVE_H, secondary: WEEKLY } });
   assert.deepEqual(s.windows.map((w) => w.label), ['5h', 'weekly']);
-  assert.equal(mainWindow(s).label, 'weekly');
   assert.match(describeLimits(s), /^pro · 5h 12% \(reinicia .*\) · semanal 74% \(reinicia .*\)$/);
 });
 
-test('mainWindow falls back to the fullest window and tolerates nothing', () => {
-  const s = summarizeLimits({ rateLimits: { primary: FIVE_H, secondary: { usedPercent: 40, windowDurationMins: 600 } } });
-  assert.equal(mainWindow(s).usedPercent, 40);
+test('summarizeLimits and describeLimits tolerate an empty answer', () => {
   assert.equal(summarizeLimits({}), null);
   assert.equal(describeLimits({ windows: [] }), null);
-  assert.equal(mainWindow(null), null);
+});
+
+test('dropReset removes the windows that already reset and returns null when none is left', () => {
+  const cache = summarizeLimits({ rateLimits: { primary: FIVE_H, secondary: WEEKLY } });
+  const afterFiveH = Date.parse('2026-11-12T00:00:00Z'); // FIVE_H resets at 16:13Z
+  assert.equal(dropReset(cache, afterFiveH).windows.length, 2);
+  const later = Date.parse('2026-11-12T17:00:00Z');
+  assert.deepEqual(dropReset(cache, later).windows.map((w) => w.label), ['weekly']);
+  assert.equal(dropReset(cache, Date.parse('2026-11-14T10:00:00Z')), null);
+  assert.equal(dropReset(null), null);
+  assert.equal(dropReset({ windows: [{ usedPercent: 5, resetsAt: null }] }, 0).windows.length, 1); // no reset time: kept
 });
 
 test('the cache round-trips and reports its age', () => {

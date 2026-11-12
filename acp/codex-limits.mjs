@@ -13,8 +13,6 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const STALE_MS = 6 * 3_600_000; // a cached reading older than this is only a hint
-
 export function windowLabel(mins) {
   if (!Number.isFinite(mins) || mins <= 0) return 'window';
   if (mins === 10080) return 'weekly';
@@ -47,10 +45,14 @@ export function summarizeLimits(result) {
   };
 }
 
-/** The window that matters most: the weekly one when there is one, else the fullest. */
-export function mainWindow(summary) {
-  const w = summary?.windows ?? [];
-  return w.find((x) => x.label === 'weekly') ?? [...w].sort((a, b) => b.usedPercent - a.usedPercent)[0] ?? null;
+/**
+ * The cache without the windows that already reset: their percentage belongs to the last period.
+ * Null when none is left, so nothing is shown rather than a number that is no longer true.
+ */
+export function dropReset(cache, now = Date.now()) {
+  if (!cache) return null;
+  const windows = cache.windows.filter((w) => !w.resetsAt || Date.parse(w.resetsAt) > now);
+  return windows.length ? { ...cache, windows } : null;
 }
 
 const DAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
