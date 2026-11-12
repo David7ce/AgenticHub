@@ -86,7 +86,6 @@ filter:
 - VS Code's agent shell sandbox (`chat.agent.sandbox.enabled`, on by default).
 - Its network switch (`chat.agent.sandbox.network.allowNetwork`, **on by
   default** — this is the usual gap).
-- The bridge's agent permission (`deny` expected).
 - Hub consent expiry.
 
 It exits non-zero on any warning and prints the exact setting to change. ACP

@@ -1,13 +1,13 @@
 # ahp — the hub's agents inside VS Code's native chat
 
-STATUS: piloted end to end on 2026-11-11 with a headless client (OpenCode, Claude and Codex
-turns, the permission clamp on all three). Not yet confirmed in VS Code's own Agents window.
+STATUS: active. Piloted end to end on 2026-11-11 with a headless client and accepted in VS Code's own
+Agents window the same day (6/6 of the criterion in `docs/harness.md`, run with `tools/ui-automation/`).
 
 VS Code's Agents window talks the [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/)
 (AHP) to a *host*; a host talks ACP to the agents. The third-party
 [`ahp-acp-gateway`](https://github.com/formulahendry/ahp-acp-gateway) is such a host, so
 Claude, Codex and OpenCode appear in the window **with their tools, edits and sessions**,
-which the text-only [`bridge/`](../bridge/README.md) cannot do.
+which the text-only Custom Endpoint bridge (retired 2026-11-11, see `docs/decisions.md`) could not do.
 
 ```
 VS Code Agents window ──AHP/WebSocket──> ahp-acp-gateway ──stdio──> consent-proxy ──> agent (ACP)
@@ -118,7 +118,9 @@ chat until the session is disposed.
 
 ## Not verified / limits
 
-- How VS Code renders a session end to end (model and effort pickers, diffs, permission prompts).
+- Seen in VS Code's Agents window (2026-11-11): the agent, mode and model pickers, the restricted modes, Codex's
+  command confirmation, no process left after deleting a session. Not looked at: diffs of larger edits and how
+  `reasoning_content` is drawn.
 - The gateway has no MCP forwarding and no multi-user policy; ACP v1 only. The clamp bounds
   what the agent *asks to do*; it cannot see paths an agent touches inside its own tools, so
   `writeTrees` is a rule about the session's folder, exactly as in the hub.

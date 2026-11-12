@@ -174,26 +174,12 @@ export function checkHooks(root, { hooksPath = null, exists = existsSync } = {})
     : 'core.hooksPath is not set: the pre-commit checks do not run (git config core.hooksPath .githooks)')];
 }
 
-// The bridge is the endpoint VS Code's Custom Endpoint points at. When it is
-// configured (bridge/config.json exists) but not answering, every model in
-// that picker fails without an explanation. `health` is null when it was not
-// probed, otherwise { ok, status?, error? }.
-export function checkBridge(configured, health) {
-  if (!configured) return [];
-  if (health == null) return [];
-  return [health.ok
-    ? row('bridge', 'ok', 'answers on /health (VS Code Custom Endpoint models are reachable)')
-    : row('bridge', 'warn', 'configured but not answering on /health: start it (node agent-hub/bridge/server.mjs --config agent-hub/bridge/config.json) or VS Code Custom Endpoint models fail')];
-}
-
 /** Probe http://127.0.0.1:<port><path> with a hard timeout; never throws. */
 export function probeLocal(port, path = '/health', timeoutMs = 1500) {
   const code = `fetch('http://127.0.0.1:${port}${path}',{signal:AbortSignal.timeout(${timeoutMs})}).then(r=>process.exit(r.ok?0:2),()=>process.exit(1))`;
   const r = spawnSync(process.execPath, ['-e', code], { timeout: timeoutMs + 1500, windowsHide: true });
   return { ok: r.status === 0 };
 }
-
-export const probeBridge = (port = 3010, timeoutMs) => probeLocal(port, '/health', timeoutMs);
 
 // The AHP gateway is what VS Code's Agents window connects to (chat.remoteAgentHosts).
 // logs/ahp-gateway.json exists once it has been generated, i.e. once someone meant to use it.
@@ -386,8 +372,6 @@ export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'),
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
-  const bridgeConfig = readJson(join(hub, 'bridge', 'config.json'));
-  if (bridgeConfig) checks.push(...checkBridge(true, probeBridge(bridgeConfig.port ?? 3010)));
   const gatewayConfig = readJson(join(stateDir, 'logs', 'ahp-gateway.json'));
   if (gatewayConfig) checks.push(...checkGateway(true, probeLocal(gatewayConfig.listener?.port ?? 8765, '/healthz')));
   checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));

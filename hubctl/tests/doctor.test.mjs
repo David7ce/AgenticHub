@@ -168,13 +168,6 @@ test('daily token cap warns at 80 % and fails at the cap; an unpriced token-capp
   assert.deepEqual(checkUnpricedCaps(consent, { models: [{ agent: 'codex', enabled: true }] }), []);
 });
 
-import { checkBridge } from '../doctor.mjs';
-test('checkBridge: silent when unconfigured, warns when down, ok when up', () => {
-  assert.deepEqual(checkBridge(false, { ok: false }), []);
-  assert.equal(checkBridge(true, { ok: false })[0].level, 'warn');
-  assert.equal(checkBridge(true, { ok: true })[0].level, 'ok');
-});
-
 import { checkGateway, withRetries } from '../doctor.mjs';
 test('checkGateway: silent when never generated, warns when configured but down, ok when up', () => {
   assert.deepEqual(checkGateway(false, { ok: false }), []);

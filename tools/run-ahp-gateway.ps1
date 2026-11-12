@@ -1,6 +1,6 @@
 # run-ahp-gateway.ps1 -- idempotent launcher for the AHP-ACP gateway behind VS Code's Agents window.
 #
-# Safe to run as often as you like (run-bridge.ps1 and Task Scheduler call it every few minutes):
+# Safe to run as often as you like (register-gateway-task.ps1 schedules it every few minutes):
 #   - gateway already answering on /healthz -> exit 0 and do nothing
 #   - otherwise: make sure the pinned gateway is installed under logs\ahp-gateway-pkg
 #     (exact version, --ignore-scripts), regenerate logs\ahp-gateway.json from the hub's

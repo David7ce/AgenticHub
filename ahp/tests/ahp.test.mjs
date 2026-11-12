@@ -18,7 +18,7 @@ import { patchGateway } from '../gateway-patch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROXY = join(HERE, '..', 'consent-proxy.mjs');
-const FAKE = join(HERE, '..', '..', 'bridge', 'tests', 'fixtures', 'fake-acp-agent.mjs');
+const FAKE = join(HERE, 'fixtures', 'fake-acp-agent.mjs');
 const FUTURE = new Date(Date.now() + 30 * 86_400_000).toISOString();
 const NOTHING_SPENT = { usd: 0, tokens: 0 };
 const OPEN_TREE = 'D:/work';

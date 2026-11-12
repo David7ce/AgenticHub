@@ -14,7 +14,7 @@ in git history.
   router's `agentFallbacks` chain (`claude → codex → opencode`), which passes the
   tree's context along. If a single agent ever needs per-request provider switching,
   revisit.
-- **Retired:** the VS Code BYOK bridge, claude-mem, the PowerShell/CLI fallback
+- **Retired:** the VS Code BYOK bridge (twice; finally 2026-11-11), claude-mem, the PowerShell/CLI fallback
   (`hub.ps1`, `fanout.ps1`), Hermes as a worker and StarNet. They were dormant or
   redundant; ACP is the only transport.
 
@@ -72,6 +72,17 @@ restricted mode is refused, and a failure to restrict fails closed. Verified liv
 outside the trees. Consequence for the owner: Claude has no `writeTrees`, so through VS Code it edits nothing except in the
 scratch folder until a tree is added to its grant. Hermes is registered
 in the hub (`hermes acp --check` OK) with its grant disabled.
+
+## 2026-11-11 — The bridge is retired; AHP is the VS Code surface
+
+The acceptance test in `docs/harness.md` passed 6/6 in VS Code's own Agents window (all three agents, host
+AgentHub), so `bridge/` (the Custom Endpoint) is deleted again; it stays in git history (last commit that
+has it: `296941d`). What replaces it: the AHP gateway with its own launcher
+(`tools/run-ahp-gateway.ps1`, scheduled by `tools/register-gateway-task.ps1`, which nobody has registered
+yet). What is lost: nothing the Agents window does not do better (tools, edits, sessions); the Custom Endpoint
+was text-only. Claude's cost per turn goes up (about 0.17 USD by AHP against 0.01-0.06 by the bridge, from
+the heavier start-up). `doctor` no longer probes port 3010. The test fixture of the AHP tests moved to
+`ahp/tests/fixtures/`.
 
 ## 2026-11-11 — The bridge returns as a second surface
 

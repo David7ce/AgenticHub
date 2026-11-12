@@ -60,9 +60,8 @@ files must use `--worktree`: **one writer per tree**.
 | [`hubctl/`](hubctl/README.md) | The control room; one module per subcommand under `commands/` |
 | [`chatmgr/`](chatmgr/README.md) | OpenCode TUI plugin: one list of every agent's conversations, with batch delete |
 | [`ahp/`](ahp/README.md) | The hub's agents inside VS Code's native Agents window: gateway config generated from the registry and an ACP proxy that keeps the consent gate, audit line and spend caps in front of each agent |
-| [`bridge/`](bridge/README.md) | Loopback OpenAI-compatible endpoint for VS Code's Custom Endpoint: Claude, Codex and OpenCode through their own logins, with token, per-model context windows and real usage |
 | `bench/` | The internal benchmark and its versioned baseline |
-| `tools/` | Egress posture check, `check.mjs` (the whole test run), and `run-bridge.ps1` / `register-bridge-task.ps1` to keep the bridge running |
+| `tools/` | Egress posture check, `check.mjs` (the whole test run), `register-gateway-task.ps1` / `run-ahp-gateway.ps1` to keep the AHP gateway running, and `ui-automation/` (UI Automation scripts for the VS Code acceptance test) |
 | `models.json` | Local catalogue: providers, tiers, cost, retention, capabilities |
 | `docs/` | Routing, architecture, history |
 

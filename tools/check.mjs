@@ -22,7 +22,6 @@ const TEST_DIRS = [
   'hubctl/tests',
   'mcp/tests',
   'chatmgr/test',
-  'bridge/tests',
   'ahp/tests',
 ];
 

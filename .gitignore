@@ -7,7 +7,6 @@
 /consent.json
 /acp/agents.json
 /mcp/*.local.json
-/bridge/config.json
 
 # Local run output
 /results/

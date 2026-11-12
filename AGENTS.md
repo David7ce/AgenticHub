@@ -36,7 +36,6 @@ trees.
 |---|---|
 | `acp/` | ACP v1 client, registry (`agents.json`, from `agents.example.json`), consent gate, router with failover, fan-out, handoff prompt, spend estimate, path policy |
 | `ahp/` | AHP gateway integration for VS Code's Agents window: `gen-config.mjs` (from `agents.json` + `consent.json`) and `consent-proxy.mjs` (ACP stdio proxy: grant check, per-turn audit). See `ahp/README.md` |
-| `bridge/` | Loopback OpenAI-compatible endpoint for VS Code's Custom Endpoint: claude, codex, opencode via their own logins; `config.json` is local (ignored), copy from `config.example.json` |
 | `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `brief`, `search`, `job_*`) |
 | `hubctl/` | Control room: status, live, report, spend, usage, doctor, run, handoff, tasks, clean, verify, worktree (one module per command in `commands/`) |
 | `chatmgr/` | OpenCode TUI plugin: every agent's conversations in one list, filtered batch delete |

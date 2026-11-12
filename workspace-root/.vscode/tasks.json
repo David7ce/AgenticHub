@@ -2,12 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "AgentHub bridge",
+      "label": "AgentHub AHP gateway",
       "type": "shell",
-      "command": "node agent-hub/bridge/server.mjs --config agent-hub/bridge/config.json",
-      "isBackground": true,
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File agent-hub/tools/run-ahp-gateway.ps1",
       "problemMatcher": [],
-      "presentation": { "reveal": "silent", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
     }
   ]
 }

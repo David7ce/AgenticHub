@@ -26,8 +26,8 @@ persistentes); si no, se queda en dos y no se invierte más.
 | Dato | Valor | Estado |
 |---|---|---|
 | Ventana de contexto | Claude 1M, OpenCode 1M, GPT-6 Luna 1,05M, Codex 828K efectivos (techo propio de 872K) | medido por el propio agente (`usage_update`) |
-| Arranque por turno | Claude 13,7K por el bridge (modo ligero) / **45K por AHP** (carga ajustes, plugins y MCP); OpenCode 13-16K; Codex 18-20K | medido |
-| Coste de un turno trivial de Claude | 0,01-0,06 USD (bridge) / 0,17 USD (AHP, por el arranque) | medido |
+| Arranque por turno | Claude 13,7K por el bridge retirado (modo ligero) / **45K por AHP** (carga ajustes, plugins y MCP); OpenCode 13-16K; Codex 18-20K | medido |
+| Coste de un turno trivial de Claude | 0,01-0,06 USD (bridge retirado) / 0,17 USD (AHP, por el arranque) | medido |
 | Permisos por AHP | AHP no añade puerta: los tres agentes escribieron sin preguntar en su modo por defecto. El proxy aplica `writeTrees` (modo restringido fuera de ellos) | medido y corregido |
 | Claude por la ventana de Agents de VS Code (harness nativo) | Necesita Copilot con Claude o una API key; con solo suscripción no hay modelos | verificado en la documentación y en tu pantalla |
 | Cómo se ve una sesión AHP dentro de VS Code | — | **sin verificar** |
@@ -56,15 +56,21 @@ en `writeTrees` del agente:
 5. El selector de esfuerzo (o la opción de modo) aparece y cambia el comportamiento.
 6. Cerrar la sesión no deja procesos del agente vivos.
 
-Pasa con 6/6, o con 5/6 si el que falla es cosmético. Si pasa: se retira `bridge/` y se registra
-el arranque del gateway como parte de la tarea del lanzador (ya lo hace `run-bridge.ps1`). Si no:
-se mantiene el bridge como único chat de texto en VS Code y se vuelve a mirar cuando salga una
-versión nueva del gateway.
+Pasa con 6/6, o con 5/6 si el que falla es cosmético. Si pasa: se retira `bridge/` y el arranque del
+gateway va en su propia tarea (`tools/register-gateway-task.ps1`). Si no: se mantiene el bridge como
+único chat de texto en VS Code y se vuelve a mirar cuando salga una versión nueva del gateway.
+
+**Resultado (2026-11-11): 6/6.** Hecha en la ventana de Agents con `tools/ui-automation/`, host AgentHub,
+carpeta `Pkg-lab` (fuera de `writeTrees` de Claude y Codex) y `projects/working/ahp-test` (dentro): OpenCode,
+Claude y Codex responden con línea `transport: "ahp"`; dentro de la carpeta permitida editan (Claude y
+OpenCode sin preguntar, Codex pide confirmar el comando); fuera, Claude queda en `plan` y Codex en
+`read-only` y no escriben; el selector de modo cambia con la carpeta; **borrar** la sesión libera el
+adaptador (archivarla en «Done» no; cerrar la ventana solo libera el borrador). `bridge/` retirado.
 
 ## Qué se deja de mantener
 
 - **Copilot Chat como interfaz de trabajo**: no aporta modelos con tu plan; el Custom Endpoint solo
-  sirve como chat de texto, y esa vía es el bridge.
+  sirve como chat de texto, y esa vía (el bridge) se retiró el 2026-11-11.
 - **El harness de Codex en VS Code** (desactivado): se llega a Codex por el hub o por AHP.
 - **Hermes como interfaz**: se llega por el hub o AHP, con su permiso desactivado y fuera de árboles
   con credenciales (su retención puede entrenar).
@@ -77,7 +83,7 @@ fino es la *ejecución controlada*:
 | Agente | Cómo actúa hoy | Control que hay |
 |---|---|---|
 | Claude Code (nativo) | Modo por defecto: **pregunta** antes de editar y de ejecutar | 3 reglas deny globales (Raindrop) y 7 de proyecto (`.env`) |
-| Claude por el adaptador ACP (hub, bridge) | Arranca en modo `auto`, más abierto que el nativo | `writeTrees` |
+| Claude por el adaptador ACP (hub) | Arranca en modo `auto`, más abierto que el nativo | `writeTrees` |
 | Claude por AHP | `acceptEdits` en las carpetas concedidas (edita libre, pregunta comandos); `plan` fuera | `attendedWriteTrees` + clamp |
 | Codex | `approval_policy = "never"` (tu decisión del 2026-11-09) y sandbox de Windows `unelevated` | `writeTrees` y topes del hub; sandbox `workspace-write` por AHP (fuera de la carpeta bloquea y pide permiso); **sin** regla `.env` |
 | OpenCode | Modo `build`: edita y ejecuta sin preguntar | Reglas `.env` globales y `writeTrees` del hub; **por AHP** pregunta antes de cada comando (`attendedEnv`) |
