@@ -14,7 +14,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
-import { cacheAgeMs, describeLimits, dropReset, readLimitsCache } from '../acp/codex-limits.mjs';
+import { cacheAgeMs, describeLimits, dropReset, limitsPath, readLimitsCache } from '../acp/codex-limits.mjs';
 
 const DAY = 86_400_000;
 
@@ -376,7 +376,7 @@ export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'),
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
   if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(stateDir, 'logs', 'runs.jsonl'))));
   if (consent) checks.push(...checkDailyTokens(consent, (name) => spentTokensToday(name)));
-  if (consent?.codex?.enabled) checks.push(...checkCodexLimits(readLimitsCache(join(stateDir, 'logs', 'codex-limits.json'))));
+  if (consent?.codex?.enabled) checks.push(...checkCodexLimits(readLimitsCache(limitsPath(stateDir))));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));
   if (registry) checks.push(...checkCodexAdapter(registry));
   if (catalog) {

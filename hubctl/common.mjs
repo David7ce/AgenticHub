@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { limitsPath } from "../acp/codex-limits.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const HUB = resolve(HERE, "..");
@@ -24,7 +25,7 @@ export const LOG_PATH = process.env.AGENT_HUB_LOG
   : join(STATE_DIR, "logs", "runs.jsonl");
 export const CONSENT_PATH = join(HUB, "consent.json");
 // Last reading of Codex's plan usage windows (acp/codex-limits.mjs); refreshed by `hubctl usage`.
-export const CODEX_LIMITS_PATH = join(STATE_DIR, "logs", "codex-limits.json");
+export const CODEX_LIMITS_PATH = limitsPath(STATE_DIR);
 export const TASKS_DB = process.env.AGENT_HUB_TASKS_DB
   ? resolve(process.env.AGENT_HUB_TASKS_DB)
   : join(STATE_DIR, "logs", "hub.db");

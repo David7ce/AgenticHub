@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
 import {
-  cacheAgeMs, describeLimits, queryCodexLimits, readLimitsCache, writeLimitsCache,
+  describeLimits, queryCodexLimits, readLimitsCache, writeLimitsCache,
 } from "../../acp/codex-limits.mjs";
 import { CODEX_LIMITS_PATH, CONSENT_PATH, LOG_PATH, paint, readJson } from "../common.mjs";
 
@@ -113,7 +113,7 @@ export async function codexUsage({ live = true, path = CODEX_LIMITS_PATH, query 
     return { source: cached ? "cache" : null, summary: cached, error: result.error };
   }
   const cached = readLimitsCache(path);
-  return { source: cached ? "cache" : null, summary: cached, error: null, ageMs: cacheAgeMs(cached, now.getTime()) };
+  return { source: cached ? "cache" : null, summary: cached, error: null };
 }
 
 export async function runUsage(argv) {

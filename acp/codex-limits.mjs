@@ -11,7 +11,10 @@
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
+
+/** Where the last reading is kept: <state dir>/logs/codex-limits.json. */
+export const limitsPath = (stateDir) => join(stateDir, 'logs', 'codex-limits.json');
 
 export function windowLabel(mins) {
   if (!Number.isFinite(mins) || mins <= 0) return 'window';
