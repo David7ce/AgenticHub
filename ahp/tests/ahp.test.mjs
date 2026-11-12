@@ -204,6 +204,18 @@ test('clamp: a grant without writeTrees restricts everything outside the scratch
   assert.equal(clamp.fromAgent(opened(6, 's2')).inject, undefined, 'the scratch folder stays open');
 });
 
+test('clamp: a session that does not say where it runs counts as restricted (fail closed)', () => {
+  const clamp = createClamp({ agent: 'a', limits: { maxPermission: 'allow-all', writeTrees: ['D:/work/x'] }, modes: MODES });
+  const verdict = clamp.fromClient({ jsonrpc: '2.0', id: 7, method: 'session/new', params: { cwd: '' } });
+  assert.equal(verdict.forward, true);
+  const forced = clamp.fromAgent(opened(7, 's1'));
+  assert.ok(forced.inject, 'the restricted mode is imposed');
+  assert.equal(forced.inject[0].params.value, 'plan');
+  const missing = createClamp({ agent: 'a', limits: { maxPermission: 'allow-all', writeTrees: ['D:/work/x'] }, modes: MODES });
+  missing.fromClient({ jsonrpc: '2.0', id: 8, method: 'session/new', params: {} });
+  assert.ok(missing.fromAgent(opened(8, 's2')).inject, 'no cwd at all is not open either');
+});
+
 test('clamp: a restricted session cannot widen itself through a permission request (switch_mode, edit, execute...)', () => {
   const clamp = createClamp({ agent: 'a', limits: grant().limits, modes: MODES });
   clamp.fromClient(newSession('D:/elsewhere', 5));

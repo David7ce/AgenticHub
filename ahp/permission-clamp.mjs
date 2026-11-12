@@ -46,8 +46,14 @@ export function createClamp({ agent, limits, modes, check = checkLimits }) {
 
   // Same rule as the hub (allow-all needs the cwd under the writable trees or the scratch
   // folder), with the attended trees taking the place of writeTrees when the grant has them.
+  // A session that does not say where it runs is not proven writable, so it counts as restricted
+  // (fail closed): `checkLimits` only checks the trees when a cwd is given, so an empty one would
+  // otherwise pass as open.
   const writable = limits?.attendedWriteTrees ?? limits?.writeTrees;
-  const isRestricted = (cwd) => !check(limits ? { ...limits, writeTrees: writable } : limits, { permission: 'allow-all', cwd }).ok;
+  const isRestricted = (cwd) => {
+    if (typeof cwd !== 'string' || cwd.trim() === '') return true;
+    return !check(limits ? { ...limits, writeTrees: writable } : limits, { permission: 'allow-all', cwd }).ok;
+  };
 
   function rewriteModeOption(options, rule) {
     const allow = new Set(rule.allow);

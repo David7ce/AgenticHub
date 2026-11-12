@@ -59,6 +59,12 @@ coarser than Claude's: it asks for every command.
 - An agent with no restricted mode in the registry cannot be restricted, so such a session is refused
   (fail closed); if setting the mode fails, every prompt of that session is refused. Hermes is in the
   first case.
+- A session that arrives with no `cwd` (or an empty one) is also treated as restricted: `checkLimits`
+  only compares the trees when a cwd is given, so an empty one used to pass as open. Seen in the
+  2026-11-12 review, fixed the same night.
+- The tree check compares resolved, case-folded paths: an NTFS junction or symlink inside an allowed
+  tree is not resolved, so a link created inside it would still read as inside. Not fixed; the agents
+  run with their own shells, so a `mklink /J` there is possible.
 
 Registry (`acp/agents.json`): `permissionModes.restricted` and `.attended` are `{ force, allow }`;
 `modelPolicy` (`{ allow: [prefix...], default }`, `model-filter.mjs`) narrows the model picker and refuses a switch outside it:
