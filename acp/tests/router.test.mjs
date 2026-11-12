@@ -284,7 +284,7 @@ test('frontier models are never an automatic pick, even when enabled', () => {
   assert.equal(onlyFrontier.model, null);
 });
 
-test('the shipped registry puts the paid DeepSeek before the free one', async () => {
+test('the shipped registry puts the Go-plan DeepSeek first and only falls back inside the Go plan', async () => {
   // The 2026-11-04 instruction: always prefer the paid Go DeepSeek. This guards
   // the actual file, not a copy of it.
   const { readFileSync, existsSync } = await import('node:fs');
@@ -298,7 +298,9 @@ test('the shipped registry puts the paid DeepSeek before the free one', async ()
   assert.equal(agents.opencode.defaultConfig.model, 'opencode-go/deepseek-v4.1-flash');
   const chain = modelChain(agents.opencode);
   assert.equal(chain[0], 'opencode-go/deepseek-v4.1-flash', 'paid first');
-  assert.equal(chain[1], 'opencode/deepseek-v4.1-flash-free', 'free is the fallback');
+  // The Zen provider (opencode/*) is disabled in OpenCode (2026-11-12): every fallback is on the flat Go plan.
+  assert.equal(chain[1], 'opencode-go/claude-haiku-5-5', 'first fallback');
+  assert.ok(chain.every((model) => model.startsWith('opencode-go/')), 'no model of the disabled opencode/ provider');
   assert.ok(chain.length >= 3);
   // Hermes may be registered (2026-11-11, so ACP clients can reach it) but is never
   // a routing target and its example grant must ship disabled. Codex uses the

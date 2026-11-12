@@ -26,7 +26,6 @@
         "model": "opencode-go/deepseek-v4.1-flash"
       },
       "modelFallbacks": [
-        "opencode/deepseek-v4.1-flash-free",
         "opencode-go/claude-haiku-5-5",
         "opencode-go/mimo-v2.5",
         "opencode-go/beam-free"

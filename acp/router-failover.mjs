@@ -30,7 +30,7 @@ export function otherAgent(agent) {
 //
 // The order in agents.json is by price and measured quality (2026-11-03,
 // USD per million tokens input/output from `opencode models`):
-//   opencode/deepseek-v4.1-flash-free   0/0
+//   opencode-go/beam-free              0/0
 //   opencode-go/deepseek-v4.1-flash     0.15/0.60  best agentic score in the catalog
 //   opencode-go/claude-haiku-5-5        0.10/0.50  review tier, cheapest capable
 //   opencode-go/mimo-v2.5               0.14/0.28  cheapest paid output

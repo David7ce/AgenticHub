@@ -41,7 +41,7 @@ export const TOOLS = [
           type: 'string',
           description:
             'Override the session model (registry default otherwise), e.g. ' +
-            'opencode/deepseek-v4.1-flash-free or poolside/laguna-s-2.1:free.',
+            'opencode-go/beam-free or opencode-go/deepseek-v4.1-flash.',
         },
         effort: {
           type: 'string',

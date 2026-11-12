@@ -73,6 +73,14 @@ outside the trees. Consequence for the owner: Claude has no `writeTrees`, so thr
 scratch folder until a tree is added to its grant. Hermes is registered
 in the hub (`hermes acp --check` OK) with its grant disabled.
 
+## 2026-11-12 — OpenCode: only the Go plan (`opencode-go/*`)
+
+OpenCode listed two providers side by side: `opencode` (Zen, per token) and `opencode-go` (flat plan). The Zen one is now
+turned off at the source, with `"disabled_providers": ["opencode"]` in OpenCode's own `~/.config/opencode/opencode.json`, so
+`opencode models` lists only the 32 Go models in every client (TUI, hub, VS Code). The hub followed: the free Zen model
+`opencode/deepseek-v4.1-flash-free` left `modelFallbacks` (the chain is now Go-only: haiku, mimo, beam-free) and is disabled in
+`models.json`. `modelPolicy` in `agents.json` stays as a second guard. To bring Zen back, remove that line.
+
 ## 2026-11-12 — No type-check gate (measured), Codex usage refreshes itself
 
 `tsc --checkJs` over the protocol modules (`acp-client`, `consent-proxy`, `permission-clamp`, `mcp/server`) gives 46

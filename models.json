@@ -81,7 +81,7 @@
         "output": 0
       },
       "retention": "unknown",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "opencode-go/claude-haiku-5-5",
