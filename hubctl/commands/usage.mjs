@@ -116,6 +116,16 @@ export async function codexUsage({ live = true, path = CODEX_LIMITS_PATH, query 
   return { source: cached ? "cache" : null, summary: cached, error: null };
 }
 
+// `hubctl limits`: one reading of the Codex plan windows, written to the cache. `brief` starts it in the
+// background when the cache is old, so the line it shows is current without making anyone wait.
+export async function runLimits(argv) {
+  const codex = await codexUsage({ live: true });
+  const line = describeLimits(codex.summary);
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify(codex, null, 2) + "\n");
+  else process.stdout.write(`${line ?? "codex: no reading"}${codex.source === "cache" ? ` (cached: ${codex.error})` : ""}\n`);
+  if (!codex.summary) process.exitCode = 1;
+}
+
 export async function runUsage(argv) {
   const daysArg = argv.find((arg) => arg.startsWith("--days"));
   const days = daysArg ? Number(daysArg.split("=")[1] ?? argv[argv.indexOf(daysArg) + 1]) : 30;

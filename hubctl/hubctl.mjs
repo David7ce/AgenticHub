@@ -25,7 +25,7 @@ import { runTasks } from "./commands/tasks.mjs";
 import { attach } from "./commands/attach.mjs";
 import { runWorktree } from "./commands/worktree.mjs";
 import { runClean } from "./commands/clean.mjs";
-import { runUsage } from "./commands/usage.mjs";
+import { runLimits, runUsage } from "./commands/usage.mjs";
 import { runBench } from "./commands/bench.mjs";
 import { runPath } from "./commands/path.mjs";
 import { runBrief } from "./commands/brief.mjs";
@@ -64,6 +64,7 @@ async function main() {
   if (command === "path") return runPath(argv.slice(1));
   if (command === "bench") return runBench(argv.slice(1));
   if (command === "usage") return runUsage(argv.slice(1));
+  if (command === "limits") return runLimits(argv.slice(1));
   if (command === "worktree") return runWorktree(argv.slice(1));
   if (command === "clean") return runClean(argv.slice(1));
   if (command === "verify") return runVerify(argv.slice(1));

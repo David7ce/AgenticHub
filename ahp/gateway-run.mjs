@@ -8,11 +8,11 @@
 //
 // The rest mirrors the gateway's own cli.js: load the config, listen, close on SIGINT/SIGTERM.
 
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { patchGateway } from './gateway-patch.mjs';
+import { appendRotating, patchGateway } from './gateway-patch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STATE_DIR = process.env.AGENT_HUB_STATE ? resolve(process.env.AGENT_HUB_STATE) : join(resolve(HERE, '..', '..'), 'projects');
@@ -35,7 +35,7 @@ mkdirSync(dirname(RPC_LOG), { recursive: true });
 patchGateway(gateway.GatewayServer, {
   log: (entry) => {
     try {
-      appendFileSync(RPC_LOG, `${JSON.stringify({ t: new Date().toISOString(), ...entry })}\n`);
+      appendRotating(RPC_LOG,`${JSON.stringify({ t: new Date().toISOString(), ...entry })}\n`);
     } catch {
       // Logging must never take a request down with it.
     }

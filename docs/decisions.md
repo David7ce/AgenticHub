@@ -73,6 +73,15 @@ outside the trees. Consequence for the owner: Claude has no `writeTrees`, so thr
 scratch folder until a tree is added to its grant. Hermes is registered
 in the hub (`hermes acp --check` OK) with its grant disabled.
 
+## 2026-11-12 — No type-check gate (measured), Codex usage refreshes itself
+
+`tsc --checkJs` over the protocol modules (`acp-client`, `consent-proxy`, `permission-clamp`, `mcp/server`) gives 46
+messages today, almost all inference noise on plain JS (`resolve()` of an untyped `Promise`, option objects with
+required fields). The ones checked were not bugs. A gate would start red, need TypeScript in a repo with no dependencies,
+and catch nothing yet; so there is none, and the hub stays JavaScript (Node runs it directly, tests included). Revisit if a
+protocol-shape bug ships. Also: `hubctl brief` now starts `hubctl limits` in the background when the cached Codex
+reading is over 30 minutes old (at most one try per 10 minutes), so the line is current without anyone waiting.
+
 ## 2026-11-12 — Codex is measured by plan usage, not by price
 
 Codex on a ChatGPT plan is flat-rate: a price per token only fed an estimate for the daily token cap. What the plan

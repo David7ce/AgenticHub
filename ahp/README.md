@@ -87,7 +87,9 @@ agents were fine. Measured in `projects/logs/ahp-gateway-rpc.log`:
   version once 0.2.3 ships.
 
 With the three in place the log is a few dozen lines in 25 s instead of thousands. The log keeps method, session
-suffix, parameter names, action type and timing, never values, and collapses identical requests per second.
+suffix, parameter names, action type and timing, never values, and collapses identical requests per second. A successful
+`ping` (one every five seconds from VS Code) is not logged, and the file is moved to `ahp-gateway-rpc.log.prev` when it
+reaches 2 MB, one generation kept. The change applies the next time the gateway starts.
 
 ## Run it
 

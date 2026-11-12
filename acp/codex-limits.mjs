@@ -96,6 +96,15 @@ export function writeLimitsCache(path, summary, now = new Date()) {
 export const cacheAgeMs = (cache, now = Date.now()) => (cache ? now - Date.parse(cache.measuredAt) : Infinity);
 
 /**
+ * Whether a background refresh is worth starting: the reading is missing or older than `maxAgeMs`, and the
+ * last attempt (`lastTryMs`, the stamp file's time) is older than `retryMs`, so a logged-out Codex does not
+ * start a process on every call.
+ */
+export function needsRefresh({ cache, lastTryMs = 0, now = Date.now(), maxAgeMs = 30 * 60_000, retryMs = 10 * 60_000 } = {}) {
+  return cacheAgeMs(cache, now) > maxAgeMs && now - lastTryMs > retryMs;
+}
+
+/**
  * Asks a live `codex app-server`. Resolves { ok:true, summary } or { ok:false, error }; never throws and
  * always kills the server it started.
  */

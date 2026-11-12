@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -517,4 +517,46 @@ test('patched handle logs method, session suffix, parameter names and timing, ne
   assert.ok(typeof rpc[0].ms === 'number');
   assert.equal(rpc[1].error, 'nope');
   assert.ok(!JSON.stringify(events).includes('secret words'), 'no parameter values are logged');
+});
+
+import { appendRotating } from '../gateway-patch.mjs';
+
+test('a successful ping is not logged, a failing one still is', async () => {
+  const Server = fakeServer();
+  const events = [];
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  await server.handle(null, { id: 1, method: 'ping', params: { channel: '-root://' } });
+  assert.equal(events.length, 0);
+  Server.prototype.handle = async () => { throw new Error('down'); };
+  patchGateway(Server, { log: (e) => events.push(e) });
+  await assert.rejects(server.handle(null, { id: 2, method: 'ping', params: {} }));
+  assert.equal(events.filter((e) => e.error).length, 1);
+});
+
+test('the request log is rotated to .prev when it reaches its size, keeping one generation', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rpc-log-'));
+  const path = join(dir, 'rpc.log');
+  for (let i = 0; i < 5; i++) appendRotating(path, `line ${i} ${'x'.repeat(30)}\n`, { maxBytes: 100 });
+  assert.ok(readFileSync(path, 'utf8').split('\n').filter(Boolean).length <= 3, 'the live log stays small');
+  assert.ok(existsSync(`${path}.prev`), 'the full one was kept');
+  assert.equal(readdirSync(dir).length, 2, 'only one older generation');
+});
+
+test('the per-request memory does not grow with every session the gateway ever served', async () => {
+  const Server = fakeServer();
+  const events = [];
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  const realNow = Date.now;
+  let t = realNow();
+  Date.now = () => t;
+  try {
+    for (let i = 0; i < 600; i++) {
+      t += 2000; // each session a couple of seconds apart: older keys fall out of the minute window
+      await server.handle(null, { id: i, method: 'dispatchAction', params: { channel: `ahp-chat:/s${String(i).padStart(7, '0')}`, action: { type: 'chat/draftChanged' } } });
+    }
+  } finally { Date.now = realNow; }
+  assert.equal(events.length, 600, 'every distinct session still gets its line');
+  assert.ok(Server.prototype.handle.recentSize() < 300, `the map kept ${Server.prototype.handle.recentSize()} keys`);
 });

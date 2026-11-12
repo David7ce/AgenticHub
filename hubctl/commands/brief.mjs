@@ -4,14 +4,14 @@
  * repos, the newest audit lines, today's spend and the "Pendiente" section of
  * `working/HANDOFF.md`.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { closeSync, existsSync, openSync, readFileSync, statSync, utimesSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { spentTodayAll } from "../../acp/spend-estimate.mjs";
-import { cacheAgeMs, describeLimits, dropReset, limitsPath, readLimitsCache } from "../../acp/codex-limits.mjs";
+import { cacheAgeMs, describeLimits, dropReset, limitsPath, needsRefresh, readLimitsCache } from "../../acp/codex-limits.mjs";
 import { gatherDoctor } from "../doctor.mjs";
 import { readLocks } from "../live.mjs";
-import { CONSENT_PATH, HUB, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson, summarizeConsent } from "../common.mjs";
+import { CONSENT_PATH, HUB, HUBCTL_ENTRY, LOCKS_DIR, LOG_PATH, ROOT, STATE_DIR, readJson, summarizeConsent } from "../common.mjs";
 import { parseRuns, readInflight } from "./status.mjs";
 
 export const MAX_LINES = 40;
@@ -191,7 +191,28 @@ export function renderBrief(brief) {
   return lines.slice(0, MAX_LINES).join("\n");
 }
 
+/**
+ * Starts `hubctl limits` detached when the cached Codex reading is old (see needsRefresh). The stamp file's time is
+ * the last attempt. Never waits and never throws: a brief must stay fast and works without Codex.
+ */
+export function refreshCodexLimitsInBackground({ stateDir = STATE_DIR, consent = readJson(CONSENT_PATH), now = Date.now() } = {}) {
+  try {
+    if (!consent?.codex?.enabled || process.env.AGENT_HUB_NO_REFRESH) return false;
+    const stamp = join(stateDir, "logs", "codex-limits.stamp");
+    let lastTryMs = 0;
+    try { lastTryMs = statSync(stamp).mtimeMs; } catch { /* never tried */ }
+    if (!needsRefresh({ cache: readLimitsCache(limitsPath(stateDir)), lastTryMs, now })) return false;
+    closeSync(openSync(stamp, "a"));
+    utimesSync(stamp, new Date(now), new Date(now));
+    spawn(process.execPath, [HUBCTL_ENTRY, "limits"], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function runBrief(argv) {
+  refreshCodexLimitsInBackground();
   const brief = gatherBrief();
   process.stdout.write(argv.includes("--json") ? `${JSON.stringify(brief, null, 2)}\n` : `${renderBrief(brief)}\n`);
 }

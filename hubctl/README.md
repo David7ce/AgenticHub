@@ -60,6 +60,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `attach <session>` | Resume; infers the agent from `runs.jsonl` |
 | `path <path>` | Both Windows and WSL spellings |
 | `bench [args...]` | Run the benchmark |
+| `limits [--json]` | One reading of the Codex plan windows into the cache; `brief` starts it in the background when the cache is over 30 minutes old (`AGENT_HUB_NO_REFRESH=1` stops that) |
 | `usage [--days N] [--no-codex]` | Estimated Go allowance spent, Claude cost, and **Codex plan usage** (the windows its account reports: % used and reset time; cached in `logs/codex-limits.json`, shown by `brief` and checked by `doctor`) |
 | `clean [--yes] [--days N] [--repo PATH]` | Tidy what agents leave behind: clean worktrees, chatmgr backups older than N days (default 14), and inflight records whose process is gone. Dry run without `--yes`; never touches a worktree with changes |
 | `verify [dir] [--cmd CMD] [--timeout MS] [--task ID]` | Run the repo's own tests (`package.json` script, pytest, .NET, Cargo or Go) and return their exit code; `--cmd` overrides detection. `--task` saves the log as the task's evidence without changing its state. Add `--json` for a report |

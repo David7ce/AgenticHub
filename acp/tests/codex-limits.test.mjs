@@ -116,3 +116,14 @@ test('queryCodexLimits reports an error answer, a spawn failure and a silent ser
   assert.equal(silent.ok, false);
   assert.match(silent.error, /no answer/);
 });
+
+import { needsRefresh } from '../codex-limits.mjs';
+test('needsRefresh: only when the reading is old and the last attempt is not recent', () => {
+  const NOW = Date.parse('2026-11-12T12:00:00Z');
+  const cache = (minutesAgo) => ({ measuredAt: new Date(NOW - minutesAgo * 60_000).toISOString(), windows: [] });
+  assert.equal(needsRefresh({ cache: null, now: NOW }), true); // nothing yet
+  assert.equal(needsRefresh({ cache: cache(5), now: NOW }), false); // fresh
+  assert.equal(needsRefresh({ cache: cache(45), now: NOW }), true); // old
+  assert.equal(needsRefresh({ cache: cache(45), lastTryMs: NOW - 2 * 60_000, now: NOW }), false); // tried two minutes ago
+  assert.equal(needsRefresh({ cache: cache(45), lastTryMs: NOW - 20 * 60_000, now: NOW }), true); // that try was long ago
+});

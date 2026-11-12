@@ -92,3 +92,16 @@ test("brief on a real git repo counts uncommitted files", () => {
   assert.equal(brief.repos[0].changed, 1);
   assert.equal(brief.pending, null);
 });
+
+import { refreshCodexLimitsInBackground } from "../commands/brief.mjs";
+test("refreshCodexLimitsInBackground stays out of the way when Codex is off, opted out, or tried recently", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-refresh-"));
+  mkdirSync(join(root, "logs"));
+  const on = { codex: { enabled: true } };
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: {} }), false); // Codex not granted
+  process.env.AGENT_HUB_NO_REFRESH = "1";
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: on }), false); // opted out
+  delete process.env.AGENT_HUB_NO_REFRESH;
+  writeFileSync(join(root, "logs", "codex-limits.stamp"), "");
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: on }), false); // attempted just now
+});

@@ -19,6 +19,16 @@
 //    chat/turnStarted) is kept. Identical requests within one second collapse into one line
 //    with a count, because a client in a retry loop sends well over a hundred a second.
 
+import { appendFileSync, renameSync, statSync } from 'node:fs';
+
+/** Appends a line to a log, first moving a log that reached `maxBytes` to `<path>.prev` (one generation kept). */
+export function appendRotating(path, text, { maxBytes = 2 * 1024 * 1024 } = {}) {
+  try {
+    if (statSync(path).size >= maxBytes) renameSync(path, `${path}.prev`);
+  } catch { /* no log yet */ }
+  appendFileSync(path, text);
+}
+
 const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const suffix = (uri) => (typeof uri === 'string' ? uri.slice(-8) : undefined);
 
@@ -74,6 +84,8 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
     else {
       entry.repeated = seen?.suppressed || undefined;
       recent.set(key, { second, suppressed: 0 });
+      // One key per (method, session, action): without this the map grows with every session the gateway ever served.
+      if (recent.size > 256) for (const [k, v] of recent) if (v.second < second - 60) recent.delete(k);
     }
     // A session config change (mode, effort...) is a setting, not conversation: keep what was asked,
     // what the session holds afterwards, and the reason when the gateway rejected it (a rejection is
@@ -92,7 +104,8 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
       entry.after = JSON.stringify(store.getSession?.(request.params.channel)?.state?.config?.values ?? null).slice(0, 160);
       if (rejection) entry.rejected = String(rejection).slice(0, 160);
     };
-    const write = (extra) => { if (!quiet) log({ ...entry, ...extra, ms: Date.now() - startedAt }); };
+    // A successful ping says nothing (VS Code sends one every five seconds); a failed one still logs below.
+    const write = (extra) => { if (!quiet && entry.method !== 'ping') log({ ...entry, ...extra, ms: Date.now() - startedAt }); };
     try {
       const result = await handle.call(this, connection, request);
       settle();
@@ -104,4 +117,5 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
       throw error;
     }
   };
+  Server.prototype.handle.recentSize = () => recent.size; // for the test that the map stays bounded
 }
