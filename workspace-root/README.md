@@ -1,6 +1,6 @@
 # AgenticHub
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 
 > The GitHub repository and this folder share a name;
 > the older `AI-PC` name is retired.
