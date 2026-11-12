@@ -9,6 +9,7 @@
         "restricted": {"force":"plan","allow":["plan"]},
         "attended": {"force":"build","allow":["build","plan"]}
       },
+      "modelPolicy": { "allow": ["opencode-go/"], "default": "opencode-go/deepseek-v4.1-flash" },
       "command": "opencode",
       "args": [
         "acp"

@@ -27,6 +27,7 @@ import { killTree, spawnAgentProcess } from '../acp/process-utils.mjs';
 import { loadRegistry, resolveAgent } from '../acp/registry.mjs';
 import { nowIso, writeLog } from '../acp/run-record.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
+import { createModelFilter } from './model-filter.mjs';
 import { createClamp } from './permission-clamp.mjs';
 
 export const EXIT_REFUSED = 3;
@@ -192,12 +193,14 @@ export function main(argv = process.argv.slice(2)) {
 
   const grant = readConsent(opts.consent).grants?.[opts.agent];
   const clamp = createClamp({ agent: opts.agent, limits: grant?.limits, modes: resolved.permissionModes });
+  const models = createModelFilter({ agent: opts.agent, policy: resolved.modelPolicy });
 
   // Client -> agent: observe, apply the clamp, forward the original line untouched.
   process.stdin.on('data', lineSplitter((line) => {
     const msg = parse(line);
     if (msg) stats.fromClient(msg);
-    const verdict = msg ? clamp.fromClient(msg) : { forward: true };
+    const wanted = msg ? models.fromClient(msg) : { forward: true };
+    const verdict = wanted.forward ? (msg ? clamp.fromClient(msg) : { forward: true }) : wanted;
     if (verdict.reply) send(process.stdout, verdict.reply);
     if (verdict.forward) send(child.stdin, line);
   }));
@@ -206,8 +209,11 @@ export function main(argv = process.argv.slice(2)) {
     const msg = parse(line);
     if (msg) stats.fromAgent(msg);
     const verdict = msg ? clamp.fromAgent(msg) : { forward: true };
-    if (verdict.forward) send(process.stdout, verdict.msg ?? line);
-    for (const request of verdict.inject ?? []) send(child.stdin, request);
+    // The model filter sees what the clamp already rewrote, so both changes land in one reply.
+    const filtered = msg && verdict.forward ? models.fromAgent(verdict.msg ?? msg) : {};
+    if (filtered.swallow) return;
+    if (verdict.forward) send(process.stdout, filtered.msg ?? verdict.msg ?? line);
+    for (const request of [...(verdict.inject ?? []), ...(filtered.inject ?? [])]) send(child.stdin, request);
     if (verdict.answer) send(child.stdin, verdict.answer);
     if (verdict.failed) {
       process.stderr.write(`consent-proxy: could not restrict ${opts.agent}: ${verdict.failed}${NL}`);

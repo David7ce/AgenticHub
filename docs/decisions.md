@@ -84,6 +84,11 @@ was text-only. Claude's cost per turn goes up (about 0.17 USD by AHP against 0.0
 the heavier start-up). `doctor` no longer probes port 3010. The test fixture of the AHP tests moved to
 `ahp/tests/fixtures/`.
 
+*Addendum:* OpenCode through AHP is limited to `opencode-go/*` (`modelPolicy` in `agents.json`, applied by
+`ahp/model-filter.mjs`): the picker had 76 models, 44 of them Zen's per-token `opencode/*` that also repeated
+Claude and Codex. `opencode-go/claude-haiku-5-5` and the `gpt-*-luna` models stay: they are on the flat plan and
+the hub's own fallbacks use them.
+
 ## 2026-11-11 — The bridge returns as a second surface
 
 *Addendum (later the same day):* the bridge also maps VS Code's `reasoning_effort` onto each agent's own

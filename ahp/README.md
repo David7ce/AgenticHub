@@ -61,7 +61,9 @@ coarser than Claude's: it asks for every command.
   first case.
 
 Registry (`acp/agents.json`): `permissionModes.restricted` and `.attended` are `{ force, allow }`;
-`attendedEnv` is extra environment only for agents the proxy starts (OpenCode's inline
+`modelPolicy` (`{ allow: [prefix...], default }`, `model-filter.mjs`) narrows the model picker and refuses a switch outside it:
+OpenCode offers `opencode-go/*` only (32 models of the flat plan), not Zen's `opencode/*` (44, billed per token, with the
+`claude-*`/`gpt-*` models that repeat the Claude and Codex agents); `attendedEnv` is extra environment only for agents the proxy starts (OpenCode's inline
 `OPENCODE_CONFIG_CONTENT` with the `ask` rule and the `.env` denies).
 
 Verified live with all three agents, in a folder under the trees and in one outside them.
