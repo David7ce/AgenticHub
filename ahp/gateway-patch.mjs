@@ -13,7 +13,13 @@
 //    error ("Windowed subscriptions are not implemented"), and VS Code then retried without end:
 //    41,000 failed subscribes in 2.5 minutes (2026-11-11), the window listing nothing. Declining is
 //    dropping the offer and subscribing as usual; the result carries no `flowControl`.
-// 3. Every request is logged (method, id, session suffix, parameter names, duration, error):
+// 3. A session config change that carries a field the agent does not declare is applied for the
+//    fields it does declare. VS Code's Agents window sends `sensitiveEditLocations` together with
+//    the mode, and the gateway rejects the whole update ("Unknown or immutable session config
+//    sensitiveEditLocations"), so a session asked for build stays in plan (measured 2026-11-12,
+//    OpenCode over AHP). An unknown field is dropped and `session/configChanged` keeps the rest;
+//    a known but immutable field still rejects, because that is what immutable means.
+// 4. Every request is logged (method, id, session suffix, parameter names, duration, error):
 //    never message text or parameter values, so the log says who asks for what and when
 //    without keeping conversations. The action type of dispatchAction (a protocol name such as
 //    chat/turnStarted) is kept. Identical requests within one second collapse into one line
@@ -58,6 +64,26 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
         return subscribe.call(this, connection, rest);
       }
       return subscribe.call(this, connection, params);
+    };
+  }
+
+  const dispatchSessionConfig = Server.prototype.dispatchSessionConfig;
+  if (typeof dispatchSessionConfig === 'function') {
+    Server.prototype.dispatchSessionConfig = async function patchedDispatchSessionConfig(sessionResource, action, origin) {
+      const config = action?.config;
+      const schema = this.store?.getSession?.(sessionResource)?.state?.config?.schema?.properties;
+      if (schema && config && typeof config === 'object') {
+        const kept = {};
+        const dropped = [];
+        for (const [configId, value] of Object.entries(config)) {
+          if (schema[configId]) kept[configId] = value; else dropped.push(configId);
+        }
+        if (dropped.length) {
+          log({ event: 'config-drop', session: suffix(sessionResource), dropped });
+          action = { ...action, config: kept };
+        }
+      }
+      return dispatchSessionConfig.call(this, sessionResource, action, origin);
     };
   }
 

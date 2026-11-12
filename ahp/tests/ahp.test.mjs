@@ -490,6 +490,59 @@ test('patched handle records a session config change, its result and the reason 
   assert.equal(typeof server.store.reject, 'function');
 });
 
+test('patched dispatchSessionConfig drops a field the agent does not declare instead of failing the whole update', async () => {
+  const events = [];
+  class Server {
+    constructor() {
+      this.values = { mode: 'plan' };
+      this.store = {
+        getSession: () => ({
+          state: {
+            config: {
+              values: this.values,
+              schema: { properties: { mode: { type: 'string', enum: ['plan', 'build'], sessionMutable: true } } },
+            },
+          },
+        }),
+        reject: (_r, _a, _o, reason) => { throw new Error(reason); },
+        apply: (_r, action) => { this.values = { ...this.values, ...action.config }; return action; },
+      };
+    }
+    async dispatchSessionConfig(sessionResource, action) {
+      const schema = this.store.getSession(sessionResource).state.config.schema.properties;
+      // The gateway's own rule: one unknown key fails the whole update.
+      for (const [configId, value] of Object.entries(action.config)) {
+        if (!schema[configId]) throw new Error(`Unknown or immutable session config ${configId}`);
+        if (!schema[configId].enum.includes(value)) throw new Error(`Invalid value for session config ${configId}`);
+      }
+      const envelope = this.store.apply(sessionResource, action);
+      this.lastEnvelope = envelope;
+      return envelope;
+    }
+  }
+  patchGateway(Server, { log: (e) => events.push(e) });
+  const server = new Server();
+  const action = {
+    type: 'session/configChanged',
+    config: { mode: 'build', effort: 'default', sensitiveEditLocations: { paths: ['D:/Workspaces/x'] } },
+  };
+  const envelope = await server.dispatchSessionConfig('ahp-session:/abcdef12', action, 'client');
+  assert.deepEqual(envelope.config, { mode: 'build' }, 'the mode is applied and the unknown fields are gone');
+  assert.equal(server.values.mode, 'build');
+  const drop = events.find((e) => e.event === 'config-drop');
+  assert.deepEqual(drop.dropped.sort(), ['effort', 'sensitiveEditLocations']);
+  assert.ok(!JSON.stringify(events).includes('D:/Workspaces/x'), 'no parameter values are logged');
+
+  await assert.rejects(
+    server.dispatchSessionConfig('ahp-session:/abcdef12', { type: 'session/configChanged', config: { mode: 'bad' } }, 'client'),
+    /Invalid value for session config mode/,
+    'a known field with a bad value still fails',
+  );
+  assert.deepEqual(action.config, { mode: 'build', effort: 'default', sensitiveEditLocations: { paths: ['D:/Workspaces/x'] } },
+    'the caller object is not mutated');
+}
+);
+
 test('patched handle keeps the action type and collapses a burst of identical requests into one line a second', async () => {
   const Server = fakeServer();
   const events = [];

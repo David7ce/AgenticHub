@@ -85,6 +85,12 @@ agents were fine. Measured in `projects/logs/ahp-gateway-rpc.log`:
   Fixed upstream on 2026-11-10 and 2026-11-11 and not in 0.2.2, so the launcher pins the pre-release of that
   commit, `0.2.3-next.202611110657.0d297c2` (same three dependencies, no install scripts). Go back to a stable
   version once 0.2.3 ships.
+- A `session/configChanged` that carries a field the agent does not declare fails whole. VS Code sends
+  `sensitiveEditLocations` together with the mode, so the session never left `plan` and an agent could not
+  edit through the window (measured 2026-11-12, OpenCode over AHP; the log showed
+  `Unknown or immutable session config sensitiveEditLocations`). Patched: an unknown field is dropped and the
+  rest of the update is applied (`config-drop` in the log); a known but immutable field still rejects.
+  Verified the same night: a new OpenCode session starts in `build` and wrote a 150-line file.
 
 With the three in place the log is a few dozen lines in 25 s instead of thousands. The log keeps method, session
 suffix, parameter names, action type and timing, never values, and collapses identical requests per second. A successful
@@ -126,10 +132,17 @@ chat until the session is disposed.
   command confirmation, no process left after deleting a session.
 - Seen on 2026-11-12: the model's reasoning is drawn as plain grey paragraphs inside the chat, streamed as it comes,
   with no collapsible "thinking" block; a prompt that says "reason step by step" made DeepSeek V4.1 Flash deliberate for
-  five minutes and the turn ended `cancelled`. Not looked at: diffs of larger edits.
+  five minutes and the turn ended `cancelled`.
+- A large diff is drawn: OpenCode changed 75 of the 150 lines of `tabla.txt` with its edit tool and the chat showed
+  `1 file changed +75 −75` with its diff card, 7 s for the turn (2026-11-12, `Pkg-lab`).
 - **The window has its own Agent mode (Interactive / Plan / Autopilot).** With Plan selected the agent answers with a plan
   and writes nothing, in any folder (the log shows `session/configChanged ... "mode":"plan"` asked by the window). That
   looked like the permission clamp and was not; pick Interactive or Autopilot before testing an edit.
+- **First session after a provider switch can fail to start.** Seen 2026-11-12: two `createSession` calls 0.7 s apart
+  both failed (`ACP provider OpenCode (opencode) failed (reference …)`), then the next one worked; nothing reached
+  `runs.jsonl`, so the proxy's agent process never got to a turn. The window then shows an empty model or mode list for
+  that draft. Switching the session type away and back (Claude → OpenCode) creates a fresh session and the lists come
+  back. Likely two `opencode acp` starts racing over the CLI's SQLite store; not confirmed.
 - The gateway has no MCP forwarding and no multi-user policy; ACP v1 only. The clamp bounds
   what the agent *asks to do*; it cannot see paths an agent touches inside its own tools, so
   `writeTrees` is a rule about the session's folder, exactly as in the hub.

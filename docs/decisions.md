@@ -25,6 +25,15 @@ in git history.
 is documentation, never the control. Codex reports no cost, so its daily cap counts the
 estimated cost of the sessions the hub started (`acp/spend-estimate.mjs`).
 
+## 2026-11-12 — The gateway drops session-config fields the agent does not declare
+
+VS Code's Agents window sends `sensitiveEditLocations` in the same `session/configChanged` as the mode. The
+gateway validates every key and fails the whole update on the first unknown one, so an AHP session never left
+`plan` and an agent could not edit through the window (measured 2026-11-12; `ahp/permission-clamp.mjs` was not
+involved, and `Pkg-lab` was already a writable tree). `ahp/gateway-patch.mjs` now removes the unknown keys and
+applies the rest; a known but immutable key still rejects. Verified end to end: a fresh OpenCode session starts
+in `build`, writes a 150-line file, and its 75-line edit renders as `+75 −75` in the chat.
+
 ## 2026-11-11 — The AHP gateway runs patched and on a pre-release
 
 VS Code 1.146's Agents window looped against gateway 0.2.2 (repeat `createSession`, rejected `flowControl` offers,
