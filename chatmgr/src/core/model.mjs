@@ -22,8 +22,9 @@ export const keyOf = (conv) => `${conv.provider}:${conv.id}`;
 export function normPath(path) {
   if (!path) return "";
   let out = String(path).replace(/\//g, "\\").replace(/\\+$/, "");
-  if (/^[a-z]:/i.test(out)) out = out[0].toUpperCase() + out.slice(1);
-  return process.platform === "win32" ? out.toLowerCase() : out;
+  // A drive-letter path is a Windows path wherever this runs (WSL, CI on Linux),
+  // and Windows paths are case-insensitive.
+  return process.platform === "win32" || /^[a-z]:/i.test(out) ? out.toLowerCase() : out;
 }
 
 export function samePath(a, b) {

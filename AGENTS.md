@@ -41,6 +41,7 @@ trees.
 
 | Path | What it is |
 |---|---|
+| `hub.mjs` | The front door: `hub ask`, `hub fanout`, `hub route`, `hub mcp`, `hub check`, and every `hubctl` command |
 | `acp/` | ACP v1 client, registry (`agents.json`, from `agents.example.json`), consent gate, router with failover, fan-out, handoff prompt, spend estimate, path policy |
 | `ahp/` | AHP gateway integration for VS Code's Agents window: `gen-config.mjs` (from `agents.json` + `consent.json`) and `consent-proxy.mjs` (ACP stdio proxy: grant check, per-turn audit). See `ahp/README.md` |
 | `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `brief`, `search`, `job_*`) |
@@ -54,6 +55,13 @@ trees.
 ## How to call an agent
 
 ```bash
+# The short form: one command for everything (once per clone: `npm link` in agent-hub/;
+# without it, `node agent-hub/hub.mjs ...` is the same). It runs the scripts below unchanged.
+hub ask opencode "..." --json          # or: git diff | hub ask claude
+hub ask auto "..."                     # the router picks
+hub fanout opencode,claude "..." --worktree
+hub status | live | doctor | tasks | handoff | verify | check
+
 # One agent, through the consent gate (writes one line to projects/logs/runs.jsonl)
 node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
 
