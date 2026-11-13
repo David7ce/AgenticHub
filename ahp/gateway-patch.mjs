@@ -49,15 +49,18 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
   const createSession = Server.prototype.createSession;
   Server.prototype.createSession = async function patchedCreateSession(connection, params) {
     const channel = params?.channel;
-    // A provider that fails to start is retried once: seen 2026-11-12, two createSession calls
-    // 0.7 s apart both failed ("ACP provider OpenCode (opencode) failed (reference …)") and the next
-    // one worked, leaving the window with an empty draft. One retry covers that race; a real
-    // failure (refused grant, missing binary) fails again and is reported as before.
+    // A provider that fails to start is retried once. Two races are seen in the rpc log:
+    //   "ACP provider … failed (reference …)"  — the adapter exited during start (seen 2026-11-12).
+    //   "ACP connection closed"                — a dispose + create came too close and the pipe was
+    //                                            already closing (7 cases in the log, every one
+    //                                            followed by a successful call 1-3 s later).
+    // One retry covers both races; a real failure (refused grant, missing binary) fails again and
+    // is reported as before.
     const attempt = async () => {
       try {
         return await createSession.call(this, connection, params);
       } catch (error) {
-        if (!/failed \(reference /.test(String(error?.message ?? ''))) throw error;
+        if (!/failed \(reference |connection closed/.test(String(error?.message ?? ''))) throw error;
         log({ event: 'createSession-retry', session: suffix(channel), provider: params?.provider, reason: String(error.message).slice(0, 120) });
         await sleep(retryMs);
         return createSession.call(this, connection, params);

@@ -487,6 +487,21 @@ test('patched createSession retries once when the provider fails to start, and o
   const broken = new Server(99);
   await assert.rejects(broken.createSession(null, { channel: 'ahp-session:/bbbbbbbb', provider: 'opencode' }), /failed \(reference/);
   assert.equal(broken.created, 2, 'no more than one retry');
+  // The other race seen in the log: a dispose + create too close leaves the pipe closing when the create arrives.
+  class ClosedServer {
+    constructor() { this.created = 0; this.store = { getSession: () => null }; }
+    async handle() { return null; }
+    async createSession() {
+      this.created++;
+      if (this.created === 1) throw new Error('ACP connection closed');
+      return null;
+    }
+  }
+  patchGateway(ClosedServer, { log: (e) => events.push(e), sleep: async () => {} });
+  const closed = new ClosedServer();
+  assert.equal(await closed.createSession(null, { channel: 'ahp-session:/cccccccc', provider: 'claude' }), null);
+  assert.equal(closed.created, 2, 'the connection-closed race is also retried');
+
   const other = new Server(0);
   await assert.rejects(
     (() => { class S extends Server { async createSession() { throw new Error('consent: opencode may not write in D:/x'); } } const s = new S(0); return s.createSession(null, { channel: 'ahp-session:/cccccccc' }); })(),
