@@ -3,6 +3,7 @@
 //
 //   node agent-hub/tools/vscode-state.mjs                 # dry run: what would go
 //   node agent-hub/tools/vscode-state.mjs --apply         # edit state.vscdb (VS Code must be closed)
+//   node agent-hub/tools/vscode-state.mjs --apply --force # same, while VS Code runs (see below)
 //   node agent-hub/tools/vscode-state.mjs --json
 //
 // Why: VS Code remembers, per harness, the model you last used (`chat.currentLanguageModel.panel.<harness>`)
@@ -12,7 +13,9 @@
 // the draft points at a model that cannot answer (seen 2026-11-13). Reloading is not enough; the rows have
 // to go. This script removes only entries whose BYOK provider is not in `chatLanguageModels.json`; secrets
 // and any VS Code model are untouched. It never runs while VS Code is open: the storage service would
-// overwrite the edit.
+// overwrite the edit. `--force` skips that guard; measured 2026-11-13, VS Code picked the change up on the
+// next window reload, so a full restart was not needed — but the value can be rewritten at any time, so
+// closing VS Code first is still the safer way.
 //
 // CHAT_LANGUAGE_MODELS overrides the config path; VSCODE_STATE_DB overrides the state database path.
 
@@ -75,6 +78,7 @@ function isVSCodeRunning() {
 function main() {
   const argv = process.argv.slice(2);
   const apply = argv.includes('--apply');
+  const force = argv.includes('--force');
   const grouped = argv.includes('--json');
   const config = readJson(userConfigPath());
   const known = knownProviders(config);
@@ -83,12 +87,14 @@ function main() {
     process.stdout.write(`no VS Code state database at ${dbPath}\n`);
     return;
   }
-  if (apply && isVSCodeRunning()) {
-    process.stderr.write('VS Code is running: close every window (the storage service rewrites the file) and run it again\n');
+  if (apply && !force && isVSCodeRunning()) {
+    process.stderr.write('VS Code is running: close every window (the storage service rewrites the file) and run it again, or pass --force\n');
     process.exitCode = 1;
     return;
   }
-  const db = new DatabaseSync(dbPath, { readOnly: !apply });
+  if (apply && force) {
+    process.stderr.write('--force: writing while VS Code runs; its storage service may keep the old value in memory until every window closes\n');
+  }  const db = new DatabaseSync(dbPath, { readOnly: !apply });
   const keys = ['chat.currentLanguageModel.panel.agent-host-copilotcli', 'chat.modelConfiguration.panel.agent-host-copilotcli',
     'chat.currentLanguageModel.panel', 'chat.modelConfiguration.panel'];
   const report = [];
