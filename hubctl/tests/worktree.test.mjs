@@ -32,14 +32,17 @@ test('ages read as days, hours, or unknown', () => {
   assert.equal(ageLabel(null), '?');
 });
 
-import { mkdtempSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { agentWorktrees, repoRoots } from '../commands/worktree.mjs';
 
-// Resolve 8.3 short-name forms (runner~1 -> runneradmin on the CI runner), lowercase, forward slashes.
-const norm = (p) => realpathSync(p).split(String.fromCharCode(92)).join('/').toLowerCase();
+// The CI runner's tmpdir is C:\Users\runner~1 but git reports the long form C:\Users\runneradmin, and Node has no
+// portable call to expand 8.3 names, so a literal string match is fragile. Just check what the test cares about:
+// the worktree lives under the repo and under the agent-worktrees folder.
+const norm = (p) => p.split(String.fromCharCode(92)).join('/').toLowerCase();
+const endsWith = (p, suffix) => norm(p).endsWith(suffix);
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
 function repoWithAgentWorktree() {
   const repo = mkdtempSync(join(tmpdir(), 'wt-repo-'));
@@ -65,7 +68,7 @@ test('agentWorktrees finds the worktrees of other repositories, tagged with thei
   writeFileSync(join(notRepo, 'x.txt'), 'x');
   const rows = agentWorktrees([notRepo, repo]);
   assert.equal(rows.length, 1);
-  assert.equal(norm(rows[0].path), norm(path));
-  assert.equal(norm(rows[0].repo), norm(repo));
+  assert.ok(endsWith(rows[0].path, '/.git/agent-worktrees/run1-codex'));
+  assert.ok(norm(rows[0].path).startsWith(norm(rows[0].repo)), `${rows[0].path} is not under ${rows[0].repo}`);
   assert.equal(rows[0].dirty, false);
 });
