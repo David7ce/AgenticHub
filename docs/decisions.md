@@ -6,8 +6,16 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
-## 2026-11-13 — One door per agent
+## 2026-11-13 — The BYOK list lives in the repo
 
+The models VS Code offers under a BYOK provider are user config (`chatLanguageModels.json`), which is lost with
+the profile and rots when the provider retires an id. The curated list now lives in `tools/vscode-models.json`,
+`tools/vscode-models.mjs --apply` writes it into the user config (vendor and key reference untouched) and
+`--check` / `hubctl doctor` report drift; `--online` also asks the provider whether an id still exists. Left
+out: automating the key (it stays a VS Code secret) and the other providers' catalogues (only OpenRouter has one
+we can query).
+
+## 2026-11-13 — One door per agent
 The native Claude harness in VS Code is switched off (`chat.agentHost.claudeAgent.enabled=false`);
 the Codex one already was. `This Computer` serves Copilot only, and `AgentHub` serves OpenCode,
 Claude and Codex, all three behind `consent.json`, `writeTrees` and one audit line per turn. Left

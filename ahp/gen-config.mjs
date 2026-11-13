@@ -37,9 +37,12 @@ export function buildConfig({ registry, consent, port = 8765, all = false, proxy
 
   const providers = chosen.map((name) => {
     const entry = registry.agents[name];
+    // The window lists these next to the local harnesses; the suffix says which door they came
+    // through, so "Claude" (Copilot's model or a local harness) is not confused with this one.
+    const label = (entry.label ?? name).replace(/\s*\(ACP adapter\)\s*$/i, '');
     return {
       id: name,
-      displayName: entry.label ?? name,
+      displayName: `${label} · AgentHub`,
       description: `Through the AgentHub consent gate (${name}).`,
       command: node,
       args: [proxy, '--agent', name],

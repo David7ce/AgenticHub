@@ -76,7 +76,7 @@ Medido el 2026-11-11/12; los números de arranque, coste y tiempo están en
 | Fichero | Qué decide |
 |---|---|
 | `%APPDATA%\Code\User\settings.json` | `chat.remoteAgentHosts` (AgentHub), `chat.agentHost.claudeAgent.enabled` / `.codexAgent.enabled` (hosts locales apagados), `chat.agentHost.byokModels.enabled` |
-| `%APPDATA%\Code\User\chatLanguageModels.json` | los grupos BYOK: `Copilot` y `OpenRouter` (21 modelos en su `models`, que es lo que acota el selector). **La clave no va aquí**: el grupo guarda `${input:chat.lm.secret.…}` y el valor vive en el almacén de secretos del sistema |
+| `%APPDATA%\Code\User\chatLanguageModels.json` | los grupos BYOK: `Copilot` y `OpenRouter` (21 modelos en su `models`, que es lo que acota el selector). **La clave no va aquí**: el grupo guarda `${input:chat.lm.secret.…}` y el valor vive en el almacén de secretos del sistema. La lista curada está en `tools/vscode-models.json`; `node agent-hub/tools/vscode-models.mjs --apply` la escribe y `doctor` avisa si se separan |
 | `acp/agents.json` | cada agente: comando, modelo por defecto, cadena de relevos, `permissionModes`, `attendedEnv`, `modelPolicy` |
 | `consent.json` | la puerta: `enabled`, `overseerAck`, caducidad, `maxPermission`, `writeTrees` / `attendedWriteTrees`, topes |
 | `ahp/` | el gateway AHP y el proxy de consentimiento (ver [`../ahp/README.md`](../ahp/README.md)) |
@@ -115,6 +115,11 @@ Medido el 2026-11-11/12; los números de arranque, coste y tiempo están en
   agente sale dos veces y solo una vía pasa por consentimiento. Se apagó el nativo de Claude y el de
   Codex ya estaba apagado.
 - **`cwd` vacío**: una sesión sin carpeta pasaba como abierta; ahora cuenta como restringida.
+- **Un grupo BYOK borrado sigue vivo en el selector** hasta que se reinicia VS Code entero: el host de
+  agentes cachea la lista y llega a anunciar un proveedor que ya no existe (`Wired N BYOK model(s) across 2
+  provider(s)`). Si quitas un grupo, recarga todas las ventanas antes de creerte el selector. Y como los
+  ids de un proveedor se retiran sin avisar, la lista vive en `tools/vscode-models.json` y `doctor` la
+  contrasta (con `--online`, además, contra el catálogo del proveedor).
 
 ## Lo que no está verificado
 

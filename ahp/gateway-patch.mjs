@@ -38,13 +38,35 @@ export function appendRotating(path, text, { maxBytes = 2 * 1024 * 1024 } = {}) 
 const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const suffix = (uri) => (typeof uri === 'string' ? uri.slice(-8) : undefined);
 
-export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs = 100, sleep = sleepMs } = {}) {
+export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs = 100, retryMs = 500, sleep = sleepMs } = {}) {
+  // Fail loudly instead of starting a half-patched host: if a rename upstream takes one of these away,
+  // the window would otherwise get a gateway with no gate on the mode, or with an endless retry storm.
+  for (const method of ['createSession', 'handle']) {
+    if (typeof Server.prototype[method] !== 'function') {
+      throw new Error(`gateway-patch: ${method} is gone from this gateway version; re-check the patches in ahp/gateway-patch.mjs`);
+    }
+  }
   const createSession = Server.prototype.createSession;
   Server.prototype.createSession = async function patchedCreateSession(connection, params) {
     const channel = params?.channel;
+    // A provider that fails to start is retried once: seen 2026-11-12, two createSession calls
+    // 0.7 s apart both failed ("ACP provider OpenCode (opencode) failed (reference …)") and the next
+    // one worked, leaving the window with an empty draft. One retry covers that race; a real
+    // failure (refused grant, missing binary) fails again and is reported as before.
+    const attempt = async () => {
+      try {
+        return await createSession.call(this, connection, params);
+      } catch (error) {
+        if (!/failed \(reference /.test(String(error?.message ?? ''))) throw error;
+        log({ event: 'createSession-retry', session: suffix(channel), provider: params?.provider, reason: String(error.message).slice(0, 120) });
+        await sleep(retryMs);
+        return createSession.call(this, connection, params);
+      }
+    };
+
     const existing = typeof channel === 'string' ? this.store.getSession(channel) : null;
-    if (!existing) return createSession.call(this, connection, params);
-    if (params?.provider && params.provider !== existing.provider) return createSession.call(this, connection, params);
+    if (!existing) return attempt();
+    if (params?.provider && params.provider !== existing.provider) return attempt();
 
     log({ event: 'createSession-repeat', session: suffix(channel), lifecycle: existing.state?.lifecycle, provider: existing.provider });
     const deadline = Date.now() + waitMs;
@@ -53,7 +75,7 @@ export function patchGateway(Server, { log = () => {}, waitMs = 30_000, pollMs =
     }
     const now = this.store.getSession(channel);
     if (now?.state?.lifecycle === 'ready') return null;
-    return createSession.call(this, connection, params); // gone or failed: the gateway's own answer
+    return attempt(); // gone or failed: the gateway's own answer
   };
 
   const subscribe = Server.prototype.subscribe;

@@ -392,6 +392,14 @@ test('buildConfig makes providers only for granted agents, behind the proxy, and
   assert.ok(!off.includes('claude'));
   assert.equal(new Set(cfg.providers.map((p) => p.id)).size, cfg.providers.length, 'no duplicate ids');
   assert.ok(GATEWAY_BUILTINS.includes('opencode'));
+  assert.deepEqual(ours.map((p) => p.displayName), ['Claude · AgentHub', 'Codex · AgentHub'],
+    'the window shows which door the agent came through, without the adapter suffix');
+});
+
+test('buildConfig drops the "(ACP adapter)" suffix from the label before adding the door', () => {
+  const registry = { agents: { claude: { label: 'Claude Agent (ACP adapter)' } } };
+  const cfg = buildConfig({ registry, consent: { grants: { claude: { enabled: true } } }, proxy: '/p', node: '/n' });
+  assert.equal(cfg.providers.find((p) => p.id === 'claude').displayName, 'Claude Agent · AgentHub');
 });
 
 test('--all adds agents without a grant, which then refuse at start-up', () => {
@@ -447,6 +455,45 @@ test('patched createSession: a different provider on an existing URI still gets 
   assert.equal(server.created, 2);
 });
 
+test('patchGateway refuses a gateway whose methods were renamed', () => {
+  class Renamed {
+    async handle() { return null; }
+  }
+  assert.throws(() => patchGateway(Renamed), /createSession is gone from this gateway version/);
+  class NoHandle {
+    async createSession() { return null; }
+  }
+  assert.throws(() => patchGateway(NoHandle), /handle is gone from this gateway version/);
+});
+
+test('patched createSession retries once when the provider fails to start, and only once', async () => {
+  const events = [];
+  class Server {
+    constructor(failures) { this.failures = failures; this.created = 0; this.store = { getSession: () => null }; }
+    async handle() { return null; }
+    async createSession() {
+      this.created++;
+      if (this.created <= this.failures) throw new Error('ACP provider OpenCode · AgentHub (opencode) failed (reference abc-123). Run npm install');
+      return null;
+    }
+  }
+  patchGateway(Server, { log: (e) => events.push(e), sleep: async () => {} });
+  const ok = new Server(1);
+  assert.equal(await ok.createSession(null, { channel: 'ahp-session:/aaaaaaaa', provider: 'opencode' }), null);
+  assert.equal(ok.created, 2, 'one retry');
+  assert.equal(events.filter((e) => e.event === 'createSession-retry').length, 1);
+  assert.equal(events[0].provider, 'opencode');
+
+  const broken = new Server(99);
+  await assert.rejects(broken.createSession(null, { channel: 'ahp-session:/bbbbbbbb', provider: 'opencode' }), /failed \(reference/);
+  assert.equal(broken.created, 2, 'no more than one retry');
+  const other = new Server(0);
+  await assert.rejects(
+    (() => { class S extends Server { async createSession() { throw new Error('consent: opencode may not write in D:/x'); } } const s = new S(0); return s.createSession(null, { channel: 'ahp-session:/cccccccc' }); })(),
+    /consent:/,
+  );
+});
+
 test('patched subscribe declines a windowed-delivery offer instead of failing, and leaves other subscribes alone', async () => {
   const seen = [];
   class Server {
@@ -480,6 +527,7 @@ test('patched handle records a session config change, its result and the reason 
         getSession: () => ({ state: { config: { values: this.values } } }),
       };
     }
+    async createSession() { return null; }
     async handle(_c, request) {
       const mode = request.params.action.config.mode;
       if (mode === 'bad') this.store.reject('s', {}, {}, 'Invalid value for session config mode');
@@ -520,6 +568,8 @@ test('patched dispatchSessionConfig drops a field the agent does not declare ins
         apply: (_r, action) => { this.values = { ...this.values, ...action.config }; return action; },
       };
     }
+    async createSession() { return null; }
+    async handle() { return null; }
     async dispatchSessionConfig(sessionResource, action) {
       const schema = this.store.getSession(sessionResource).state.config.schema.properties;
       // The gateway's own rule: one unknown key fails the whole update.

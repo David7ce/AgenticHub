@@ -23,9 +23,9 @@
 // fanout live in <repo>/.git/agent-worktrees/, i.e. inside the tree they came
 // from, so they pass the same check.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -47,10 +47,29 @@ export function readConsent(path = CONSENT_PATH) {
   }
 }
 
-// Comparable form of a path: absolute, one separator, case-folded on Windows,
+// Canonical form of a path: symlinks and NTFS junctions resolved, so a link created inside an
+// allowed tree cannot point outside it. A path that does not exist yet is resolved through its
+// longest existing ancestor, which keeps `<tree>/new/dir` inside `<tree>`.
+export function realPath(p) {
+  let target = resolve(String(p));
+  const missing = [];
+  for (;;) {
+    try {
+      const real = realpathSync.native(target).replace(/^\\\\\?\\/, '');
+      return missing.length ? resolve(real, ...[...missing].reverse()) : real;
+    } catch {
+      const parent = dirname(target);
+      if (parent === target) return resolve(String(p));
+      missing.push(basename(target));
+      target = parent;
+    }
+  }
+}
+
+// Comparable form of a path: absolute, real, one separator, case-folded on Windows,
 // no trailing separator.
 export function normalizeTree(p, platform = process.platform) {
-  let out = resolve(String(p)).replace(/[\\/]+/g, '/');
+  let out = realPath(p).replace(/[\\/]+/g, '/');
   if (out.length > 1 && out.endsWith('/') && !/^[A-Za-z]:\/$/.test(out)) out = out.slice(0, -1);
   return platform === 'win32' ? out.toLowerCase() : out;
 }

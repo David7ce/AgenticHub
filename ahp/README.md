@@ -100,11 +100,28 @@ agents were fine. Measured in `projects/logs/ahp-gateway-rpc.log`:
   `Unknown or immutable session config sensitiveEditLocations`). Patched: an unknown field is dropped and the
   rest of the update is applied (`config-drop` in the log); a known but immutable field still rejects.
   Verified the same night: a new OpenCode session starts in `build` and wrote a 150-line file.
+- A provider that fails to start is retried **once**, 500 ms later (`createSession-retry` in the log). Seen
+  2026-11-12: two `createSession` calls 0.7 s apart both failed with `ACP provider … failed (reference …)` and
+  the next one worked, leaving the window with an empty draft. A real failure (refused grant, missing binary)
+  fails again and is reported as before.
+- `patchGateway` throws at start-up if `createSession` or `handle` is no longer on the gateway's prototype,
+  instead of running half-patched when a version bumps.
 
 With the three in place the log is a few dozen lines in 25 s instead of thousands. The log keeps method, session
 suffix, parameter names, action type and timing, never values, and collapses identical requests per second. A successful
 `ping` (one every five seconds from VS Code) is not logged, and the file is moved to `ahp-gateway-rpc.log.prev` when it
 reaches 2 MB, one generation kept. The change applies the next time the gateway starts.
+
+## Updating the pinned gateway
+
+`tools/run-ahp-gateway.ps1` pins `$Version` and installs it under `projects/logs/ahp-gateway-pkg`; `gateway-run.mjs`
+patches the loaded class, never a file of the package. To bump it:
+
+1. Change `$Version` and restart the task (`Stop-Process` the gateway, `Start-ScheduledTask "AgentHub gateway"`).
+2. `node tools/check.mjs`: the patch tests fail if a method was renamed.
+3. Open a session in the window and check `projects/logs/ahp-gateway-rpc.log`: `createSession` ok, a
+   `config-drop` line for `sensitiveEditLocations`, and the mode afterwards is the agent's (`build`, not `plan`).
+4. `hubctl doctor` still says the gateway answers on `/healthz`.
 
 ## Run it
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,21 @@ test('isInside accepts the tree and its children, not siblings with a shared pre
   assert.equal(isInside('D:/Work/repo', 'D:/Work/repo', 'win32'), true);
   assert.equal(isInside('D:/Work/repo/.git/agent-worktrees/x', 'd:\\work\\repo', 'win32'), true);
   assert.equal(isInside('D:/Work/repo-other', 'D:/Work/repo', 'win32'), false);
+});
+
+test('isInside does not follow a link out of the tree: a junction inside it is not inside', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tree-'));
+  const outside = mkdtempSync(join(tmpdir(), 'outside-'));
+  const inside = join(root, 'pkg');
+  mkdirSync(inside, { recursive: true });
+  writeFileSync(join(outside, 'secret.txt'), 'x');
+  const link = join(root, 'escape');
+  symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.equal(isInside(inside, root), true, 'a real child is inside');
+  assert.equal(isInside(link, root), false, 'the link itself resolves outside');
+  assert.equal(isInside(join(link, 'secret.txt'), root), false, 'and so does anything behind it');
+  assert.equal(isInside(inside, link), false, 'the outside tree is not the parent of a real child');
+  assert.equal(isInside(join(root, 'nuevo', 'sub'), root), true, 'a path that does not exist yet stays inside');
 });
 
 test('a grant without limits keeps the old behaviour', () => {

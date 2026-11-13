@@ -12,6 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
+import { checkByokModels, userConfigPath } from '../tools/vscode-models.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
 import { cacheAgeMs, describeLimits, dropReset, limitsPath, readLimitsCache } from '../acp/codex-limits.mjs';
@@ -387,6 +388,10 @@ export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'),
   }
   checks.push(...checkLinks(root, listCurrentDocs(root)));
   checks.push(...checkLeftovers(inflight, locks));
+  checks.push(...checkByokModels(
+    readJson(join(hub, 'tools', 'vscode-models.json')),
+    existsSync(userConfigPath()) ? readJson(userConfigPath()) : null,
+  ));
   const gatewayConfig = readJson(join(stateDir, 'logs', 'ahp-gateway.json'));
   if (gatewayConfig) checks.push(...checkGateway(true, probeLocal(gatewayConfig.listener?.port ?? 8765, '/healthz')));
   checks.push(...checkHooks(root, { hooksPath: gitOut(root, ['config', 'core.hooksPath']) }));

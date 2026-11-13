@@ -1,0 +1,32 @@
+{
+  "//": "Curated BYOK models for VS Code's Copilot harness. Apply with `node agent-hub/tools/vscode-models.mjs --apply`; `--check` (and `hubctl doctor`) compare the user config against this list. Only ids: the vendor and the key reference stay in the user config.",
+  "groups": [
+    {
+      "name": "OpenRouter",
+      "vendor": "openrouter",
+      "models": [
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nvidia/nemotron-3.5-lightning:free",
+        "nvidia/nemotron-3.5-super-vl:free",
+        "thinkingmachines/inkling-2-small:free",
+        "baidu/ernie-5.5-flash-preview:free",
+        "particle-ai/particle-1:free",
+        "dots-studio/dots-3-note-preview:free",
+        "recursive/flint-v1.0:free",
+        "apodex/apodex-1.1-mini:free",
+        "google/gemma-4-31b-it:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "cohere/north-mini-code:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "deepseek/deepseek-v4.1-flash",
+        "deepseek/deepseek-v4.1-flash-1017",
+        "deepseek/deepseek-v4-pro",
+        "openai/gpt-6-luna",
+        "z-ai/glm-5.3-flash",
+        "xiaomi/mimo-v2.6-flash",
+        "qwen/qwen3.8-flash",
+        "minimax/minimax-m3.1-flash"
+      ]
+    }
+  ]
+}
