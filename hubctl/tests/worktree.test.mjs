@@ -32,13 +32,14 @@ test('ages read as days, hours, or unknown', () => {
   assert.equal(ageLabel(null), '?');
 });
 
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { agentWorktrees, repoRoots } from '../commands/worktree.mjs';
 
-const norm = (p) => p.split(String.fromCharCode(92)).join('/').toLowerCase();
+// Resolve 8.3 short-name forms (runner~1 -> runneradmin on the CI runner), lowercase, forward slashes.
+const norm = (p) => realpathSync(p).split(String.fromCharCode(92)).join('/').toLowerCase();
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
 function repoWithAgentWorktree() {
   const repo = mkdtempSync(join(tmpdir(), 'wt-repo-'));
