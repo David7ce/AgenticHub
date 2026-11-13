@@ -45,7 +45,7 @@ agentes. Por eso el bridge no podía dar diffs ni permisos y el host sí.
 
 | Harness | Dónde aparece | Modelos que trae | Contexto | Permisos | Auditoría del hub |
 |---|---|---|---|---|---|
-| **Copilot** | `This Computer` y también como tipo de sesión | plan Copilot (Fusion; Sonnet/GPT en *Upgrade*) **+ BYOK**: OpenRouter y OpenCode Go | el del modelo BYOK (DeepSeek 1M, salida 384K) | su propio modo (Assisted / Autopilot) | **no** |
+| **Copilot** | `This Computer` y también como tipo de sesión | plan Copilot (Fusion; Sonnet/GPT en *Upgrade*) **+ BYOK: OpenRouter** (21 modelos: los gratis y los de mejor relación calidad/precio) | el del modelo BYOK (DeepSeek 1M, salida 384K) | su propio modo (Assisted / Autopilot) | **no** |
 | **Claude Code** | `AgentHub` | solo Claude (Sonnet/Opus/Haiku) | ~1M en esta config | `acceptEdits` en árboles concedidos; `plan` fuera | sí |
 | **Codex** | `AgentHub` | solo GPT | 872K (828K efectivos) | `workspace-write` en su árbol; comandos preguntan; `.git` protegido (no commitea) | sí |
 | **OpenCode** | `AgentHub` | los 30 de `opencode-go/*` | 1M | `build`, y **todo** comando shell pregunta | sí |
@@ -56,7 +56,13 @@ Medido el 2026-11-11/12; los números de arranque, coste y tiempo están en
 ## Modelos ≠ harnesses
 
 - El **único** sitio donde puedes elegir «cualquier LLM de cualquier proveedor» es el harness de
-  Copilot con BYOK: **OpenRouter** da 346 modelos y **OpenCode Go** los 30 del plan.
+  Copilot con BYOK: **OpenRouter**, acotado a 21 modelos (los gratis con herramientas y los de mejor
+  relación calidad/precio: DeepSeek V4.1 Flash y V4 Pro, GPT-6 Luna, GLM-5.3 Flash, MiMo V2.6 Flash,
+  Qwen3.8 Flash, MiniMax M3.1 Flash).
+- **OpenCode Go no va por BYOK**: su consola no da una clave de API para este plan (es suscripción), y
+  el token OAuth que guarda OpenCode da 401 en ese endpoint. Su plan se usa donde sí funciona:
+  `AgentHub → OpenCode`, con login propio y auditoría. Un grupo BYOK sin clave aparece igual en el
+  selector y no responde: por eso se retiró.
 - **Los modelos BYOK solo existen en el harness de Copilot.** Claude Code, Codex y OpenCode no
   aceptan una lista externa: traen los suyos. Ni Anthropic soporta Claude Code con modelos que no
   sean Claude, ni el adaptador de Codex acepta otro proveedor.
@@ -70,7 +76,7 @@ Medido el 2026-11-11/12; los números de arranque, coste y tiempo están en
 | Fichero | Qué decide |
 |---|---|
 | `%APPDATA%\Code\User\settings.json` | `chat.remoteAgentHosts` (AgentHub), `chat.agentHost.claudeAgent.enabled` / `.codexAgent.enabled` (hosts locales apagados), `chat.agentHost.byokModels.enabled` |
-| `%APPDATA%\Code\User\chatLanguageModels.json` | los grupos BYOK: `Copilot`, `OpenRouter`, `OpenCode Go`. **La clave no va aquí**: el grupo guarda `${input:chat.lm.secret.…}` y el valor vive en el almacén de secretos del sistema |
+| `%APPDATA%\Code\User\chatLanguageModels.json` | los grupos BYOK: `Copilot` y `OpenRouter` (21 modelos en su `models`, que es lo que acota el selector). **La clave no va aquí**: el grupo guarda `${input:chat.lm.secret.…}` y el valor vive en el almacén de secretos del sistema |
 | `acp/agents.json` | cada agente: comando, modelo por defecto, cadena de relevos, `permissionModes`, `attendedEnv`, `modelPolicy` |
 | `consent.json` | la puerta: `enabled`, `overseerAck`, caducidad, `maxPermission`, `writeTrees` / `attendedWriteTrees`, topes |
 | `ahp/` | el gateway AHP y el proxy de consentimiento (ver [`../ahp/README.md`](../ahp/README.md)) |
@@ -90,7 +96,9 @@ Medido el 2026-11-11/12; los números de arranque, coste y tiempo están en
 
 - **Proveedor BYOK**: se añade un grupo en `chatLanguageModels.json` (`vendor`, `apiType`, `models`)
   y la clave como `${input:…}`. Un endpoint muerto se ve igual que uno vivo hasta que lo usas: el
-  bridge dejó cuatro modelos apuntando a un puerto cerrado y nadie notó nada hasta mirar.
+  bridge dejó cuatro modelos apuntando a un puerto cerrado y nadie notó nada hasta mirar. Y un grupo
+  sin clave aparece en el selector y falla al enviar; si el proveedor no da clave (OpenCode Go), no se
+  pone: se usa por `AgentHub`, que sí tiene su login.
 - **Agente**: entrada en `acp/agents.json` + grant en `consent.json` + reiniciar el gateway (que
   regenera su config desde esos dos ficheros con `ahp/gen-config.mjs`).
 

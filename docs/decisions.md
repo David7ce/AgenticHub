@@ -18,12 +18,16 @@ models shared by every harness. The map and the vocabulary are in
 ## 2026-11-13 — BYOK models live only in the Copilot harness
 
 VS Code registers the BYOK providers from `chatLanguageModels.json` for the Copilot harness only:
-that is where OpenRouter (346 models) and OpenCode Go (30) appear, both in the chat panel and in the
-Agents window. Claude Code, Codex and OpenCode bring their own model lists and cannot take an
-external one. So "any LLM" is a property of the chat surface, while "any agent" is a property of
-`AgentHub`; a model running under the Copilot harness behaves differently from the same model
-running under its native agent. The group's key is a VS Code secret (`${input:chat.lm.secret.…}`),
-never a value in the JSON.
+that is where OpenRouter appears, both in the chat panel and in the Agents window, trimmed to 21
+models by giving the group an explicit `models` list (the free ones that take tools plus the best
+price/quality: DeepSeek V4.1 Flash and V4 Pro, GPT-6 Luna, GLM-5.3 Flash, MiMo V2.6 Flash, Qwen3.8
+Flash, MiniMax M3.1 Flash). Claude Code, Codex and OpenCode bring their own model lists and cannot
+take an external one. OpenCode Go stays out of BYOK: its console gives no API key for this plan and
+the OAuth token it stores returns 401 on the endpoint, so the plan is used through
+`AgentHub → OpenCode`. So "any LLM" is a property of the chat surface, while "any agent" is a
+property of `AgentHub`; a model running under the Copilot harness behaves differently from the same
+model running under its native agent. The group's key is a VS Code secret
+(`${input:chat.lm.secret.…}`), never a value in the JSON.
 
 ## 2026-11-10 — AgentHub stays the orchestrator and the governance layer
 
