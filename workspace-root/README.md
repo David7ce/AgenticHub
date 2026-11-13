@@ -1,6 +1,6 @@
 # AgenticHub
 
-[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](agent-hub/LICENSE)
 
 > The GitHub repository and this folder share a name;
 > the older `AI-PC` name is retired.
@@ -19,7 +19,7 @@ lives in each project repository, and scripts live in the toolbox.
 | [`projects/`](projects/)         | Repository inventory and the generated Repos/Heatmap pages                                                                              |
 | [`agent-hub/docs/`](agent-hub/docs/) | Hub docs; `docs/reference/` has the agent references and the session-baton convention                                                                      |
 | [`projects/logs/`](projects/logs/)           | Agent audit log and final task evidence (local, ignored)                                                                                |
-| `projects/working/`                 | Personal and local-only, ignored by git: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, backup notes and plans. A fork clones it empty   |
+| `projects/working/`                 | Personal state, **tracked** because `projects/` is a local-only repo: `ROADMAP.md`, the `HANDOFF`/`JOURNAL` batons, plans and notes      |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate
@@ -28,7 +28,8 @@ toolbox repo. Neither is required to run the hub.
 ## The generated pages
 
 Both are single self-contained HTML files — no server, no ports. They are
-generated from *this* machine's repositories, so they are ignored by git:
+generated from *this* machine's repositories. `projects/` is a local-only repo
+(no remote), so they are tracked in its history; `agent-hub/` never sees them:
 
 - **Repos** — `projects/dist/repos.html`
 - **Heatmap** — `projects/dist/heatmap.html`

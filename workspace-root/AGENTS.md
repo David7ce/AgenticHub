@@ -32,16 +32,16 @@ in each project repo; scripts and installers live in the toolbox repo.
 4. Do not recreate `categories/` here. General docs go to the vault; project docs
    stay with the project.
 
-## `projects/working/` — personal, never published
+## `projects/working/` — personal, local only
 
 Everything that is the owner's and not the hub itself lives in
-[`projects/working/`](projects/working/), which git ignores wholesale: `ROADMAP.md`, the session
-batons (`HANDOFF.md`, `JOURNAL.md`), `lecciones.md` and `git-backup.md`. A fork
-clones it empty. Local **config** that code reads stays next to the code
-(`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `projects/local/`), also
-ignored, each with a tracked `*.example` or README to copy from. Keep anything
-personal or machine-specific in `projects/working/` or a `*.local.*` file — never in a
-tracked file.
+[`projects/working/`](projects/working/): `ROADMAP.md`, the session batons (`HANDOFF.md`,
+`JOURNAL.md`), `lecciones.md` and `git-backup.md`. It **is tracked**, on purpose: `projects/` is a
+local-only repo with no remote and never will have one, so the batons and the generated `dist/`
+pages ride in its history and nothing is published. Local **config** that code reads stays next to
+the code (`agent-hub/consent.json`, `agent-hub/acp/agents.json`, `projects/local/`); the two under
+`agent-hub/` stay ignored because that repo is public, each with a tracked `*.example` to copy from.
+Keep personal or machine-specific data out of `agent-hub/` and in `projects/working/`.
 
 Keep `projects/working/ROADMAP.md` current: add what the user mentions and you cannot do now,
 keep a blocked item with its blocker spelled out, and delete finished items instead
@@ -56,7 +56,7 @@ leaves a transcript the next harness cannot read. So the state goes in files:
   (current state, uncommitted work, exact next step) and `docs/agent/JOURNAL.md`
   (append-only, newest first). If a repo has no `AGENTS.md`, add one.
 - **This workspace's** baton is `projects/working/HANDOFF.md` and `projects/working/JOURNAL.md`: read
-  them at the start, update them before finishing. They stay out of git.
+  them at the start, update them before finishing. They are tracked in `projects/`, the local-only repo.
 
 **One writing orchestrator per working tree.** Read-only sessions may overlap. Give
 simultaneous writers separate git worktrees; hub-managed writers reject a
