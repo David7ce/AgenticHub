@@ -6,6 +6,38 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-13 — The official SDKs are not adopted (measured); one front door, `hub`
+
+Asked: would the hub be simpler or faster on the official SDKs than on its own ACP client and MCP server?
+Measured on the test fixture (`mcp/tests/fixtures/fake-acp-agent.mjs`, one full turn, Node 22, three runs each):
+
+| | Own `acp/acp-client.mjs` | `@agentclientprotocol/sdk` 2.6.0 |
+|---|---|---|
+| Import | 5 ms | 77-103 ms |
+| initialize + session/new + prompt | 50-52 ms | 116-150 ms |
+| Install | none (Node only) | 9.3 MB, plus `zod` as a peer |
+
+- **ACP SDK: no.** It would replace only the JSON-RPC framing (about 150 of the client's 484 lines). What the hub
+  adds on top stays ours either way: spawning and tree-killing the agent, the late answer kept as evidence that a
+  cancelled turn really ended (`cancelAck`), the stderr tail, the permission policy. The 2.x API is also a rewrite of
+  the 1.x one the AHP gateway pins (`^1.8.0`), so the two would not even share a copy.
+- **MCP SDK: no.** `@modelcontextprotocol/sdk` 1.32.2 brings 17 runtime dependencies (express, hono, jose, ajv...)
+  to replace about 90 lines of `mcp/core.mjs`, for a server that only lists and calls tools over stdio. Together the
+  two SDKs install 92 packages (38 MB) into a repo whose hooks, CI and MCP registration run today with no install step.
+- **Vendor SDKs (Claude Agent SDK, Codex SDK, OpenCode SDK): no.** Each is one vendor's API, so the gate, the audit
+  line and the limits would need three code paths. ACP is the agnostic layer and every agent already speaks it.
+- **Where the time goes instead:** the hub's own overhead per turn is tens of milliseconds; an agent's start-up is
+  seconds and, for Claude, 13-45K tokens. If a turn must get cheaper, keep an agent process warm and reuse its
+  session (`--resume`), do not change the transport.
+
+Revisit when ACP v2 is stable (the hub pins v1), when the hub must proxy `fs/*` or `terminal/*` for an agent, or
+when the MCP side needs more than stdio tools (resources, HTTP).
+
+What changed instead, for ease of use: `hub.mjs` is the single command (`hub ask <agent> "..."`,
+`hub fanout a,b "..."`, `hub route "..."`, `hub mcp`, `hub check`, and every `hubctl` command), installed with
+`npm link` from the root `package.json` (no dependencies). It runs the existing scripts in-process and decides
+nothing, so the long forms keep working. Left out: merging `hub-acp`, `fanout-acp` and `router` into one module.
+
 ## 2026-11-13 — The BYOK list lives in the repo
 
 The models VS Code offers under a BYOK provider are user config (`chatLanguageModels.json`), which is lost with

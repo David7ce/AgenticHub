@@ -31,6 +31,18 @@ The hub runs on **Windows**. OpenCode may run natively or in WSL; the project-le
 
 ## Use
 
+`npm link` once in this folder gives the `hub` command (no dependencies are installed);
+`node agent-hub/hub.mjs ...` is the same without it.
+
+```bash
+hub ask opencode "..."                      # one agent, through the consent gate
+hub fanout opencode,claude "..." --worktree # several, each in its own checkout
+hub route "..."                             # the router picks and fails over
+hub status | live | doctor | tasks | check  # the control room and the tests
+```
+
+The same things by their own scripts:
+
 ```bash
 # one agent, through the consent gate
 node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
