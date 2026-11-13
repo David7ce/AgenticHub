@@ -22,6 +22,13 @@ OpenCode ── MCP "agent-hub" ──> consent.json ──> runs.jsonl
    └── Claude / Codex / Go models                 └── claude · opencode · codex
 ```
 
+**Vocabulary, because four words get mixed up.** A *harness* is the program with the agent loop
+(Copilot, Claude Code, Codex, OpenCode). A *host* serves those harnesses to a client (AgentHub over
+AHP, plus VS Code's local `agentHost`s). A *bridge* only turns a harness into a model endpoint, with
+no tools and no sessions (the retired `bridge/`). A *model* is just where the tokens come from, and
+BYOK models exist only in the Copilot harness. One door per agent: Copilot on `This Computer`,
+OpenCode/Claude/Codex on `AgentHub`. Full map: [`docs/surfaces.md`](docs/surfaces.md).
+
 ## The one rule
 
 **One orchestrator per working tree.** The hub runs agents in a `--worktree`

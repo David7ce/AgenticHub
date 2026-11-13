@@ -3,6 +3,9 @@
 STATUS: active. Piloted end to end on 2026-11-11 with a headless client and accepted in VS Code's own
 Agents window the same day (6/6 of the criterion in `docs/harness.md`, run with `tools/ui-automation/`).
 
+Vocabulary first: AHP is a *host* protocol, not a harness and not a bridge. What each word means,
+which surface shows what, and which models each harness can take: [`../docs/surfaces.md`](../docs/surfaces.md).
+
 VS Code's Agents window talks the [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/)
 (AHP) to a *host*; a host talks ACP to the agents. The third-party
 [`ahp-acp-gateway`](https://github.com/formulahendry/ahp-acp-gateway) is such a host, so

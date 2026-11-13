@@ -13,6 +13,7 @@ código; si contradice `AGENTS.md`, manda `AGENTS.md`.
 | [`operations.md`](operations.md)                         | Arrancar, lanzar, hablar, observar, depurar y limpiar.                                |
 | [`decisions.md`](decisions.md)                           | Qué se decidió y qué se descartó (OpenRig, gateway de modelos, canales retirados).    |
 | [`harness.md`](harness.md)                               | Qué interfaz de chat usar para qué (Claude Code, OpenCode) y la prueba de la ventana de Agents. |
+| [`surfaces.md`](surfaces.md)                             | Entender la UI de VS Code: harness, host, bridge y modelo; qué trae cada uno y dónde se toca. |
 | [`dispatch-playbook.md`](dispatch-playbook.md)           | Delegar trabajo a otro agente o recuperar un turno atascado.                          |
 | [`../bench/WORKFLOW.md`](../bench/WORKFLOW.md)           | Recomendación medida: qué agente lanzar y con qué workflow.                           |
 | [`../bench/COLLABORATION.md`](../bench/COLLABORATION.md) | Evidencia de cooperación: fan-out, handoff, conflicto, stall.                         |

@@ -29,7 +29,7 @@ persistentes); si no, se queda en dos y no se invierte más.
 | Arranque por turno | Claude 13,7K por el bridge retirado (modo ligero) / **45K por AHP** (carga ajustes, plugins y MCP); OpenCode 13-16K; Codex 18-20K | medido |
 | Coste de un turno trivial de Claude | 0,01-0,06 USD (bridge retirado) / 0,17 USD (AHP, por el arranque) | medido |
 | Permisos por AHP | AHP no añade puerta: los tres agentes escribieron sin preguntar en su modo por defecto. El proxy aplica `writeTrees` (modo restringido fuera de ellos) | medido y corregido |
-| Claude por la ventana de Agents de VS Code (harness nativo) | Necesita Copilot con Claude o una API key; con solo suscripción no hay modelos | verificado en la documentación y en tu pantalla |
+| Claude por la ventana de Agents de VS Code (harness nativo) | Necesita Copilot con Claude o una API key; con solo suscripción no hay modelos. **Apagado el 2026-11-13** (`chat.agentHost.claudeAgent.enabled=false`): Claude entra por `AgentHub`, con consentimiento y auditoría | verificado en la documentación, en la pantalla y en `settings.json` |
 | Cómo se ve una sesión AHP dentro de VS Code | — | **sin verificar** |
 | Que el esfuerzo y los modelos salgan en los selectores nativos de la ventana de Agents | — | **sin verificar** |
 
@@ -67,11 +67,22 @@ OpenCode sin preguntar, Codex pide confirmar el comando); fuera, Claude queda en
 `read-only` y no escriben; el selector de modo cambia con la carpeta; **borrar** la sesión libera el
 adaptador (archivarla en «Done» no; cerrar la ventana solo libera el borrador). `bridge/` retirado.
 
+**Actualización (2026-11-12/13).** El criterio sigue en 6/6 y además: la sesión arranca en `build`
+(el gateway descarta `sensitiveEditLocations`, que antes tumbaba la actualización entera del modo);
+un diff de 75 de 150 líneas se ve como `+75 −75` en el chat; y el harness nativo de Claude y el de
+Codex quedan apagados para que cada agente entre por una sola puerta. Queda abierto que el primer
+arranque tras cambiar de proveedor puede fallar. Detalle en [`surfaces.md`](surfaces.md) y en
+`ahp/README.md`.
+
 ## Qué se deja de mantener
 
-- **Copilot Chat como interfaz de trabajo**: no aporta modelos con tu plan; el Custom Endpoint solo
-  sirve como chat de texto, y esa vía (el bridge) se retiró el 2026-11-11.
-- **El harness de Codex en VS Code** (desactivado): se llega a Codex por el hub o por AHP.
+- **El harness nativo de Claude y el de Codex en VS Code** (los dos desactivados desde el
+  2026-11-13 y el 2026-11-11): se llega a ambos por `AgentHub`, y así pasan por consentimiento,
+  `writeTrees` y auditoría. Una sola puerta por agente.
+- **El bridge** (retirado el 2026-11-11). Pero **Copilot Chat vuelve como superficie de modelos**:
+  con BYOK da OpenRouter (346) y OpenCode Go (30), es decir «cualquier LLM» en el chat. Sigue sin
+  dejar auditoría, así que solo para leer, preguntar y planear: lo que escribe en un repo va por
+  `AgentHub`. El mapa completo, en [`surfaces.md`](surfaces.md).
 - **Hermes como interfaz**: se llega por el hub o AHP, con su permiso desactivado y fuera de árboles
   con credenciales (su retención puede entrenar).
 
@@ -101,8 +112,9 @@ Claude Code), no en la configuración global de los agentes.
 
 ## Riesgos y revisión
 
-- El gateway de AHP es de terceros y va por la 0.2.x; está fijado a `0.2.2`. Revisar al subir de
-  versión (los nombres de modos de los agentes también cambian: ver `ahp/README.md`).
+- El gateway de AHP es de terceros y va por la 0.2.x; el launcher fija
+  `0.2.3-next.202611110657.0d297c2`. Revisar al subir de versión (los nombres de modos de los agentes
+  también cambian: ver `ahp/README.md`).
 - El harness Local de VS Code se elimina en febrero de 2027; nada de lo decidido aquí depende de él.
 - Si Anthropic cambiara el soporte de modelos no Claude en Claude Code, se reevalúa la regla 4.
 - Revisión de esta decisión: tras la prueba de la ventana de Agents, y en cualquier caso en febrero

@@ -6,6 +6,25 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-13 — One door per agent
+
+The native Claude harness in VS Code is switched off (`chat.agentHost.claudeAgent.enabled=false`);
+the Codex one already was. `This Computer` serves Copilot only, and `AgentHub` serves OpenCode,
+Claude and Codex, all three behind `consent.json`, `writeTrees` and one audit line per turn. Left
+out: the native harnesses as a fallback when the gateway is down, and any hope of a single list of
+models shared by every harness. The map and the vocabulary are in
+[`surfaces.md`](surfaces.md).
+
+## 2026-11-13 — BYOK models live only in the Copilot harness
+
+VS Code registers the BYOK providers from `chatLanguageModels.json` for the Copilot harness only:
+that is where OpenRouter (346 models) and OpenCode Go (30) appear, both in the chat panel and in the
+Agents window. Claude Code, Codex and OpenCode bring their own model lists and cannot take an
+external one. So "any LLM" is a property of the chat surface, while "any agent" is a property of
+`AgentHub`; a model running under the Copilot harness behaves differently from the same model
+running under its native agent. The group's key is a VS Code secret (`${input:chat.lm.secret.…}`),
+never a value in the JSON.
+
 ## 2026-11-10 — AgentHub stays the orchestrator and the governance layer
 
 - **OpenRig is not adopted.** It was evaluated as a replacement orchestrator and
