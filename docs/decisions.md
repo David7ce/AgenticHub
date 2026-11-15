@@ -6,6 +6,22 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Target one CLI workspace with multiple providers and subscriptions
+
+The owner's clarified goal is one terminal interface, preferably one shared agent
+harness, coordinating models, agents and subagents across providers. Support both
+API keys and eligible monthly subscription sign-ins; subscriptions must not silently
+become separately billed API usage. Centralize project context, skills, plugins,
+tools and permissions as far as integrations actually support them. Share relevant
+information efficiently rather than copying every transcript into every worker.
+
+[Target workflow](target-workflow.md) is authoritative for requirements, candidate
+evaluation and the next agent's steps. It supersedes the earlier preference for
+two mandatory chat surfaces in [Chat surfaces](harness.md). OpenCode is the first
+candidate to validate, not an irrevocable platform choice. T3 Code, Pi and the
+existing hub are alternatives or gap-fillers. No runtime migration, credential
+change, grant expansion or deletion is part of this documentation decision.
+
 ## 2026-11-15 — Verify a clean installation separately from unit tests
 
 `npm run smoke` snapshots tracked working-tree files, makes a real local clone

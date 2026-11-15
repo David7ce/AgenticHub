@@ -2,6 +2,9 @@
 
 Read the [operating contract](docs/reference/agent-contract.md) before making
 changes. It contains the full consent, audit, cancellation and verification rules.
+Before changing architecture, providers, orchestration or chat surfaces, read the
+[target workflow and next-agent plan](docs/target-workflow.md). It records the
+owner's current goal and supersedes older interface preferences.
 
 - One writing orchestrator per working tree; isolate simultaneous writers in worktrees.
 - Never widen or bypass a consent grant. Never print credentials or `.env*` values.

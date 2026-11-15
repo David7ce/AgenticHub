@@ -5,6 +5,7 @@ Start with setup, then use the reference for the component you are changing.
 
 | Page | Purpose |
 |---|---|
+| [Target workflow and next-agent plan](target-workflow.md) | Current owner requirements, candidate validation and next steps |
 | [Getting started](getting-started.md) | Requirements, first call and chat-client registration |
 | [Architecture](architecture.md) | Execution flow, component boundaries and runtime state |
 | [Operations](operations.md) | Monitoring, troubleshooting, cancellation and cleanup |

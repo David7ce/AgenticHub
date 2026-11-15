@@ -1,6 +1,10 @@
 # Qué interfaz de chat usar (decisión 2026-11-11, revisada 2026-11-15)
 
-STATUS: decidido. Dos interfaces; la ventana de Agents de VS Code se retiró el 2026-11-15.
+STATUS: implementación actual y evidencia histórica; la preferencia de dos interfaces
+queda sustituida por [Target workflow](target-workflow.md), actualizado el 2026-11-15.
+El objetivo ahora es una CLI centralizada y, cuando sea viable, un arnés compartido.
+No se ha aprobado ni ejecutado una migración. Las mediciones siguientes no prueban
+el comportamiento de las versiones actuales de otras herramientas.
 
 ## Decisión
 
@@ -78,3 +82,4 @@ los agentes.
   agente con permiso de escritura corre con tus derechos.
 - Si Anthropic cambiara el soporte de modelos no Claude en Claude Code, se reevalúa la regla 4.
 - Revisión de esta decisión: febrero de 2027.
+
