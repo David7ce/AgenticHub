@@ -21,6 +21,10 @@ current: [`docs/README.md`](docs/README.md).
 `node agent-hub/hub.mjs init` does steps 1 and 2 (it never overwrites and never grants: every
 example grant is disabled) and turns the pre-commit hook on. By hand:
 
+`node agent-hub/hub.mjs init --workspace` also puts the files the chat clients read (`.mcp.json` for Claude
+Code, `opencode.json` for OpenCode, `AGENTS.md`, `.claude/`, `.vscode/`) in the folder that holds this clone,
+with this clone's real path in them.
+
 1. `consent.example.json` → `consent.json`, then edit (local, git-ignored).
 2. `acp/agents.example.json` → `acp/agents.json`, then set your agent paths (local, git-ignored).
 3. `node agent-hub/hubctl/hubctl.mjs doctor` — it says what does not add up.
