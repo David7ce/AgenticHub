@@ -6,6 +6,18 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — The tree lock and the daily cap no longer depend on spelling or on the log's size
+
+Two more found by reading the gate's helpers, each confirmed with a test that fails on the old code:
+
+- **One tree, two locks.** `acp/tree-lock.mjs` keyed the lock file on the cwd as typed. The same tree reached through
+  a symlink or junction, or as `D:\Repo` and `d:\repo`, got a second lock, so two `allow-all` runs could write to it
+  together. The key is now the real path in the form the consent gate already compares `writeTrees` in
+  (`normalizeTree`). Still two keys: the Windows and WSL spellings of one tree, which neither side can resolve.
+- **The daily cap forgot the day when the log rotated.** `spentToday` read only the live `runs.jsonl`. Past 10 MB the
+  log is renamed, and what had been spent that day went with it, so `maxDailyUsd` started again from zero. Archives
+  last written today are now read too.
+
 ## 2026-11-15 — Two ways around a grant are closed; setup is one command
 
 Found by reading `acp/consent.mjs` and confirmed by running it, then fixed to fail closed:

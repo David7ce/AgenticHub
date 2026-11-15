@@ -23,9 +23,9 @@
 // fanout live in <repo>/.git/agent-worktrees/, i.e. inside the tree they came
 // from, so they pass the same check.
 
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -141,18 +141,36 @@ export function checkLimits(limits, request = {}, { scratch = tmpdir(), platform
 
 // Reported cost of this agent's runs on the local calendar day of `now`.
 // Reads the audit log; a missing or unreadable log counts as nothing spent.
+//
+// The log rotates at 10 MB (log-rotation.mjs) to `<base>-<timestamp>.jsonl`. An
+// archive last written today still holds part of today's spend, so it is read
+// too: otherwise the day the log rotates is a day the cap starts again at zero.
 export function spentToday(agentName, logPath, now = new Date()) {
-  let text;
-  try { text = readFileSync(logPath, 'utf8'); } catch { return 0; }
   const day = now.toDateString();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const files = [logPath];
+  try {
+    const ext = extname(logPath);
+    const prefix = `${basename(logPath, ext)}-`;
+    for (const name of readdirSync(dirname(logPath))) {
+      if (!name.startsWith(prefix) || !name.endsWith(ext)) continue;
+      const file = join(dirname(logPath), name);
+      if (statSync(file).mtimeMs >= dayStart) files.push(file);
+    }
+  } catch { /* no directory, or an archive vanished: the live log is still counted */ }
+
   let total = 0;
-  for (const line of text.split('\n')) {
-    if (!line.includes(`"agent":"${agentName}"`)) continue;
-    let rec;
-    try { rec = JSON.parse(line); } catch { continue; }
-    if (rec.agent !== agentName || !rec.time || new Date(rec.time).toDateString() !== day) continue;
-    const amount = typeof rec.cost === 'number' ? rec.cost : rec.cost?.amount;
-    if (typeof amount === 'number' && Number.isFinite(amount)) total += amount;
+  for (const file of files) {
+    let text;
+    try { text = readFileSync(file, 'utf8'); } catch { continue; }
+    for (const line of text.split('\n')) {
+      if (!line.includes(`"agent":"${agentName}"`)) continue;
+      let rec;
+      try { rec = JSON.parse(line); } catch { continue; }
+      if (rec.agent !== agentName || !rec.time || new Date(rec.time).toDateString() !== day) continue;
+      const amount = typeof rec.cost === 'number' ? rec.cost : rec.cost?.amount;
+      if (typeof amount === 'number' && Number.isFinite(amount)) total += amount;
+    }
   }
   return total;
 }
