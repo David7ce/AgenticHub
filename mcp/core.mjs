@@ -48,6 +48,7 @@ export async function callTool(name, args, handlers) {
         timeoutMs: optionalPositiveInt(args, 'timeoutMs'),
         budgetUsd: optionalPositiveNumber(args, 'budgetUsd'),
         effort: optionalEffort(args),
+        sessionId: optionalString(args, 'sessionId'),
       };
       if (args.background === true) {
         const job = await handlers.startJob(request);

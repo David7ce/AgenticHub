@@ -68,6 +68,7 @@ Options that matter:
 | `--cwd DIR` | session working directory; translated to a WSL path when the agent runs there |
 | `--load SESSION_ID` | resume via `session/load` — replays history first; requires `loadSession` |
 | `--resume SESSION_ID` | resume via `session/resume` — no replay; requires the `resume` capability |
+| `--continue SESSION_ID` | whichever of the two the agent advertises (resume preferred); what a follow-up should use |
 | `--mcp FILE` | MCP servers to pass at `session/new` (see below) |
 | `--permission` | `deny` (default), `allow-reads`, `allow-all` |
 | `--budget USD` | cancel when the reported cost crosses this (default 0.50, `0` disables) |

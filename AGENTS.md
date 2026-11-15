@@ -65,6 +65,9 @@ hub status | live | doctor | tasks | handoff | verify | check
 # One agent, through the consent gate (writes one line to projects/logs/runs.jsonl)
 node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --json
 
+# A follow-up: continue the session a previous answer reported (resume or load, whichever the agent has)
+node agent-hub/acp/hub-acp.mjs --agent opencode --continue <sessionId> --prompt "..." --json
+
 # Let the router pick (same prompt rules and health overlay as router.mjs)
 node agent-hub/acp/hub-acp.mjs --agent auto --prompt "..." --json
 

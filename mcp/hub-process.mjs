@@ -134,7 +134,7 @@ export function resolveCwd(requested) {
 
 // ── handlers ────────────────────────────────────────────────────────────────
 
-export function hubArgsFor({ agent, cwd, permission, timeoutMs, model, budgetUsd, effort, save = false }) {
+export function hubArgsFor({ agent, cwd, permission, timeoutMs, model, budgetUsd, effort, sessionId, save = false }) {
   const resolvedCwd = cwd ? resolveCwd(cwd) : process.cwd();
   const args = [
     '--agent',
@@ -159,6 +159,7 @@ export function hubArgsFor({ agent, cwd, permission, timeoutMs, model, budgetUsd
   ];
   if (model) args.push('--model', model);
   if (effort) args.push('--effort', effort);
+  if (sessionId) args.push('--continue', sessionId);
   if (cwd) args.push('--cwd', resolvedCwd);
   return { args, cwd: resolvedCwd };
 }

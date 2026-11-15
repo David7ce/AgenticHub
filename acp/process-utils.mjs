@@ -5,6 +5,7 @@
 // here so a fix lands once.
 
 import { spawn, spawnSync } from 'node:child_process';
+import { directCommand } from './npx-direct.mjs';
 
 // child.kill() signals one PID. On Windows the child is usually a wrapper --
 // cmd.exe for an npx shim, wsl.exe for OpenCode -- whose own children survive
@@ -36,6 +37,10 @@ export function killTree(child) {
 // and trusted; refuse anything that would need cmd quoting rather than
 // hand-rolling it.
 export function spawnAgentProcess({ command, args = [], cwd, env }) {
+  // A pinned adapter that npx has already cached starts ~0.7 s sooner without
+  // npx, and with no cmd.exe wrapper in front of it (see npx-direct.mjs).
+  const direct = directCommand(command, args, { env: env ?? process.env });
+  if (direct) ({ command, args } = direct);
   if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(command)) {
     const line = [command, ...args];
     if (line.some((part) => /[\s"&|<>^%]/.test(part))) {

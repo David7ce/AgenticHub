@@ -57,8 +57,8 @@ async function main() {
   for (const change of opts.configs) {
     if (change.indexOf('=') < 1) fail(`--config expects ID=VALUE, got "${change}"`);
   }
-  if (opts.loadSession && opts.resumeSession) {
-    fail('--load and --resume are mutually exclusive');
+  if ([opts.loadSession, opts.resumeSession, opts.continueSession].filter(Boolean).length > 1) {
+    fail('--load, --resume and --continue are mutually exclusive');
   }
 
   const registry = loadRegistry(opts.registry ?? DEFAULT_REGISTRY);
@@ -268,7 +268,7 @@ async function main() {
   let lastInflightAt = 0;
   let appliedModel = null;
   let salvage = null;
-  const sessionMode = opts.loadSession ? 'load' : opts.resumeSession ? 'resume' : 'new';
+  let sessionMode = opts.loadSession ? 'load' : opts.resumeSession ? 'resume' : opts.continueSession ? 'continue' : 'new';
 
   try {
     client.start();
@@ -289,6 +289,16 @@ async function main() {
     }
 
     checkMcpCapabilities(mcpServers, client.agentCapabilities);
+
+    // --continue: the caller wants the conversation back and should not need to
+    // know which of the two ACP ways this agent offers. Resume is preferred: it
+    // does not replay the history.
+    if (opts.continueSession) {
+      if (client.agentCapabilities.sessionCapabilities?.resume) opts.resumeSession = opts.continueSession;
+      else if (client.agentCapabilities.loadSession === true) opts.loadSession = opts.continueSession;
+      else throw new Error(`${agent.name} cannot continue a session: it advertises neither resume nor load`);
+      sessionMode = opts.resumeSession ? 'resume' : 'load';
+    }
 
     state.replaying = Boolean(opts.loadSession);
     const session = opts.loadSession

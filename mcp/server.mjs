@@ -40,7 +40,7 @@ import {
 import { killTree } from '../acp/process-utils.mjs';
 
 
-async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd, effort }) {
+async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd, effort, sessionId }) {
 
   // Free models run out mid-day and say so in an ordinary error. That is a
   // price step, not a failed task: walk the registry's fallbacks (Go models,
@@ -62,6 +62,7 @@ async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd
       model: candidate,
       budgetUsd,
       effort,
+      sessionId,
     });
 
     result = await runHubScript(HUB_ACP, args, {
@@ -234,7 +235,7 @@ const unmarkTree = (key) => {
 const treeBusy = (key) => activeTrees.has(key);
 
 async function startJob(request) {
-  const { agent, prompt, cwd, permission, timeoutMs, model, budgetUsd, effort } = request;
+  const { agent, prompt, cwd, permission, timeoutMs, model, budgetUsd, effort, sessionId } = request;
   // model is left out here on purpose: spawnJob's own retry loop is the only
   // place that appends --model, once per attempt. Baking it in here too (as
   // this used to) meant a pinned model on a background job shipped --model
@@ -248,6 +249,7 @@ async function startJob(request) {
     model: null,
     budgetUsd,
     effort,
+    sessionId,
     save: true,
   });
   const chain = modelChain(readAgentEntry(REGISTRY, agent), { requested: model });
