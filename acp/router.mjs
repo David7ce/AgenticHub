@@ -20,7 +20,7 @@
 // Why a rule list and not a model call to classify the task: a classifier
 // call would add cost and latency to every single routed prompt, including
 // the cheap ones -- the opposite of what routing is for here. Verified
-// cost/speed this fleet actually produced (acp/README.md "Verified" table,
+// cost/speed this fleet actually produced (docs/reference/acp.md "Verified" table,
 // 2026-10-26/27): opencode ~$0.0006-0.0008 and ~5s; claude ~$0.23 and
 // ~12-13s -- roughly 300-400x the cost for a model call that's slower too.
 // Default cheap, escalate on explicit signal, never guess with another
@@ -251,3 +251,4 @@ function main() {
 
 // Importable for tests without executing the CLI.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+

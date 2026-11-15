@@ -11,7 +11,8 @@
   "scripts": {
     "check": "node tools/check.mjs",
     "test": "node tools/check.mjs --no-bench",
-    "doctor": "node hub.mjs doctor"
+    "doctor": "node hub.mjs doctor",
+    "docs:check": "node tools/docs-check.mjs"
   },
   "engines": {
     "node": ">=22"

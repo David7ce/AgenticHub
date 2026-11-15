@@ -61,6 +61,7 @@ function run(label, args, cwd = HUB) {
 }
 
 const results = [];
+results.push(['docs', run('documentation links', [join(HUB, 'tools', 'docs-check.mjs')])]);
 results.push(['tests', run('tests', ['--test', ...TEST_FILES])]);
 
 if (!noBench) {
@@ -73,3 +74,4 @@ if (failed.length) {
   process.exit(1);
 }
 process.stdout.write(`\nall ${results.length} step(s) passed\n`);
+

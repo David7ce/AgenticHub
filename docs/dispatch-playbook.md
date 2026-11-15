@@ -67,7 +67,7 @@ That line is the answer to "what is happening right now".
    ```
    The same thing from a terminal, without MCP:
    ```bash
-   node agent-hub/acp/hub-acp.mjs --agent opencode --prompt "..." --timeout 2400000 --json
+   node acp/hub-acp.mjs --agent opencode --prompt "..." --timeout 2400000 --json
    # then, from the Windows side where loopback works:
    hubctl status
    ```
@@ -166,3 +166,4 @@ The async job API landed on 2026-11-04 (`ask_agent({background:true})` plus the
 three `job_*` tools), which is what makes rule 3 practical rather than
 aspirational. Jobs live in the MCP server process on purpose: its death ends
 them, while `hubctl status` keeps showing the run through the inflight file.
+

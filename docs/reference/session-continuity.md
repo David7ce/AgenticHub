@@ -23,3 +23,4 @@ the last one stopped.
 Each project repo keeps its own baton in *its* `docs/agent/` (`HANDOFF.md`,
 `JOURNAL.md`), tracked in that repo. AgentHub is the exception: its batons are
 personal, so they sit in `projects/working/` instead of here.
+

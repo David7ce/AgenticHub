@@ -271,12 +271,12 @@ export function checkOpencodeMcp(output, expected = ['agent-hub', 'playwright'])
 function listCurrentDocs(root) {
   // The owner's batons (ROADMAP, HANDOFF, JOURNAL) live in working/ and are not
   // checked here: they are personal and git-ignored, not part of the public tree.
-  const docs = ['AGENTS.md', 'README.md', 'docs/reference/agent/README.md'];
+  const docs = ['AGENTS.md', 'README.md', 'docs/reference/session-continuity.md'];
   const walk = (dir) => {
     if (!existsSync(dir)) return;
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
-      if (name === 'history' || name === 'node_modules' || name === 'results' || name === 'workspace-root' || name.startsWith('.')) continue;
+      if (name === 'history' || name === 'node_modules' || name === 'results' || name === 'templates' || name.startsWith('.')) continue;
       if (statSync(full).isDirectory()) walk(full);
       else if (name.endsWith('.md')) docs.push(relative(root, full));
     }
@@ -401,3 +401,4 @@ export function renderDoctor(report, { paint = (_, text) => text } = {}) {
   lines.push('', `${report.counts.ok} ok · ${report.counts.warn} warn · ${report.counts.fail} fail`);
   return lines.join('\n');
 }
+

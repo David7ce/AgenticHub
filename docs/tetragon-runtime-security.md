@@ -125,6 +125,7 @@ Ranked by value for this workstation, not by how closely it resembles the demo:
   README, architecture, safety and honesty notes.
 - [`lizrice/tetragon-ci`](https://github.com/lizrice/tetragon-ci) — the
   upstream idea for a Tetragon runtime check in GitHub Actions.
-- [`../acp/README.md`](../acp/README.md) — the hub's permission, consent,
+- [`../docs/reference/acp.md`](reference/acp.md) — the hub's permission, consent,
   audit and "not a sandbox" sections.
 - [`../README.md`](../README.md) — the fan-out shared-working-tree gotcha.
+

@@ -1,36 +1,33 @@
-# Documentación del hub — qué leer
+# Documentation
 
-Este índice separa lo que describe el hub **hoy** de lo que solo conserva el
-razonamiento que llevó hasta aquí. Si algo contradice el código, manda el
-código; si contradice `AGENTS.md`, manda `AGENTS.md`.
+All commands in these pages run from the repository root unless stated otherwise.
+Start with setup, then use the reference for the component you are changing.
 
-## Actual
+| Page | Purpose |
+|---|---|
+| [Getting started](getting-started.md) | Requirements, first call and chat-client registration |
+| [Architecture](architecture.md) | Execution flow, component boundaries and runtime state |
+| [Operations](operations.md) | Monitoring, troubleshooting, cancellation and cleanup |
+| [Routing](routing.md) | Agent/model selection and quota failover |
+| [Chat surfaces](harness.md) | OpenCode and Claude Code integration choices |
+| [Dispatch playbook](dispatch-playbook.md) | Delegate or recover a stalled turn |
+| [Reference index](reference/README.md) | ACP, MCP, CLI, configuration and agent integration |
+| [Benchmarks](benchmarks/README.md) | Offline checks, measured workflow and collaboration reports |
+| [Decisions](decisions.md) | Architectural choices and reasons |
+| [Runtime audit requirements](tetragon-runtime-security.md) | Constraints on audit changes |
 
-| Documento                                                | Cuándo leerlo                                                                         |
-|----------------------------------------------------------|---------------------------------------------------------------------------------------|
-| [`architecture.md`](architecture.md)                     | Entender el hub: hosts, MCP, ACP, consentimiento, auditoría, locks y estado en vuelo. |
-| [`routing.md`](routing.md)                               | Elegir agente/modelo/topología y conocer el catálogo y sus límites.                   |
-| [`operations.md`](operations.md)                         | Arrancar, lanzar, hablar, observar, depurar y limpiar.                                |
-| [`decisions.md`](decisions.md)                           | Qué se decidió y qué se descartó (OpenRig, gateway de modelos, canales retirados).    |
-| [`harness.md`](harness.md)                               | Qué interfaz de chat usar para qué (OpenCode, Claude Code) y por qué se retiró la de VS Code.   |
-| [`dispatch-playbook.md`](dispatch-playbook.md)           | Delegar trabajo a otro agente o recuperar un turno atascado.                          |
-| [`../bench/WORKFLOW.md`](../bench/WORKFLOW.md)           | Recomendación medida: qué agente lanzar y con qué workflow.                           |
-| [`../bench/COLLABORATION.md`](../bench/COLLABORATION.md) | Evidencia de cooperación: fan-out, handoff, conflicto, stall.                         |
+## Maintenance
 
-## Restricciones que siguen vigentes
+Each subject has one authoritative page. Setup belongs in Getting started;
+command and tool details belong in the references; operations explains how to
+use them together. The root README and AGENTS.md are short entry points.
 
-| Documento                                                          | Cuándo leerlo                                     |
-|--------------------------------------------------------------------|---------------------------------------------------|
-| [`tetragon-runtime-security.md`](tetragon-runtime-security.md)     | Cambiar lo que registra la auditoría.             |
+Put benchmark scripts, fixtures and JSON data in `bench/`; put written reports in
+`docs/benchmarks/`. Keep runtime output and personal notes outside tracked docs.
+Older versions remain in Git history. Date measured results and distinguish them
+from current behavior. Prefer upstream documentation for third-party CLI manuals.
 
-## Histórico
-
-Las decisiones antiguas (alternativas evaluadas, comparativas, el centro de
-control original) se borraron del árbol; siguen en el historial de git.
-
-## Regla de mantenimiento
-
-- Un documento actual no repite el contenido de otro: enlaza.
-- Lo histórico no se guarda en el árbol: vive en el historial de git.
-- Los resultados de bench viven en `bench/`; los `results/` crudos no son
-  documentación.
+`npm run docs:check` validates relative file links in README.md, AGENTS.md and
+`docs/` without requiring a configured agent. Templates are checked after they
+are rendered by the workspace setup tests. External sites and heading anchors
+are not checked. Update links in the same change that moves a document.

@@ -75,20 +75,20 @@ L3  OpenCode + Hermes (text)          independent ideas/summaries, Claude synth
 ## Reproduce
 
 ```powershell
-node agent-hub/bench/run.mjs --agent opencode --model opencode-go/deepseek-v4.1-flash --tasks paths-to-wsl,router-decide --reps 1 --keep
-node agent-hub/bench/run.mjs --agent claude --model sonnet --tasks paths-to-wsl,router-decide --reps 1 --keep
-node agent-hub/bench/run.mjs --agent hermes --model nous:stepfun/step-3.7-flash:free --tasks paths-to-wsl,router-decide --reps 1 --keep
-node agent-hub/bench/collab.mjs --real --write
+node bench/run.mjs --agent opencode --model opencode-go/deepseek-v4.1-flash --tasks paths-to-wsl,router-decide --reps 1 --keep
+node bench/run.mjs --agent claude --model sonnet --tasks paths-to-wsl,router-decide --reps 1 --keep
+node bench/run.mjs --agent hermes --model nous:stepfun/step-3.7-flash:free --tasks paths-to-wsl,router-decide --reps 1 --keep
+node bench/collab.mjs --real --write
 ```
 
-Raw per-attempt JSONL stays in `agent-hub/results/bench/` (gitignored); this
+Raw per-attempt JSONL stays in `results/bench/` (gitignored); this
 report is the durable result.
 
 ## Full suite, 2026-11-10
 
-`node agent-hub/bench/run.mjs --agent claude --model sonnet` — **14/14 in 602.7 s,
+`node bench/run.mjs --agent claude --model sonnet` — **14/14 in 602.7 s,
 $2.38** (one attempt per task; raw rows in
-`agent-hub/results/bench/2026-11-10T20-22-38-651-claude.jsonl`). Same pass count as
+`results/bench/2026-11-10T20-22-38-651-claude.jsonl`). Same pass count as
 the OpenCode baseline and the repeated Codex/OpenCode runs. Claude is slower and
 paid, which is the routing rule working as intended: escalate on scope or
 consequence, not by default.
@@ -106,3 +106,4 @@ gpt-6-luna, gpt-6-astra; options `reasoning_effort` (low..ultra) and `fast-mode`
 | gpt-6-luna | FAIL | FAIL | 20.4 s |
 
 One repetition each. Conclusion: Sol for code (2/2), Terra for review/text, Luna not for code.
+

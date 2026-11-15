@@ -40,7 +40,6 @@ other major version instead of silently drifting.
       consent.mjs        grant, limits and today's spend
       spend-estimate.mjs Codex cost estimate counted against its daily cap
       agents.json        registry: launch command per agent, per platform
-      README.md
 
 Zero dependencies — Node's own `child_process`, `readline`, and `fs` are
 the whole transport. No SDK, nothing to install.
@@ -49,16 +48,16 @@ the whole transport. No SDK, nothing to install.
 
 From Windows, where all three agents run natively:
 
-    node agent-hub/acp/hub-acp.mjs --list
+    node acp/hub-acp.mjs --list
 
-    node agent-hub/acp/hub-acp.mjs --agent opencode \
+    node acp/hub-acp.mjs --agent opencode \
       --model opencode-go/deepseek-v4.1-flash \
       --prompt "Reply with exactly: ACP_OK"
 
-    node agent-hub/acp/hub-acp.mjs --agent claude --prompt -
+    node acp/hub-acp.mjs --agent claude --prompt -
       # reads the prompt from stdin when - is given or stdin is piped
 
-    node agent-hub/acp/hub-acp.mjs --agent claude --probe --verbose
+    node acp/hub-acp.mjs --agent claude --probe --verbose
 
 Options that matter:
 
@@ -82,8 +81,8 @@ Exit codes: `0` answered, `1` denied/rejected/failed,
 
 ### Session resume
 
-    node agent-hub/acp/hub-acp.mjs --agent opencode --resume ses_... --prompt "..."
-    node agent-hub/acp/hub-acp.mjs --agent opencode --load   ses_... --prompt "..."
+    node acp/hub-acp.mjs --agent opencode --resume ses_... --prompt "..."
+    node acp/hub-acp.mjs --agent opencode --load   ses_... --prompt "..."
 
 `--resume` reconnects without replaying the conversation; `--load` replays
 it first (those replay updates are counted and suppressed, so the answer
@@ -95,7 +94,7 @@ header and in `projects/logs/runs.jsonl`.
 
 ## Registry
 
-[`agents.json`](agents.json) maps a worker name to an ACP launch command.
+`acp/agents.json` (see [setup](../getting-started.md)) maps a worker name to an ACP launch command.
 Entries can override `command`/`args` per platform, because the agents do
 not all live in the same environment:
 
@@ -117,7 +116,7 @@ is cached yet.
 
 ## Fan-out
 
-    node agent-hub/acp/fanout-acp.mjs --agents opencode,claude \
+    node acp/fanout-acp.mjs --agents opencode,claude \
       --config opencode:model=opencode-go/deepseek-v4.1-flash \
       --prompt "..."
 
@@ -158,9 +157,9 @@ remain.
 
 ## Routing
 
-    node agent-hub/acp/router.mjs --prompt "..."                # decide + run
-    node agent-hub/acp/router.mjs --prompt "..." --explain       # decide only, no call, no cost
-    node agent-hub/acp/router.mjs --prompt "..." --force claude  # skip the heuristic
+    node acp/router.mjs --prompt "..."                # decide + run
+    node acp/router.mjs --prompt "..." --explain       # decide only, no call, no cost
+    node acp/router.mjs --prompt "..." --force claude  # skip the heuristic
 
 Two workers are routing targets: `opencode` (cheap, fast) and `claude`
 (expensive, strongest reasoning). Hermes is registered but disabled and never
@@ -282,7 +281,7 @@ the tool's `HUB_MCP_OK`.
   duration, cost when reported, permission decisions, and a truncated
   prompt/output. `projects/logs/*.jsonl` and `results/` are gitignored.
 - **Results.** Non-empty answers are saved to
-  [`../results/`](../results/) as `<stamp>-<agent>-acp.md`, with the
+  `results/` as `<stamp>-<agent>-acp.md`, with the
   session id and stop reason in the header. `--no-save` skips this.
 - **Budget.** `usage_update.cost` is cumulative per turn; when it crosses
   `--budget`, the hub sends `session/cancel`. Agents that don't report
@@ -363,3 +362,4 @@ fan-out Markdown + synthesis-prompt rendering, and the worktree lifecycle
 - **Claude credentials.** This WSL environment has none; run the hub on
   Windows for the `claude` entry (as verified), or authenticate a WSL
   Claude install. Hermes has the same environment constraint.
+

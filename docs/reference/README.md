@@ -1,20 +1,17 @@
-# docs
+# Reference
 
-Reference material that is not tied to one category or one task.
-
-| File | What it is |
+| Page | Purpose |
 |---|---|
-| [`agent-guide.md`](agent-guide.md) | **Start here.** Which agent for what, the three habits that prevent damage, how to hand work over. |
-| [`AI-Agent-Basics.md`](AI-Agent-Basics.md) | The six building blocks every AI coding agent is made of (context, memory, MCP, skills, plugins, harness) and the best tool for each. |
-| [`claude-code-reference.md`](claude-code-reference.md) | Working reference for the Claude Code CLI: install, subcommands, flags, slash commands, permissions, settings, memory, MCP, plugins. |
-| [`codex-reference.md`](codex-reference.md) | Working reference for the Codex CLI: run modes, sandbox and approvals, `config.toml`, sessions, the Windows sandbox gotcha. |
-| [`opencode-reference.md`](opencode-reference.md) | Working reference for OpenCode: `run` flags, models, MCP, sessions, WSL notes, the conversation manager. |
-| [`workspace-configuration.md`](workspace-configuration.md) | Roots, environment variables and prerequisites. |
-| [`agent/README.md`](agent/README.md) | The session-baton convention (the batons themselves are personal and git-ignored). |
+| [ACP](acp.md) | Agent transport, grants, execution, routing and fan-out |
+| [MCP](mcp.md) | Tool catalogue, registration, jobs and cancellation |
+| [CLI](cli.md) | Control-room commands and their arguments |
+| [Workspace configuration](workspace-configuration.md) | Local paths and environment overrides |
+| [Operating contract](agent-contract.md) | Rules for agents working on the hub |
+| [Working with agents](agent-guide.md) | Human guide to delegation and verification |
+| [Session continuity](session-continuity.md) | Local handoff and journal conventions |
+| [Agent basics](agent-basics.md) | Context, memory, MCP, skills, plugins and harnesses |
+| [Claude Code integration](claude-code-reference.md) | Hub-specific notes and upstream documentation |
+| [Codex integration](codex-reference.md) | Hub-specific notes and upstream documentation |
+| [OpenCode integration](opencode-reference.md) | Hub-specific notes and upstream documentation |
 
-Hub-specific docs (routing, consent, ACP, MCP server) live under
-[`docs/`](../README.md), which also says which of
-those documents is current.
-
-The rules for *using* this workspace — where a task goes, when to stop and ask —
-are in [`AGENTS.md`](../../AGENTS.md).
+Return to the [documentation index](../README.md).

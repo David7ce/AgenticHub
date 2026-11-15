@@ -8,12 +8,12 @@
  *
  * `--workspace` also puts the launcher files the chat clients read (`.mcp.json`
  * for Claude Code, `opencode.json` for OpenCode, `AGENTS.md`, `.claude/`,
- * `.vscode/`) in the folder that holds this clone, from `workspace-root/`. The
+ * `.vscode/`) in the folder that holds this clone, from `templates/workspace/`. The
  * same rule: a file that exists is left alone. `opencode.json` is written with
  * this clone's real path, not the one the template was authored on.
  */
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { HUB } from "../common.mjs";
 
@@ -67,15 +67,20 @@ export function claudeMcpConfig(hub) {
 
 /** The launcher files for the folder that holds this clone: [{ step, action, detail, from, to, content? }] */
 export function planWorkspace(hub = HUB, { exists = existsSync, platform = process.platform } = {}) {
-  const source = join(hub, "workspace-root");
+  const source = join(hub, "templates", "workspace");
   const workspace = resolve(hub, "..");
-  if (!exists(source)) return [{ step: "workspace", action: "leave", detail: "workspace-root/ is missing" }];
+  if (!exists(source)) return [{ step: "workspace", action: "leave", detail: "templates/workspace/ is missing" }];
   return filesUnder(source).map((from) => {
     const name = relative(source, from);
     const to = join(workspace, name);
     if (exists(to)) return { step: name, action: "keep", detail: "already there, not touched" };
     // The two files that name this clone are written for where it really is.
     const generated = name === "opencode.json" ? opencodeConfig(hub, platform) : name === ".mcp.json" ? claudeMcpConfig(hub) : null;
+    if (name.endsWith(".md")) {
+      const cloneName = relative(workspace, hub).replace(/\\/g, "/");
+      const content = readFileSync(from, "utf8").replaceAll("__HUB_DIR__", cloneName);
+      return { step: name, action: "create", detail: `written for ${hub}`, to, content };
+    }
     return generated
       ? { step: name, action: "create", detail: `written for ${hub}`, to, content: `${JSON.stringify(generated, null, 2)}\n` }
       : { step: name, action: "create", detail: `copied to ${workspace}`, from, to };
@@ -112,3 +117,4 @@ export function runInit(argv, { hub = HUB, out = process.stdout } = {}) {
     ].join("\n"),
   );
 }
+
