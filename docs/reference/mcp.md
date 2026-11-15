@@ -33,7 +33,7 @@ other MCP clients can register the same stdio server.
 |---|---|---|
 | `ask_agent` | One registered agent (`claude`, `opencode`, `codex`) answers a prompt. Optional `model`, `cwd`, `permission`, `timeoutMs`, `budgetUsd` (default 3; cancels the turn past it), and `background: true` returns a job id instead of waiting. | yes |
 | `job_status` | State, elapsed, model, cwd and last tool of a background delegation. | no |
-| `job_result` | The answer of a background delegation, rendered as `ask_agent` would have returned it. A job also saves it under `results/` (a foreground ask does not), so the answer survives a chat that closes before it finishes. | no |
+| `job_result` | The answer of a background delegation, rendered as `ask_agent` would have returned it. A job also saves it under `results/` (a foreground ask does not), so an answer that was already written survives the chat closing. A job still running when the chat closes is cancelled, not left to finish (see Cancellation and connection shutdown). | no |
 | `job_cancel` | Stop a background delegation. Waits (bounded) for the process to exit and says whether it did — an unacknowledged cancel means the tree may still be changing. | no |
 | `fanout` | Same prompt to 2+ agents in parallel, with optional `synthesize` and per-agent `worktree`. | yes, per agent |
 | `route` | Which agent should take this prompt (cost/health aware, reads the audit log). `run: true` also executes it; `run` + `background` executes it as a job. | only with `run` |

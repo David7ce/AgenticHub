@@ -91,7 +91,9 @@ export const TOOLS = [
           description:
             'Return a job id immediately instead of waiting for the answer. Use it for any ' +
             'turn longer than a couple of minutes: poll `job_status`, collect with ' +
-            '`job_result`. The job keeps running if this chat turns off.',
+            '`job_result`. The job belongs to this chat session: closing the chat cancels it ' +
+            '(the agent is told to stop and the run is audited as cancelled), so keep the ' +
+            'session open until `job_result` has the answer.',
         },
       },
       required: ['agent', 'prompt'],
