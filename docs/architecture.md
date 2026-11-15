@@ -13,7 +13,7 @@ línea de auditoría por cada intento.
 Windows
   OpenCode Desktop/Web? ─┐
   Claude Code ───────────┤
-  VS Code/Copilot ───────┤        ┌───────────────┐   (Agents window: ahp/, aparte)
+  VS Code/Copilot ───────┤        ┌───────────────┐
                          ├──────▶ │  hub-mcp      │  stdio JSON-RPC
   PowerShell / hubctl ───┘        │  (server.mjs) │
                                   └──────┬────────┘
@@ -48,7 +48,6 @@ negocia v1. No hay shim propio.
 |---|---|
 | `mcp/server.mjs` | Servidor MCP (stdio). Expone `ask_agent`, `fanout`, `route`, `agents`, `status`, jobs. |
 | `acp/hub-acp.mjs` | Cliente ACP: consentimiento, spawn, sesión, prompt, cancelación, presupuesto, auditoría. |
-| `ahp/gateway-run.mjs` | Arranca el gateway AHP (host de la ventana de Agents de VS Code) con dos parches propios; cada agente pasa por `ahp/consent-proxy.mjs` (consentimiento, auditoría, topes y modo restringido). |
 | `acp/fanout-acp.mjs` | Varios agentes en paralelo, resultado fusionado y síntesis opcional. |
 | `acp/router.mjs` | Elige agente/modelo/topología. Hoy es advisory; no lanza por su cuenta. |
 | `acp/consent.mjs` + `consent.json` | Puerta: `enabled`, `overseerAck`, expiración. |

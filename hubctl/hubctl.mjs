@@ -92,7 +92,7 @@ async function main() {
         "  path <path> [--json]             both spellings of one path (Windows/WSL)",
         "  bench [args...]                  run the benchmark (passes --dry-run, --reps, --model through)",
         "  usage [--days N] [--json]        estimated allowance spent, per Go model, plus the Claude window",
-        "  clean [--yes] [--days N]         tidy clean worktrees, old chatmgr backups and orphaned inflight (dry run without --yes)",
+        "  clean [--yes]                    tidy clean worktrees and orphaned inflight records (dry run without --yes)",
         "  verify [dir] [--cmd CMD] [--timeout MS] [--json]   run the repo's tests and return their exit code",
         "  worktree [--prune] [--force]     list agent worktrees; --prune removes the clean ones",
         "",

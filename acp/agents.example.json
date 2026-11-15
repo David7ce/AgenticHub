@@ -4,12 +4,6 @@
   "agents": {
     "opencode": {
       "label": "OpenCode",
-      "attendedEnv": { "OPENCODE_CONFIG_CONTENT": "{\"permissions\":[{\"action\":\"shell\",\"resource\":\"*\",\"effect\":\"ask\"},{\"action\":\"read\",\"resource\":\"*.env\",\"effect\":\"deny\"},{\"action\":\"read\",\"resource\":\"*.env.*\",\"effect\":\"deny\"},{\"action\":\"read\",\"resource\":\"*.env.example\",\"effect\":\"allow\"}]}" },
-      "permissionModes": {
-        "restricted": {"force":"plan","allow":["plan"]},
-        "attended": {"force":"build","allow":["build","plan"]}
-      },
-      "modelPolicy": { "allow": ["opencode-go/"], "default": "opencode-go/deepseek-v4.1-flash" },
       "command": "opencode",
       "args": [
         "acp"
@@ -42,12 +36,11 @@
       }
     },
     "claude": {
-      "agentFallbacks": ["codex", "opencode"],
+      "agentFallbacks": [
+        "codex",
+        "opencode"
+      ],
       "label": "Claude Agent (ACP adapter)",
-      "permissionModes": {
-        "restricted": {"force":"plan","allow":["plan"]},
-        "attended": {"force":"acceptEdits","allow":["default","acceptEdits","plan"]}
-      },
       "command": "npx",
       "args": [
         "-y",
@@ -65,10 +58,6 @@
     },
     "codex": {
       "label": "Codex (ACP adapter)",
-      "permissionModes": {
-        "restricted": {"force":"read-only","allow":["read-only"]},
-        "attended": {"force":"workspace-write","allow":["read-only","workspace-write"]}
-      },
       "command": "npx",
       "args": [
         "-y",

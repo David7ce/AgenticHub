@@ -106,8 +106,7 @@ not all live in the same environment:
   adapter `@agentclientprotocol/claude-agent-acp` wraps the Claude Agent
   SDK. It needs Claude credentials in the environment that runs it.
 - **hermes** — removed from the registry on 2026-11-08, registered again on
-  2026-11-11 so a client (the AHP gateway, see `docs/decisions.md`) can reach it
-  through the same pinned list. `hermes acp --check` is OK (0.23.0), its grant in
+  2026-11-11 so it can be reached through the same pinned list. `hermes acp --check` is OK (0.23.0), its grant in
   `consent.example.json` is **disabled** and it is not a routing target: its free
   models answer text but tool use is not dependable, and Nous may train on what
   it receives.
@@ -115,10 +114,6 @@ not all live in the same environment:
 `--list` reports whether the launcher resolves on this platform. For
 `npx`-based entries that means the launcher exists, not that the package
 is cached yet.
-
-Two entry fields are read only by the AHP proxy (`ahp/`), never by hub dispatch:
-`permissionModes` (`restricted` / `attended`, each `{ force, allow }`: the agent's own mode names) and
-`attendedEnv` (extra environment for sessions a person attends). See `ahp/README.md`.
 
 ## Fan-out
 

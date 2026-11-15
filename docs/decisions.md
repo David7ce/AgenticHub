@@ -6,6 +6,30 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — One way in: OpenCode. The VS Code Agents window and the conversation manager leave the repo
+
+The owner works by talking to the model in OpenCode, not by running commands and not in VS Code when OpenCode does
+the same. So the path that stays is the shortest one: OpenCode → MCP (stdio) → `hub-acp` → ACP (stdio) → the agent.
+No network hop, no background process, no dependency.
+
+- **Removed: `ahp/`**, the gateway launchers (`tools/run-ahp-gateway.ps1`, `tools/register-gateway-task.ps1`), the
+  VS Code task, `tools/ui-automation/`, `docs/surfaces.md`, the gateway check in `doctor`, and the registry and
+  consent fields only the proxy read (`permissionModes`, `attendedEnv`, `modelPolicy`, `attendedWriteTrees`). It
+  worked (6/6), but it was the longest path here (a WebSocket, a third-party gateway on a pre-release with local
+  patches, a proxy) and the only thing that had to be kept running. An existing local `agents.json` or `consent.json`
+  that still has those fields is fine: they are ignored.
+- **Moved out: `chatmgr/`.** It manages conversation lists; it does not call agents. `hubctl clean` no longer prunes
+  its backups. To give it its own repository with its history:
+  `git subtree split --prefix=chatmgr 04d3bf6 -b chatmgr-only`, then push that branch to a new repo.
+- **Kept:** `tools/vscode-models.mjs` and `tools/vscode-state.mjs` (the Copilot BYOK list), which do not depend on AHP.
+
+Both are in git history; the last commit that has them is `04d3bf6`. About 3,000 lines of source and 1,500 of tests
+left the tree. Earlier entries below that describe the AHP pilot stay as the record of why it was tried.
+
+**Talking, not commands.** The MCP server's `instructions` are now a short playbook (start with `brief`, where the
+roadmap is, when to use `ask_agent`, `fanout` or `route`, how to continue a session), so a request such as "let's
+start with the roadmap and consult Claude and Codex" turns into the right tool calls without the owner naming one.
+
 ## 2026-11-15 — The tree lock and the daily cap no longer depend on spelling or on the log's size
 
 Two more found by reading the gate's helpers, each confirmed with a test that fails on the old code:
@@ -120,7 +144,7 @@ the Codex one already was. `This Computer` serves Copilot only, and `AgentHub` s
 Claude and Codex, all three behind `consent.json`, `writeTrees` and one audit line per turn. Left
 out: the native harnesses as a fallback when the gateway is down, and any hope of a single list of
 models shared by every harness. The map and the vocabulary are in
-[`surfaces.md`](surfaces.md).
+`surfaces.md` (removed 2026-11-15, in git history).
 
 ## 2026-11-13 — BYOK models live only in the Copilot harness
 

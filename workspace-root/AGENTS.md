@@ -22,8 +22,10 @@ in each project repo; scripts and installers live in the toolbox repo.
 
 ## Before you start
 
-0. Run `node agent-hub/hubctl/hubctl.mjs brief` first: doctor, dirty repos, last runs,
-   today's spend and the pending list in ≤40 lines.
+0. Call the `brief` tool of the `agent-hub` MCP server first (or run
+   `node agent-hub/hub.mjs brief` if you have no MCP tools): doctor, dirty repos, last runs,
+   today's spend and the pending list in ≤40 lines. To consult Claude or Codex, use that
+   server's `ask_agent` or `fanout`; its instructions say which tool fits which request.
 1. No task given? Read [`projects/working/ROADMAP.md`](projects/working/ROADMAP.md) for open items.
 2. Touching `agent-hub/`: read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md). Touching
    `projects/`: read [`projects/README.md`](projects/README.md).

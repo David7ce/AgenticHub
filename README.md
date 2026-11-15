@@ -77,10 +77,8 @@ files must use `--worktree`: **one writer per tree**.
 | [`acp/`](acp/README.md) | ACP v1 client, agent registry, consent gate, router (with `agentFallbacks`), fan-out, path policy |
 | [`mcp/`](mcp/README.md) | The hub as an MCP server: `ask_agent`, `job_*`, `fanout`, `route`, `agents`, `status` |
 | [`hubctl/`](hubctl/README.md) | The control room; one module per subcommand under `commands/` |
-| [`chatmgr/`](chatmgr/README.md) | OpenCode TUI plugin: one list of every agent's conversations, with batch delete |
-| [`ahp/`](ahp/README.md) | The hub's agents inside VS Code's native Agents window: gateway config generated from the registry and an ACP proxy that keeps the consent gate, audit line and spend caps in front of each agent |
 | `bench/` | The internal benchmark and its versioned baseline |
-| `tools/` | Egress posture check, `check.mjs` (the whole test run), `register-gateway-task.ps1` / `run-ahp-gateway.ps1` to keep the AHP gateway running, and `ui-automation/` (UI Automation scripts for the VS Code acceptance test) |
+| `tools/` | Egress posture check, `check.mjs` (the whole test run), `secret-scan.mjs`, the consent reminder, and the VS Code BYOK model list (`vscode-models.mjs`) |
 | `models.json` | Local catalogue: providers, tiers, cost, retention, capabilities |
 | `docs/` | Routing, architecture, history |
 
@@ -97,7 +95,7 @@ Otherwise nothing runs. Every attempt appends one JSON line to `projects/logs/ru
 
 ```bash
 node agent-hub/tools/check.mjs          # unit tests + bench dry-run
-node --test agent-hub/hubctl/tests/*.mjs agent-hub/acp/tests/*.mjs agent-hub/mcp/tests/*.mjs agent-hub/chatmgr/test/*.mjs
+node --test agent-hub/hubctl/tests/*.mjs agent-hub/acp/tests/*.mjs agent-hub/mcp/tests/*.mjs
 ```
 
 `.githooks/pre-commit` scans staged files for credential shapes

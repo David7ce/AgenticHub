@@ -10,7 +10,6 @@
 
 # Local run output
 /results/
-/chatmgr/backups/
 
 node_modules/
 .playwright-mcp/
