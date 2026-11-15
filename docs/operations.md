@@ -62,7 +62,12 @@ to stop and waits for its turn to end. A timeout uses the same ACP cancellation
 path. `cancelAck: false` means there was no confirmation: the callee may still be
 editing, especially when backed by a shared daemon. Confirm it has stopped before
 reusing that tree. A process-tree kill is the backstop, not proof that a remote
-or daemon-backed turn ended.
+or daemon-backed turn ended. An exited wrapper with an unconfirmed agent still
+produces that warning in `job_cancel`.
+
+Closing the MCP connection also requests cancellation for foreground calls,
+background jobs and fan-outs, suppresses queued dispatches, and waits a bounded
+time for their audit records before exiting. See [MCP lifecycle](reference/mcp.md#cancellation-and-connection-shutdown).
 
 | Symptom | First action |
 |---|---|

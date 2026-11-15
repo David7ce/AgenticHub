@@ -546,3 +546,17 @@ test('the instructions name every tool, and initialize sends them', async () => 
   assert.equal(init.result.instructions, INSTRUCTIONS);
   assert.ok(INSTRUCTIONS.length < 2500, 'short enough to be read on every connect');
 });
+
+
+
+test('cancellation during routing cannot launch a detached job afterward', async () => {
+  const controller = new AbortController();
+  let launched = 0;
+  const handlers = {
+    route: async () => { controller.abort(); return { agent:'opencode', reason:'test' }; },
+    startJob: async () => { launched += 1; return { id:'job_unexpected' }; },
+  };
+  const outcome = await callTool('route', {prompt:'test',run:true,background:true}, handlers, {signal:controller.signal});
+  assert.equal(launched, 0);
+  assert.equal(outcome.isError, true);
+});

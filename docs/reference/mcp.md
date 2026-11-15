@@ -93,6 +93,27 @@ so the consent gate and the audit line are proven without a model call.
 
 Used by the tests; also lets a second hub run beside this one.
 
+## Cancellation and connection shutdown
+
+`notifications/cancelled` stops a foreground request; `job_cancel` stops a
+background job. Both use the same ACP cancellation path. A wrapper exiting with
+`cancelAck: false` does not become an acknowledged cancellation: the tool still
+warns that the agent's tree may be changing. Foreground results preserve that
+verdict too.
+
+Closing the MCP input stream requests cancellation for every owned hub script,
+including background jobs and fan-outs. Queued calls and routing decisions still
+in flight cannot start new work after shutdown begins. The server waits for its
+children to finish and write audit records, bounded by the normal stop grace
+plus one second. A script that still has not exited is reported and the server
+exits with failure. Forcibly terminating the server can bypass this graceful
+EOF path; inspect audit/inflight state after an abnormal exit.
+
+A cancelled fan-out is recorded as `cancelled`, preserves each child's
+`cancelAck`/`cancelWaitMs`, and sets its aggregate `cancelAck` only when every
+child finished normally or acknowledged cancellation. It does not start a
+subsequent synthesis after cancellation was received.
+
 ## Known limits
 
 - The in-memory job registry targets 20 retained records and expires completed

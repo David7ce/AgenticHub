@@ -35,7 +35,7 @@ import { openIndex, reindex, search as searchIndex } from '../hubctl/search.mjs'
 import { gatherStatus, readInflight, renderStatus } from '../hubctl/hubctl.mjs';
 
 import {
-  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor, requestStop,
+  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor, requestStop, stopHubProcesses,
 } from './hub-process.mjs';
 
 
@@ -88,6 +88,8 @@ async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd
     modelTrail: describeAttempts(attempts),
     sessionId: result.sessionId ?? null,
     stopReason: result.stopReason ?? null,
+    cancelAck: result.cancelAck ?? null,
+    cancelWaitMs: result.cancelWaitMs ?? null,
     durationMs: result.durationMs,
     cost: result.cost ?? null,
     text: result.text ?? '',
@@ -116,6 +118,8 @@ async function fanout({ agents, prompt, synthesize, worktree, permission, effort
   const result = await runHubScript(FANOUT_ACP, args, { input: prompt, signal });
   return {
     ok: result.ok === true,
+    status: result.status ?? (result.ok ? 'ok' : 'failed'),
+    cancelAck: result.cancelAck ?? null,
     okCount: result.okCount ?? 0,
     durationMs: result.durationMs,
     agents: (result.agents ?? []).map((entry) => ({
@@ -126,6 +130,8 @@ async function fanout({ agents, prompt, synthesize, worktree, permission, effort
       cost: entry.cost ?? null,
       text: entry.text ?? '',
       error: entry.error ?? null,
+      cancelAck: entry.cancelAck ?? null,
+      cancelWaitMs: entry.cancelWaitMs ?? null,
     })),
     synthesis: result.synthesis
       ? {
@@ -373,7 +379,6 @@ function main() {
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
 
   let closed = false;
-  const inFlight = new Set();
 
   const write = (message) => {
     if (closed) return;
@@ -386,8 +391,12 @@ function main() {
   const calls = new Map();
 
   const dispatch = (message, treeKey = null) => {
-    if (treeKey) markTree(treeKey);
     const signal = calls.get(message.id)?.signal;
+    if (closed || signal?.aborted) {
+      calls.delete(message.id);
+      return Promise.resolve();
+    }
+    if (treeKey) markTree(treeKey);
     const task = handleMessage(message, handlers, { log, signal })
       .then((response) => {
         // A cancelled request gets no response (MCP): the client stopped waiting.
@@ -396,9 +405,7 @@ function main() {
       .catch((err) => {
         log(`fatal dispatch error: ${err?.stack ?? err}`);
       });
-    inFlight.add(task);
     void task.finally(() => {
-      inFlight.delete(task);
       calls.delete(message.id);
       if (treeKey) unmarkTree(treeKey);
     });
@@ -434,19 +441,13 @@ function main() {
   });
 
   rl.on('close', async () => {
-    // A client that hangs up mid-turn (Stop in the chat) used to leave its runs
-    // dangling with no trace. Let them finish if they are close, then leave --
-    // the hub-acp children keep going on their own and now show up in
-    // `hubctl status` as running, so nothing is invisible either way.
-    const pending = [...inFlight];
-    if (pending.length) {
-      await Promise.race([
-        Promise.allSettled(pending),
-        new Promise((resolve) => setTimeout(resolve, 5000)),
-      ]);
-    }
     closed = true;
-    process.exit(0);
+    // Prevent queued requests or a routing decision still in flight from
+    // starting another turn while the owned children are being stopped.
+    for (const call of calls.values()) call.abort();
+    const outcome = await stopHubProcesses();
+    if (outcome.pending) log(`shutdown: ${outcome.pending} hub scripts did not exit; inspect inflight records`);
+    process.exit(outcome.pending ? 1 : 0);
   });
 }
 

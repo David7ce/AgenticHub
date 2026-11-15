@@ -184,3 +184,18 @@ test('cleanup preserves a cancellation whose child has not stopped', async () =>
   completeSecond({ ok: true });
   await new Promise((resolve) => setImmediate(resolve));
 });
+
+test('a wrapper exit retains a negative cancel verdict and completes ownership cleanup first', async () => {
+  let finish, released = 0;
+  const promise = new Promise((resolve) => { finish = resolve; });
+  const jobs = createJobRegistry({ spawnJob: () => ({
+    pid: 1234, promise,
+    kill: () => finish({ok:false,status:'cancelled',cancelAck:false}),
+  }) });
+  const {id} = jobs.start({agent:'a',args:[],onSettled:()=>{released+=1;}});
+  const outcome = await jobs.cancel(id);
+  assert.equal(outcome.ack,false);
+  assert.match(outcome.detail,/agent did not confirm/);
+  assert.equal(released,1);
+  assert.equal(jobs.result(id).answer.cancelAck,false);
+});

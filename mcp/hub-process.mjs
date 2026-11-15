@@ -34,6 +34,10 @@ export const DEFAULT_BUDGET_USD = 3;
 // Independent caps prevent either child stream from growing without bound.
 export const MAX_CAPTURE_BYTES = 8 * 1024 * 1024;
 
+// Every script started by this MCP process, including detached job controllers.
+const hubProcesses = new Map();
+const stopping = new WeakSet();
+
 export function log(line) {
   process.stderr.write(`[hub-mcp] ${line}\n`);
 }
@@ -95,6 +99,8 @@ export function spawnHub(script, args, { input = '', env, maxOutputBytes = MAX_C
 
   // A cancelled/failed callee may close stdin before consuming the prompt.
   child.stdin.on('error', () => {});
+  hubProcesses.set(child, exit);
+  child.once('close', () => hubProcesses.delete(child));
   if (input) child.stdin.end(input, 'utf8');
   else child.stdin.end();
 
@@ -107,7 +113,8 @@ export function spawnHub(script, args, { input = '', env, maxOutputBytes = MAX_C
 // with status "cancelled"; killed, the run leaves no line at all and the agent
 // may live on. The kill is the backstop, not the method.
 export function requestStop(child, { graceMs = STOP_GRACE_MS } = {}) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (!child || child.exitCode !== null || child.signalCode !== null || stopping.has(child)) return;
+  stopping.add(child);
   let asked = false;
   try {
     if (child.connected) {
@@ -122,6 +129,25 @@ export function requestStop(child, { graceMs = STOP_GRACE_MS } = {}) {
   const timer = setTimeout(() => killTree(child), graceMs);
   timer.unref?.();
   child.once('close', () => clearTimeout(timer));
+}
+
+// On MCP EOF, request cancellation for all owned scripts and let them write
+// their audit records before the server exits. The wait is bounded even when
+// a process ignores both IPC and the normal process-tree kill backstop.
+export async function stopHubProcesses({ graceMs = STOP_GRACE_MS } = {}) {
+  const owned = [...hubProcesses];
+  if (!owned.length) return { pending: 0 };
+  for (const [child] of owned) requestStop(child, { graceMs });
+  let timer;
+  try {
+    await Promise.race([
+      Promise.allSettled(owned.map(([, exit]) => exit)),
+      new Promise((resolve) => { timer = setTimeout(resolve, graceMs + 1000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+  return { pending: owned.filter(([child]) => hubProcesses.has(child)).length };
 }
 
 export function parseHubJson(exit, label) {

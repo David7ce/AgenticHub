@@ -74,8 +74,7 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
     job.pid = child.pid ?? null;
     job.kill = child.kill;
 
-    job.settled = child.promise;
-    child.promise
+    job.settled = child.promise
       .then((result) => {
         job.output = result;
         job.state = result?.ok === true ? 'ok' : (result?.status ?? 'failed');
@@ -150,11 +149,13 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
       // gets "Promise resolution is still pending" instead of ack:false.
       timer = setTimeout(() => resolve(false), waitMs);
     });
-    const acknowledged = await Promise.race([
+    const exited = await Promise.race([
       Promise.resolve(job.settled).then(() => true, () => true),
       timedOut,
     ]);
     clearTimeout(timer);
+    // An exited wrapper is not proof its daemon-backed agent ended the turn.
+    const acknowledged = exited && job.output?.cancelAck !== false && !job.error;
     if (job.state === 'running') {
       job.state = 'cancelled';
       job.finishedAt = now();
@@ -165,7 +166,9 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
       state: job.state,
       detail: acknowledged
         ? 'the callee stopped'
-        : 'cancel sent, but the process has not exited — its tree may still be changing',
+        : exited
+          ? 'the process exited, but the agent did not confirm cancellation — its tree may still be changing'
+          : 'cancel sent, but the process has not exited — its tree may still be changing',
     };
   }
 

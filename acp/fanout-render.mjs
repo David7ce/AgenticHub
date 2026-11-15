@@ -43,6 +43,8 @@ export function baseResult(fields) {
     status: fields.status,
     sessionId: fields.sessionId ?? null,
     stopReason: fields.stopReason ?? null,
+    cancelAck: fields.cancelAck ?? null,
+    cancelWaitMs: fields.cancelWaitMs ?? null,
     durationMs: fields.durationMs,
     startedAt: fields.startedAt,
     cost: fields.cost ?? null,
@@ -113,3 +115,4 @@ export function renderMarkdown({ prompt, results, synthesis = null, stamp: runSt
   }
   return parts.join('\n');
 }
+

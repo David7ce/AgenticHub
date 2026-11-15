@@ -6,6 +6,17 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Cancellation keeps its verdict through jobs, fan-out and shutdown
+
+A job's wrapper exiting no longer turns an explicit negative `cancelAck` into
+"the callee stopped". Fan-out preserves child cancellation metadata and records
+a cancelled aggregate instead of a generic failure or partial success. MCP EOF
+now requests cancellation of every owned hub script, including background jobs,
+and waits for their audit records with a bounded process-kill backstop. Queued
+requests and a late routing decision cannot launch work after shutdown begins.
+Offline end-to-end checks cover routing, fan-out, jobs, startup cancellation,
+connection shutdown and release of an acknowledged writer's tree lock.
+
 ## 2026-11-15 — Execution and diagnostics share paths; MCP output capture is bounded
 
 `acp/config.mjs` owns the core registry, consent, state, log, results, inflight,

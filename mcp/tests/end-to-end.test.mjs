@@ -495,7 +495,7 @@ test('a second job on a busy tree is refused, not raced', async (t) => {
 
   const cancelled = await server.request('tools/call', { name: 'job_cancel', arguments: { jobId } });
   assert.equal(cancelled.result.isError, false);
-  assert.match(cancelled.result.content[0].text, /stopped|not exited/);
+  assert.match(cancelled.result.content[0].text, /stopped|not exited|did not confirm/);
 });
 
 test('a background job climbs the model ladder too', async (t) => {
@@ -655,3 +655,4 @@ test('a cancelled tool call stops the agent and is audited as cancelled', async 
   assert.match(after.result.content[0].text, /ECHO:still here/);
   assert.equal((await inflight()).length, 0, 'no inflight record is left behind');
 });
+

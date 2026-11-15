@@ -129,6 +129,7 @@ export async function callTool(name, args, handlers, ctx = {}) {
     case 'route': {
       const prompt = requireString(args, 'prompt');
       const decision = await handlers.route(prompt);
+      if (ctx.signal?.aborted) return { text: 'request cancelled before dispatch', isError: true };
       if (args.run !== true) return { text: renderRoute(decision), isError: false };
       const permission = optionalPermission(args);
       const budgetUsd = optionalPositiveNumber(args, 'budgetUsd');

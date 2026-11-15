@@ -72,7 +72,7 @@ process.on('message', (message) => {
   if (message?.type !== 'cancel' || stopRequested) return;
   stopRequested = true;
   for (const child of running) {
-    try { if (child.connected) child.send({ type: 'cancel' }); } catch {}
+    try { if (child.connected) child.send({ type: 'cancel' }, () => {}); } catch {}
   }
 });
 process.channel?.unref?.();
@@ -204,7 +204,7 @@ function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, 
     });
     running.add(child);
     child.once('close', () => running.delete(child));
-    if (stopRequested) child.send({ type: 'cancel' });
+    if (stopRequested) child.send({ type: 'cancel' }, () => {});
 
     if (opts.verbose) process.stderr.write(`[fanout] ${label}: started\n`);
 
@@ -282,6 +282,8 @@ function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, 
           startedAt,
           sessionId: parsed.sessionId ?? null,
           stopReason: parsed.stopReason ?? null,
+          cancelAck: parsed.cancelAck ?? null,
+          cancelWaitMs: parsed.cancelWaitMs ?? null,
           cost: parsed.cost ?? null,
           text: parsed.text ?? '',
           error: parsed.error ?? (hardKilled ? 'killed after parent backstop timeout' : null),
@@ -410,7 +412,7 @@ async function main() {
   }
 
   let synthesis = null;
-  if (opts.synthesize) {
+  if (opts.synthesize && !stopRequested) {
     const usable = results.filter((r) => r.ok && r.text.trim());
     if (usable.length < 2) {
       process.stderr.write(
@@ -435,7 +437,11 @@ async function main() {
 
   const okCount = results.filter((r) => r.ok).length;
   const allTimedOut = results.every((r) => r.status === 'timeout');
-  const exitCode = okCount > 0 ? 0 : allTimedOut ? 2 : 1;
+  const status = stopRequested ? 'cancelled' : okCount > 0 ? 'ok' : allTimedOut ? 'timeout' : 'failed';
+  const cancelAck = stopRequested
+    ? [...results, ...(synthesis ? [synthesis] : [])].every((result) => result.status === 'ok' || result.cancelAck === true)
+    : null;
+  const exitCode = status === 'ok' ? 0 : status === 'timeout' ? 2 : 1;
   const durationMs = Date.now() - startedMs;
   const markdown = renderMarkdown({ prompt, results, synthesis, stamp: runStamp });
 
@@ -452,9 +458,10 @@ async function main() {
     mode: 'fanout',
     agents: agents.map((name) => {
       const r = results.find((x) => x.agent === name);
-      return { agent: name, status: r.status, durationMs: r.durationMs, cost: r.cost };
+      return { agent: name, status: r.status, durationMs: r.durationMs, cost: r.cost, cancelAck: r.cancelAck, cancelWaitMs: r.cancelWaitMs };
     }),
-    status: okCount > 0 ? 'ok' : allTimedOut ? 'timeout' : 'failed',
+    status,
+    cancelAck,
     durationMs,
     okCount,
     synthesis: synthesis
@@ -471,7 +478,9 @@ async function main() {
     process.stdout.write(
       JSON.stringify(
         {
-          ok: okCount > 0,
+          ok: status === 'ok',
+          status,
+          cancelAck,
           mode: 'fanout',
           stamp: runStamp,
           startedAt,
