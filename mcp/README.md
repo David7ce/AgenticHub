@@ -69,11 +69,14 @@ line to `projects/logs/runs.jsonl`, exactly like
 **VS Code / Copilot agent mode** — `.vscode/mcp.json`, same command under a
 `servers` key instead of `mcpServers`.
 
-**OpenCode** — `opencode.json`:
+**OpenCode** — `opencode.json` (the shape of the tracked `workspace-root/opencode.json`):
 
 ```json
-{ "mcp": { "agent-hub": { "type": "local", "command": ["node", "D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] } } }
+{ "mcp": { "servers": { "agent-hub": { "type": "local", "command": ["cmd.exe", "/c", "node", "D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] } } } }
 ```
+
+`node agent-hub/hub.mjs init --workspace` writes both files for where this clone really is (and never
+overwrites one that exists). Check with `opencode mcp list`; `hub doctor` checks it too.
 
 **Zed** — `context_servers` in `settings.json`, with the same `command`/`args`.
 

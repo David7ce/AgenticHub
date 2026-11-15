@@ -75,7 +75,7 @@ async function main() {
       [
         "usage: hubctl <command>",
         "",
-        "  init [--dry-run]                 first-time setup: local consent.json and agents.json from the examples, pre-commit hook on",
+        "  init [--workspace] [--dry-run]   first-time setup: local consent.json and agents.json, pre-commit hook; --workspace adds the client launcher files",
         "  status [--json] [--no-color]     one-shot snapshot",
         "  brief [--json]                   the state of the world in <=40 lines: doctor, dirty repos, last runs, spend, pending",
         "  search \"text\" [--since DATE] [--source runs|notes|git] [--json]   full-text search of runs, notes and git history (index: logs/index.db)",

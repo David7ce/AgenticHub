@@ -36,7 +36,7 @@ export const USAGE = `usage: hub <command>
   route "prompt" [flags]              the router picks the agent and walks the failover chain
   mcp                                 the hub as an MCP server on stdio
   check [--no-bench]                  all tests plus the bench dry run
-  init [--dry-run]                    first-time setup (never overwrites, never grants)
+  init [--workspace] [--dry-run]      first-time setup (never overwrites, never grants)
   status | live | doctor | brief | spend | usage | tasks | handoff | verify | clean | ...
                                       the control room (hub help-ctl lists every command)
 
