@@ -26,15 +26,17 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
 
   const prune = () => {
     const done = [...jobs.values()]
-      .filter((job) => job.state !== 'running')
+      // An unacknowledged cancellation changes state before the child exits.
+      // Keep its controller and eventual answer until settlement clears kill.
+      .filter((job) => job.finishedAt !== null && job.kill === null)
       .sort((a, b) => (a.finishedAt ?? a.startedAt) - (b.finishedAt ?? b.startedAt));
     const cutoff = now() - ttlMs;
     for (const job of done) {
       if ((job.finishedAt ?? job.startedAt) < cutoff) jobs.delete(job.id);
     }
-    const remaining = [...jobs.values()].length;
-    for (let i = 0; remaining - i > limit && i < done.length; i += 1) {
-      jobs.delete(done[i].id);
+    for (const job of done) {
+      if (jobs.size <= limit) break;
+      jobs.delete(job.id);
     }
   };
 
@@ -53,11 +55,19 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
       pid: null,
     };
     jobs.set(id, job);
-    // Prune after registering this one: the limit is about how many jobs are
-    // kept, and a job that has just started counts.
-    prune();
-
-    const child = spawnJob({ args, input: prompt, meta, id });
+    let child;
+    try {
+      child = spawnJob({ args, input: prompt, meta, id });
+    } catch (err) {
+      job.state = 'failed';
+      job.error = err?.message ?? String(err);
+      job.finishedAt = now();
+      jobs.delete(id);
+      // The caller reserved the tree before starting. Release it even when
+      // no child or promise was created, then preserve the original error.
+      try { onSettled?.(job); } catch {}
+      throw err;
+    }
     // Keep the controller: a job that walks a model chain changes pid, so the
     // pid has to be read lazily rather than snapshotted here.
     job.controller = child;
@@ -80,8 +90,11 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
         try {
           onSettled?.(job);
         } catch {}
+        prune();
       });
 
+    // Active jobs count toward the limit but are never evicted to satisfy it.
+    prune();
     return { id, agent, cwd, pid: job.pid };
   }
 
@@ -162,3 +175,4 @@ export function createJobRegistry({ spawnJob, now = () => Date.now(), limit = DE
 
   return { start, status, result, cancel, list };
 }
+

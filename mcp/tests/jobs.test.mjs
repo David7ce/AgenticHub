@@ -119,3 +119,68 @@ test('onSettled runs once, so a tree lock is always released', async () => {
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(settled, 1);
 });
+
+
+test('expired completions do not consume the eviction count for retained jobs', async () => {
+  let clock = 1000;
+  const { spawnJob, calls } = fakeSpawner();
+  const jobs = createJobRegistry({ spawnJob, now: () => clock, ttlMs: 500, limit: 2 });
+  const first = jobs.start({ agent: 'a', args: [] });
+  const second = jobs.start({ agent: 'b', args: [] });
+  const running = jobs.start({ agent: 'c', args: [] });
+  calls[0].settle({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  clock = 1400;
+  calls[1].settle({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  clock = 1600;
+  const newest = jobs.start({ agent: 'd', args: [] });
+
+  assert.equal(jobs.status(first.id), null);
+  assert.equal(jobs.status(second.id), null, 'the completed job is evicted after the expired one');
+  assert.deepEqual(new Set(jobs.list().map((job) => job.id)), new Set([running.id, newest.id]));
+});
+
+test('completed bursts return to the retention limit without another dispatch', async () => {
+  const { spawnJob, calls } = fakeSpawner();
+  const jobs = createJobRegistry({ spawnJob, limit: 2 });
+  const ids = Array.from({ length: 5 }, () => jobs.start({ agent: 'a', args: [] }).id);
+  assert.equal(jobs.list().length, 5, 'active jobs must never be evicted to meet a retention limit');
+  for (const call of calls) call.settle({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(jobs.list().length, 2);
+  assert.deepEqual(jobs.list().map((job) => job.id), ids.slice(-2));
+});
+
+test('a synchronous launch failure releases ownership and leaves no phantom job', () => {
+  const failure = new Error('spawn unavailable');
+  const settled = [];
+  const jobs = createJobRegistry({ spawnJob: () => { throw failure; } });
+  assert.throws(() => jobs.start({ agent: 'a', args: [], onSettled: (job) => settled.push(job) }), failure);
+  assert.equal(settled.length, 1);
+  assert.equal(settled[0].state, 'failed');
+  assert.equal(settled[0].error, 'spawn unavailable');
+  assert.deepEqual(jobs.list(), []);
+});
+
+test('cleanup preserves a cancellation whose child has not stopped', async () => {
+  let clock = 1000;
+  let settle;
+  const jobs = createJobRegistry({
+    now: () => clock, ttlMs: 100, limit: 1,
+    spawnJob: () => ({ pid: 4242, kill: () => {}, promise: new Promise((resolve) => { settle = resolve; }) }),
+  });
+  const first = jobs.start({ agent: 'a', args: [] });
+  const completeFirst = settle;
+  assert.equal((await jobs.cancel(first.id, { waitMs: 1 })).ack, false);
+  clock += 1000;
+  const second = jobs.start({ agent: 'b', args: [] });
+  const completeSecond = settle;
+  assert.notEqual(jobs.status(first.id), null, 'an unconfirmed cancellation still owns its controller');
+  completeFirst({ ok: false, status: 'cancelled' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(jobs.status(first.id), null, 'the record can be evicted once the child actually settles');
+  assert.equal(jobs.status(second.id).running, true);
+  completeSecond({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+});

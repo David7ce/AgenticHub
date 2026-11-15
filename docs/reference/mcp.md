@@ -95,6 +95,12 @@ Used by the tests; also lets a second hub run beside this one.
 
 ## Known limits
 
+- The in-memory job registry targets 20 retained records and expires completed
+  records after one hour, with cleanup on job start and settlement. Active
+  controllers, including unacknowledged cancellations, are never evicted to
+  satisfy that limit. Results needed later should be read from their saved
+  files; an evicted job id is no longer available through `job_status` or
+  `job_result`.
 - Calls are serialized **per working tree**: two `ask_agent` calls on the same
   `cwd` queue, calls on different repos do not, and reads (`status`, `agents`)
   never queue. Use `fanout` (with `worktree`) for one prompt across N agents.

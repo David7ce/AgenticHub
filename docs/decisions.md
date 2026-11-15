@@ -6,6 +6,15 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Bound completed job retention and preserve live controllers
+
+Background-job cleanup now counts actual remaining records after expiry and
+also runs when jobs settle, so a completed burst returns to the retention limit
+without another dispatch. An unacknowledged cancellation keeps its controller
+until its child settles. A synchronous launcher failure removes its phantom
+record and calls the ownership-release callback before rethrowing the error.
+Four regression tests reproduce these cases without model calls.
+
 ## 2026-11-15 — Keep project documentation together
 
 Human documentation lives under `docs/`, including ACP/MCP/CLI references and
