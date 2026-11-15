@@ -58,7 +58,7 @@ export const INSTRUCTIONS = [
 // ── dispatch ────────────────────────────────────────────────────────────────
 
 // handlers: { ask, fanout, route, agents } — each async, already I/O-bound.
-export async function callTool(name, args, handlers) {
+export async function callTool(name, args, handlers, ctx = {}) {
   switch (name) {
     case 'ask_agent': {
       const agent = requireString(args, 'agent', { max: 64 });
@@ -85,7 +85,7 @@ export async function callTool(name, args, handlers) {
           isError: false,
         };
       }
-      const result = await handlers.ask(request);
+      const result = await handlers.ask(request, ctx);
       return { text: renderAsk(result), isError: !result.ok };
     }
     case 'job_status': {
@@ -122,7 +122,7 @@ export async function callTool(name, args, handlers) {
         worktree: args.worktree === true,
         permission: optionalPermission(args),
         effort: optionalEffort(args),
-      });
+      }, ctx);
       return { text: renderFanout(result), isError: !result.ok };
     }
     case 'route': {
@@ -140,18 +140,18 @@ export async function callTool(name, args, handlers) {
           isError: false,
         };
       }
-      let result = await handlers.ask({ agent: decision.agent, prompt, permission, budgetUsd, cwd });
+      let result = await handlers.ask({ agent: decision.agent, prompt, permission, budgetUsd, cwd }, ctx);
       // A pool that is out of quota is not a failed task: hand it to the other
       // one, and say so, rather than reporting an exhausted pool as the answer.
       let failedOver = null;
-      if (!result.ok && isQuotaError(result.error)) {
+      if (!result.ok && !ctx.signal?.aborted && isQuotaError(result.error)) {
         const registry = process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY;
         for (const next of agentChain(readAgentEntry(registry, decision.agent), decision.agent)) {
           failedOver = next;
           const handedOver = cwd
             ? buildHandoffPrompt({ cwd, target: next, from: decision.agent, task: prompt })
             : prompt;
-          result = await handlers.ask({ agent: next, prompt: handedOver, permission, budgetUsd, cwd });
+          result = await handlers.ask({ agent: next, prompt: handedOver, permission, budgetUsd, cwd }, ctx);
           if (result.ok || !isQuotaError(result.error)) break;
         }
       }
@@ -203,7 +203,7 @@ function errorResponse(id, code, message) {
 // Returns a response object, or null when the message needs no reply
 // (notifications). Never throws: a protocol-level failure must not kill the
 // server, or the client loses every other tool with it.
-export async function handleMessage(message, handlers, { log = () => {} } = {}) {
+export async function handleMessage(message, handlers, { log = () => {}, signal } = {}) {
   if (!message || typeof message !== 'object' || Array.isArray(message)) {
     return errorResponse(null, ERROR_CODES.invalidRequest, 'expected a single JSON-RPC object');
   }
@@ -244,7 +244,7 @@ export async function handleMessage(message, handlers, { log = () => {} } = {}) 
           throw new ToolError('tools/call arguments must be an object');
         }
         log(`call ${name}`);
-        const outcome = await callTool(name, args, handlers);
+        const outcome = await callTool(name, args, handlers, { signal });
         return {
           jsonrpc: '2.0',
           id,

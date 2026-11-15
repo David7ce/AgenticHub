@@ -6,6 +6,19 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Stop means stop; every turn ends 1.5 s sooner
+
+- **Pressing stop in the chat did nothing to the delegated agent.** The MCP server ignored
+  `notifications/cancelled`, so the callee worked on until its timeout, spending quota and possibly editing.
+  `job_cancel` did stop it, by killing the process tree, which left no audit line. Both now ask: the server sends
+  `cancel` over an IPC channel to hub-acp, which sends `session/cancel`, waits for proof (`HUB_CANCEL_WAIT_MS`) and
+  writes its line with status `cancelled` and `cancelAck`. An agent that ignores the cancel is terminated and the
+  line says so. A fan-out passes the request on to each of its runs. The tree kill remains as the backstop after 15 s.
+- **Every turn lingered for the whole close grace.** `AcpClient.close()` raced the agent's exit against a timer and
+  never cleared it, so the hub process stayed alive 1.5 s after an agent that had already gone. Measured on the
+  fixture: a whole `hub-acp` run 1,590 ms before, 105 ms after; the test suite 48 s before, 12 s after. Found while
+  timing the cancel path.
+
 ## 2026-11-15 — One way in: OpenCode. The VS Code Agents window and the conversation manager leave the repo
 
 The owner works by talking to the model in OpenCode, not by running commands and not in VS Code when OpenCode does

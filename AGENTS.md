@@ -113,6 +113,8 @@ prints both spellings of a path.
   waits (`HUB_CANCEL_WAIT_MS`, default 8 s). `cancelAck: false` means the callee never
   confirmed: treat its tree as live, because a daemon-backed agent (OpenCode) can keep
   going after the client is killed.
+- Stop means stop: when the chat cancels a tool call (or `job_cancel` is used) the run is asked to
+  stop, cancels its agent and is audited as `cancelled`, with `cancelAck` as for a timeout.
 - A run still going has no audit line yet; it is `results/inflight/<pid>.json` and
   shows in `hubctl status`. Never write to a tree that line names.
 - The daily dollar cap counts the audit log's reported cost plus, for Codex (which

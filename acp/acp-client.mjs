@@ -308,10 +308,17 @@ export class AcpClient {
     this.#closing = true;
     const child = this.#child;
     this.#child.stdin.end();
+    // The timer is cleared as soon as the agent exits. Left pending, it kept the
+    // hub process itself alive for the whole grace period after every turn
+    // (measured: ~1.5 s added to a run whose agent had already gone).
+    let timer;
     const exited = await Promise.race([
       this.#waitForExit(),
-      new Promise((resolve) => setTimeout(() => resolve(false), graceMs)),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(false), graceMs);
+      }),
     ]);
+    clearTimeout(timer);
     // Only now, and with a tree kill: a wrapper process exiting first is what
     // leaves an agent (or a whole build) running behind a "finished" run.
     if (!exited) killTree(child);

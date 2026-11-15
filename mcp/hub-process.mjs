@@ -25,6 +25,10 @@ export const REGISTRY = process.env.AGENT_HUB_REGISTRY
 // --timeout so hub-acp gets to write its audit line and exit cleanly.
 export const KILL_GRACE_MS = 60_000;
 export const DEFAULT_TURN_TIMEOUT_MS = 180_000;
+// After asking a run to stop: how long it gets to cancel its agent, wait for
+// proof (HUB_CANCEL_WAIT_MS, 8 s by default) and write its audit line before
+// the process tree is killed.
+export const STOP_GRACE_MS = 15_000;
 // hub-acp's own CLI default (0.5, acp/hub-acp.mjs) is sized for an ad hoc
 // terminal question, not repo-sized work: three real one-commit dispatches
 // on 2026-11-04 (Godot physics, a Kotlin figure + tests, a lighting bugfix)
@@ -43,7 +47,8 @@ export function spawnHub(script, args, { input = '', env } = {}) {
   const child = spawn(process.execPath, [script, ...args], {
     cwd: process.cwd(),
     env: env ? { ...process.env, ...env } : process.env,
-    stdio: ['pipe', 'pipe', 'pipe'],
+    // The fourth channel carries one message, `cancel` (see requestStop).
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
     windowsHide: true,
   });
 
@@ -70,6 +75,28 @@ export function spawnHub(script, args, { input = '', env } = {}) {
 }
 
 
+// Ask a running hub script to stop, and only kill it if it does not. Asked,
+// hub-acp tells its agent to cancel, waits for proof and writes the audit line
+// with status "cancelled"; killed, the run leaves no line at all and the agent
+// may live on. The kill is the backstop, not the method.
+export function requestStop(child, { graceMs = STOP_GRACE_MS } = {}) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  let asked = false;
+  try {
+    if (child.connected) {
+      child.send({ type: 'cancel' });
+      asked = true;
+    }
+  } catch {}
+  if (!asked) {
+    killTree(child);
+    return;
+  }
+  const timer = setTimeout(() => killTree(child), graceMs);
+  timer.unref?.();
+  child.once('close', () => clearTimeout(timer));
+}
+
 export function parseHubJson(exit, label) {
   const { code, stdout, stderr } = exit;
   const text = stdout.trim();
@@ -82,8 +109,13 @@ export function parseHubJson(exit, label) {
 }
 
 // Run one of the hub's own scripts to completion and capture its --json output.
-export function runHubScript(script, args, { input = '', timeoutMs = DEFAULT_TURN_TIMEOUT_MS } = {}) {
+// `signal` (an AbortSignal) stops the run when the caller gives up on it.
+export function runHubScript(script, args, { input = '', timeoutMs = DEFAULT_TURN_TIMEOUT_MS, signal } = {}) {
+  if (signal?.aborted) return Promise.resolve({ ok: false, status: 'cancelled', error: 'stopped by the caller before it started' });
   const { child, exit } = spawnHub(script, args, { input });
+  const onAbort = () => requestStop(child);
+  signal?.addEventListener('abort', onAbort, { once: true });
+  child.once('close', () => signal?.removeEventListener('abort', onAbort));
   let killedForTime = false;
   const timer = setTimeout(() => {
     killedForTime = true;

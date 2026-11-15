@@ -259,6 +259,31 @@ async function main() {
     },
   });
 
+  // The caller can ask this run to stop (the MCP server does, over the IPC
+  // channel, when the chat presses stop or cancels a job). Stopping here rather
+  // than being killed is what keeps the contract: the agent is told to stop,
+  // the hub waits for proof, and the run still gets its audit line.
+  let stopRequested = false;
+  let stopping = null;
+  const requestStop = () => {
+    if (stopRequested) return;
+    stopRequested = true;
+    process.stderr.write(`[acp] ${agent.name}: stop requested by the caller -- cancelling\n`);
+    stopping = client.cancelAndWait({ ms: CANCEL_WAIT_MS }).then(
+      (outcome) => outcome,
+      () => ({ ack: false, waitedMs: 0 }),
+    ).then(async (outcome) => {
+      cancel = outcome;
+      // No proof the turn ended: take the agent down so this run can finish.
+      if (!outcome.ack) await client.close({ graceMs: 0 });
+    });
+  };
+  process.on('message', (message) => {
+    if (message?.type === 'cancel') requestStop();
+  });
+  // The channel must not keep this process alive once the run is over.
+  process.channel?.unref?.();
+
   let sessionId = null;
   let stopReason = null;
   let status = 'ok';
@@ -379,15 +404,29 @@ async function main() {
       return 0;
     }
 
+    if (stopRequested) throw new Error('stopped by the caller before the turn started');
     const result = await client.prompt(sessionId, prompt, { timeoutMs: opts.timeout });
     stopReason = result?.stopReason ?? null;
-    if (state.budgetExceeded) {
+    if (stopRequested) {
+      status = 'cancelled';
+      exitCode = 1;
+    } else if (state.budgetExceeded) {
       status = 'budget';
       exitCode = 1;
     } else if (!state.text.trim()) status = 'empty';
   } catch (err) {
     failure = err;
-    if (/timed out/i.test(err.message)) {
+    if (stopRequested) {
+      await stopping;
+      status = 'cancelled';
+      exitCode = 1;
+      failure = new Error(
+        cancel?.ack
+          ? 'stopped by the caller'
+          : `stopped by the caller; the agent did not confirm within ${cancel?.waitedMs ?? 0}ms and was ` +
+              `terminated -- ${sessionCwd} may still be changing`,
+      );
+    } else if (/timed out/i.test(err.message)) {
       status = 'timeout';
       exitCode = 2;
       // Ask the agent to stop and wait for proof that it did. Without this,
@@ -410,6 +449,7 @@ async function main() {
       exitCode = 1;
     }
   } finally {
+    await stopping;
     await client.close({ graceMs: cancel && !cancel.ack ? 5000 : 1500 });
     clearInflight();
     if (lockAcquired) releaseTreeLock(LOCKS_DIR, nativeCwd);
