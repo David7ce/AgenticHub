@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -149,4 +149,30 @@ test('maxDailyTokens denies once the day\'s tokens reach the cap, and ignores do
   assert.match(atCap.reason, /daily token cap reached/);
   // No token figure in the request means nothing counted yet, never a denial.
   assert.equal(checkLimits(limits, {}, win).ok, true);
+});
+
+test('a budget of 0 (or one that is not a number) cannot switch a capped grant\'s watchdog off', () => {
+  const limits = { maxBudgetUsd: 0.5 };
+  assert.equal(checkLimits(limits, { budget: 0 }, win).budget, 0.5);
+  assert.equal(checkLimits(limits, { budget: NaN }, win).budget, 0.5);
+  assert.equal(checkLimits(limits, { budget: -1 }, win).budget, 0.5);
+  assert.equal(checkLimits({ maxDailyUsd: 5 }, { budget: 0, spentToday: 4.2 }, win).budget, 0.8);
+  // No cap in the grant: the caller's choice stands, as before.
+  assert.equal(checkLimits({ maxPermission: 'deny' }, { budget: 0 }, win).budget, undefined);
+});
+
+test('an "expires" that is not a date denies instead of never expiring', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'hub-consent-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = join(dir, 'consent.json');
+  writeFileSync(file, JSON.stringify({
+    typo: { enabled: true, overseerAck: true, expires: '2027-13-45' },
+    words: { enabled: true, overseerAck: true, expires: 'next week' },
+    fine: { enabled: true, overseerAck: true, expires: '2099-01-01T00:00:00Z' },
+    open: { enabled: true, overseerAck: true },
+  }));
+  assert.match(testConsent('typo', file).reason, /not a date/);
+  assert.match(testConsent('words', file).reason, /not a date/);
+  assert.equal(testConsent('fine', file).ok, true);
+  assert.equal(testConsent('open', file).ok, true);
 });

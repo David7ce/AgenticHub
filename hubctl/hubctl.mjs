@@ -32,6 +32,7 @@ import { runBrief } from "./commands/brief.mjs";
 import { runSearch } from "./commands/search.mjs";
 import { runWrap } from "./commands/wrap.mjs";
 import { runVerify } from "./commands/verify.mjs";
+import { runInit } from "./commands/init.mjs";
 
 export { buildHubArgs, inferSessionAgent, summarizeConsent } from "./common.mjs";
 export {
@@ -68,11 +69,13 @@ async function main() {
   if (command === "worktree") return runWorktree(argv.slice(1));
   if (command === "clean") return runClean(argv.slice(1));
   if (command === "verify") return runVerify(argv.slice(1));
+  if (command === "init") return runInit(argv.slice(1));
   if (command === "-h" || command === "--help" || command === "help") {
     process.stdout.write(
       [
         "usage: hubctl <command>",
         "",
+        "  init [--dry-run]                 first-time setup: local consent.json and agents.json from the examples, pre-commit hook on",
         "  status [--json] [--no-color]     one-shot snapshot",
         "  brief [--json]                   the state of the world in <=40 lines: doctor, dirty repos, last runs, spend, pending",
         "  search \"text\" [--since DATE] [--source runs|notes|git] [--json]   full-text search of runs, notes and git history (index: logs/index.db)",

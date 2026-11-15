@@ -74,7 +74,8 @@ export function summarizeConsent(consent, now = Date.now()) {
       let status = "ok";
       if (grant?.enabled !== true) status = "disabled";
       else if (grant?.overseerAck !== true) status = "unacked";
-      else if (expires && expires <= now) status = "expired";
+      // An expiry that does not parse is refused by the gate, so it is not "ok" here either.
+      else if (Number.isNaN(expires) || (expires && expires <= now)) status = "expired";
       return { name, status, daysLeft };
     });
 }

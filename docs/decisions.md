@@ -6,6 +6,22 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Two ways around a grant are closed; setup is one command
+
+Found by reading `acp/consent.mjs` and confirmed by running it, then fixed to fail closed:
+
+- **`--budget 0` switched the watchdog off under a capped grant.** hub-acp reads a budget of 0 (or one that does not
+  parse) as "no budget", and the gate only clamped a budget *larger* than the cap, so one run could spend past
+  `maxBudgetUsd` and past what was left of `maxDailyUsd`. A budget that is not a positive number now gets the cap,
+  like a missing one. Only the command line could do this; the MCP tools already rejected it. A grant with no cap is
+  unchanged.
+- **An `expires` that is not a date never expired.** `"2027-13-45"` or `"next week"` parsed to nothing and the grant
+  ran forever. The gate now refuses it, `doctor` fails on it and `status` shows it as expired.
+
+`hub init` copies the two examples to `consent.json` and `acp/agents.json` and sets `core.hooksPath`. It never
+overwrites and never grants (every example grant is disabled). The front door also stops printing Node's
+"SQLite is experimental" line on every command.
+
 ## 2026-11-15 — T3 Code is a candidate for the chat surface, not for the hub (read, not run)
 
 Asked: is `pingdotgg/t3code` a better alternative? Read from its README and `docs/user/` on 2026-11-15; nothing was
