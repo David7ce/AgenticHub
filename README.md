@@ -97,4 +97,4 @@ node --test agent-hub/hubctl/tests/*.mjs agent-hub/acp/tests/*.mjs agent-hub/mcp
 (`tools/secret-scan.mjs --history` audits the existing commits), then runs the fast
 half; enable it once per clone with
 `git config core.hooksPath .githooks`. `.github/workflows/checks.yml` repeats the
-full run on push (nothing pushed yet).
+full run on every push and pull request.

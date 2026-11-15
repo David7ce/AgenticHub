@@ -92,8 +92,8 @@ node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence <diff-or-test>
 node agent-hub/tools/check.mjs
 ```
 
-`.github/workflows/checks.yml` repeats the checks on push, but nothing has been
-pushed yet; locally `.githooks/pre-commit` is the guard. Enable it once per clone
+`.github/workflows/checks.yml` repeats the checks on every push and pull request
+(`windows-latest`); locally `.githooks/pre-commit` is the guard. Enable it once per clone
 with `git config core.hooksPath .githooks`.
 
 `hubctl status` is the health snapshot; `hubctl live` is "who is working now"
