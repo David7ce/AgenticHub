@@ -129,7 +129,10 @@ export function checkLimits(limits, request = {}, { scratch = tmpdir(), platform
       return { ok: false, reason: `daily token cap reached (${used} of ${limits.maxDailyTokens} tokens used today)` };
     }
   }
-  if (cap !== Infinity && (request.budget === undefined || request.budget > cap)) {
+  // A budget that is not a positive number means "no watchdog" to hub-acp
+  // (`--budget 0`, or a typo that parses to NaN). Under a capped grant that is
+  // not the caller's to switch off: it gets the cap, like a missing budget.
+  if (cap !== Infinity && (!(request.budget > 0) || request.budget > cap)) {
     result.budget = cap;
     if (request.budget !== undefined) result.note = `budget ${request.budget} clamped to ${why}`;
   }
@@ -167,8 +170,13 @@ export function testConsent(agentName, path = CONSENT_PATH, request = null) {
   if (entry.overseerAck !== true) {
     return { ok: false, reason: 'Overseer has not acknowledged this grant' };
   }
-  if (entry.expires && Date.parse(entry.expires) < Date.now()) {
-    return { ok: false, reason: `consent expired on ${entry.expires}` };
+  if (entry.expires) {
+    const expires = Date.parse(entry.expires);
+    // A date that does not parse must not read as "never expires".
+    if (Number.isNaN(expires)) {
+      return { ok: false, reason: `consent "expires" is not a date: ${entry.expires}` };
+    }
+    if (expires < Date.now()) return { ok: false, reason: `consent expired on ${entry.expires}` };
   }
   if (request) return checkLimits(entry.limits, request);
   return { ok: true };

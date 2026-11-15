@@ -55,7 +55,8 @@ export function checkGrants(consent, { now = Date.now(), exists = existsSync } =
     if (grant.overseerAck !== true) out.push(row('consent', 'warn', `${name} is enabled but not acknowledged`));
 
     const expires = grant.expires ? Date.parse(grant.expires) : null;
-    if (!expires) out.push(row('consent', 'warn', `${name} has no expiry`));
+    if (Number.isNaN(expires)) out.push(row('consent', 'fail', `${name}: "expires" is not a date (${grant.expires}); the gate refuses it`));
+    else if (!expires) out.push(row('consent', 'warn', `${name} has no expiry`));
     else if (expires <= now) out.push(row('consent', 'fail', `${name} expired on ${grant.expires}`));
     else {
       const days = Math.ceil((expires - now) / DAY);

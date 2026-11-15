@@ -36,6 +36,7 @@ export const USAGE = `usage: hub <command>
   route "prompt" [flags]              the router picks the agent and walks the failover chain
   mcp                                 the hub as an MCP server on stdio
   check [--no-bench]                  all tests plus the bench dry run
+  init [--dry-run]                    first-time setup (never overwrites, never grants)
   status | live | doctor | brief | spend | usage | tasks | handoff | verify | clean | ...
                                       the control room (hub help-ctl lists every command)
 
@@ -118,6 +119,14 @@ async function main() {
     process.stdout.write(target.usage);
     return;
   }
+  // node:sqlite (the task queue, search, spend) announces that it is
+  // experimental on every command. That one line is noise here; every other
+  // warning still prints.
+  const emitWarning = process.emitWarning;
+  process.emitWarning = (warning, ...rest) => {
+    if (/SQLite is an experimental feature/.test(String(warning?.message ?? warning))) return;
+    emitWarning.call(process, warning, ...rest);
+  };
   // Run the script as if it had been started directly: it reads process.argv
   // and several check `argv[1]` to know they are the entry point.
   const script = join(HUB, target.script);
