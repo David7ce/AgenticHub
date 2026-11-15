@@ -3,3 +3,4 @@
 Read [`AGENTS.md`](AGENTS.md) first — it's the full operating instructions
 for any agent working in this directory, Claude Code included. This file
 exists only so Claude Code's own memory mechanism picks it up automatically.
+

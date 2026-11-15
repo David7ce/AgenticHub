@@ -1,17 +1,19 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { checkDocumentation } from "../../tools/docs-check.mjs";
 
 import { claudeMcpConfig, opencodeConfig, planInit, planWorkspace, runInit } from "../commands/init.mjs";
 
-function clone(t) {
+function clone(t, name = "agent-hub") {
   // The clone sits inside a workspace folder, as it does for real: <workspace>/agent-hub.
   const workspace = mkdtempSync(join(tmpdir(), "hub-init-"));
   t.after(() => rmSync(workspace, { recursive: true, force: true }));
-  const hub = join(workspace, "agent-hub");
+  const hub = join(workspace, name);
   mkdirSync(hub);
   mkdirSync(join(hub, "acp"));
   writeFileSync(join(hub, "consent.example.json"), '{"claude":{"enabled":false}}');
@@ -47,10 +49,10 @@ test("init never overwrites what is already there, and --dry-run changes nothing
 test("init --workspace installs the launcher files next to the clone, pointing at it", (t) => {
   const hub = clone(t);
   const workspace = join(hub, "..");
-  mkdirSync(join(hub, "workspace-root", ".claude"), { recursive: true });
-  writeFileSync(join(hub, "workspace-root", ".mcp.json"), '{"mcpServers":{}}');
-  writeFileSync(join(hub, "workspace-root", ".claude", "settings.json"), "{}");
-  writeFileSync(join(hub, "workspace-root", "opencode.json"), '{"mcp":{"servers":{"agent-hub":{"command":["node","D:\\\\Somewhere\\\\Else"]}}}}');
+  mkdirSync(join(hub, "templates", "workspace", ".claude"), { recursive: true });
+  writeFileSync(join(hub, "templates", "workspace", ".mcp.json"), '{"mcpServers":{}}');
+  writeFileSync(join(hub, "templates", "workspace", ".claude", "settings.json"), "{}");
+  writeFileSync(join(hub, "templates", "workspace", "opencode.json"), '{"mcp":{"servers":{"agent-hub":{"command":["node","D:\\\\Somewhere\\\\Else"]}}}}');
   writeFileSync(join(workspace, ".mcp.json"), '{"mine":true}');
 
   runInit([], { hub, out: silent });
@@ -71,4 +73,32 @@ test("the OpenCode entry goes through cmd.exe on Windows and plain node elsewher
 
 test("the Claude Code entry names the clone by its real folder", () => {
   assert.deepEqual(claudeMcpConfig(join("/w", "my-hub")).mcpServers["agent-hub"].args, ["my-hub/mcp/server.mjs"]);
+});
+
+
+
+test("real workspace templates render documentation and launchers for a renamed clone", (t) => {
+  const hub = clone(t, "My renamed hub");
+  const workspace = resolve(hub, "..");
+  const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  cpSync(join(repo, "templates"), join(hub, "templates"), { recursive: true });
+  cpSync(join(repo, "docs"), join(hub, "docs"), { recursive: true });
+  cpSync(join(repo, "AGENTS.md"), join(hub, "AGENTS.md"));
+
+  runInit(["--workspace", "--dry-run"], { hub, out: silent });
+  assert.equal(existsSync(join(workspace, "README.md")), false);
+  runInit(["--workspace"], { hub, out: silent });
+  for (const name of ["AGENTS.md", "README.md", "CLAUDE.md"]) {
+    const text = readFileSync(join(workspace, name), "utf8");
+    assert.equal(text.includes("__HUB_DIR__"), false, name);
+  }
+  assert.match(readFileSync(join(workspace, "README.md"), "utf8"), /My renamed hub\/docs\/README.md/);
+  assert.deepEqual(checkDocumentation(workspace, ["AGENTS.md", "README.md", "CLAUDE.md"].map((name) => join(workspace, name))).errors, []);
+  const mcp = JSON.parse(readFileSync(join(workspace, ".mcp.json"), "utf8"));
+  assert.equal(mcp.mcpServers["agent-hub"].args[0], "My renamed hub/mcp/server.mjs");
+  const opencode = JSON.parse(readFileSync(join(workspace, "opencode.json"), "utf8"));
+  assert.equal(opencode.mcp.servers["agent-hub"].command.at(-1), join(hub, "mcp", "server.mjs"));
+  const denied = JSON.parse(readFileSync(join(workspace, ".claude", "settings.json"), "utf8"));
+  assert.ok(denied.permissions.deny.includes("Read(./.env)"));
+  assert.ok(planWorkspace(hub).every((item) => item.action === "keep"));
 });

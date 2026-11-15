@@ -34,11 +34,11 @@ The loopback services bind `127.0.0.1` **on Windows**. A WSL
 process cannot reach them, so run `hubctl` from a Windows terminal:
 
 ```powershell
-node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs status
-node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs live
-node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs brief   # start of a session
-node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs search "seclogon"   # full-text over runs, notes, git
-node D:\Workspaces\AgenticHub\agent-hub\hubctl\hubctl.mjs wrap   # end of a session: JOURNAL draft
+node hub.mjs status
+node hub.mjs live
+node hub.mjs brief   # start of a session
+node hub.mjs search "timeout"   # full-text over runs, notes, git
+node hub.mjs wrap   # end of a session: JOURNAL draft
 ```
 
 From WSL it still shows agents, worktrees, egress and the run log, and prints a
@@ -52,7 +52,7 @@ runs remain visible from either side; only external agents are platform-local.
 | `status [--json] [--no-color]` | One-shot health snapshot, including the task queue |
 | `live [--once] [--json] [--interval MS] [--no-external]` | Who is working now; `q` quits, `r` refreshes, `p` pauses |
 | `report [--days N] [--json]` | Completed turns by agent and model: OK, failures, timeouts, p50/p95, cost, and why the rest failed (quota, auth, network, config, spawn, agent-error, timeout, budget) |
-| `spend [--days N] [--date YYYY-MM-DD] [--by ...] [--json\|--csv]` | Tokens by project and day: OpenCode exact, Claude cost-only |
+| `spend [--days N] [--date YYYY-MM-DD] [--by ...] [--json\|--csv]` | Tokens by project and day: OpenCode records, Claude cost-only, Codex rollout tokens/estimated cost |
 | `doctor [--json] [--fast]` | Config coherence: registry vs consent, enforced `limits`, expiry, prose-vs-enforced budget, broken relative links in current docs, stale inflight/locks, `core.hooksPath`, `opencode mcp list` (`--fast` skips the network probes it cannot answer honestly). Exit 1 on any `fail` |
 | `run <agent> [--worktree]` | One agent through `hub-acp`; consent checked first |
 | `tasks add\|list\|show\|run\|done\|block\|cancel\|retry` | The thin work queue (see below) |
@@ -69,9 +69,9 @@ runs remain visible from either side; only external agents are platform-local.
 Examples:
 
 ```powershell
-node agent-hub/hubctl/hubctl.mjs run opencode --worktree --prompt "Fix the failing test"
-node agent-hub/hubctl/hubctl.mjs live --once
-node agent-hub/hubctl/hubctl.mjs attach ses_abc123 --prompt "Continue"
+node hubctl/hubctl.mjs run opencode --worktree --prompt "Fix the failing test"
+node hubctl/hubctl.mjs live --once
+node hubctl/hubctl.mjs attach ses_abc123 --prompt "Continue"
 ```
 
 `run` creates a detached checkout under `.git/agent-worktrees/` when
@@ -88,15 +88,15 @@ never written.
 
 ```powershell
 # queue a bounded change
-node agent-hub/hubctl/hubctl.mjs tasks add --repo D:\repo --agent opencode `
+node hubctl/hubctl.mjs tasks add --repo D:\repo --agent opencode `
   --title "fix the parser" --prompt-file task.txt --budget 0.5
 
 # work it: claim -> worktree -> hub-acp -> review
-node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
-node agent-hub/hubctl/hubctl.mjs tasks list
+node hubctl/hubctl.mjs tasks run --parallel 2
+node hubctl/hubctl.mjs tasks list
 
 # accept it: done needs evidence, never the agent's own word
-node agent-hub/hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidence path\to\diff.patch
+node hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidence path\to\diff.patch
 ```
 
 - States: `queued` → `running` → `review` → `done`; `blocked` and `cancelled`
@@ -115,9 +115,9 @@ node agent-hub/hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidenc
 ## spend — tokens by project and day
 
 ```bash
-node agent-hub/hubctl/hubctl.mjs spend --days 7
-node agent-hub/hubctl/hubctl.mjs spend --date 2026-11-08 --by project,model
-node agent-hub/hubctl/hubctl.mjs spend --days 30 --json
+node hubctl/hubctl.mjs spend --days 7
+node hubctl/hubctl.mjs spend --date 2026-11-08 --by project,model
+node hubctl/hubctl.mjs spend --days 30 --json
 ```
 
 - **OpenCode**: exact, from `opencode.db` (`session_message` joined to
@@ -136,10 +136,7 @@ node agent-hub/hubctl/hubctl.mjs spend --days 30 --json
 The database is opened read-only and only `session_message`, `session_v2` and
 `project` are queried. `account`/`credential` are never touched.
 
-Global OpenCode config now launches the Windows hub with
-`cmd.exe /c node D:\Workspaces\AgenticHub\agent-hub\mcp\server.mjs`, so
-OpenCode can reach the hub from any repository. Codex CLI has the same MCP
-server; use `codex exec --approve-for-me` for non-interactive MCP calls.
+Client registration is documented in [Getting started](../getting-started.md).
 
 The OpenCode database is read from the local home first
 (`~/.local/share/opencode/opencode.db`; on Windows
@@ -158,8 +155,8 @@ anything moving" without a daemon:
 runs · 1
   1234  opencode  AgentHub         prompt  2s silent  12 tools  deepseek-v4.1-flash
 trees · 1 locked
-  D:\Workspaces\AgenticHub  opencode(1234)  held  3m
-  D:\Workspaces\AgenticHub  4 change(s), last 3s ago
+  C:\Projects\example  opencode(1234)  held  3m
+  C:\Projects\example  4 change(s), last 3s ago
 external · 0
   none from this side of the WSL/Windows boundary
 recent · 5
@@ -196,8 +193,8 @@ locks.
 |---|---|
 | `AGENT_HUB_STALL_MS` | `900000` (15 min) |
 | `AGENT_HUB_LOG` | `projects/logs/runs.jsonl` |
-| `AGENT_HUB_INFLIGHT` | `agent-hub/results/inflight` |
-| `AGENT_HUB_LOCKS` | `agent-hub/results/locks` |
+| `AGENT_HUB_INFLIGHT` | `results/inflight` |
+| `AGENT_HUB_LOCKS` | `results/locks` |
 
 ## Tests
 
@@ -208,3 +205,4 @@ node --test agent-hub/hubctl/tests/*.mjs
 Covers consent lifecycle, run-log parsing, worktree counting, the status
 render, hub argument mapping, session inference, and the live model. No
 network.
+

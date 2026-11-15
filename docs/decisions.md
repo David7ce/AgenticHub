@@ -6,6 +6,16 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Keep project documentation together
+
+Human documentation lives under `docs/`, including ACP/MCP/CLI references and
+written benchmark reports. Root README and AGENTS.md remain short entry points.
+Benchmark runners and JSON records stay under `bench/`. Optional setup assets
+move to `templates/workspace/`; initialization renders Markdown links for the
+actual clone name and continues to preserve existing files. Broad upstream CLI
+manuals are replaced with official links and hub-specific integration notes.
+Offline relative-file-link validation now runs with the normal checks and CI.
+
 ## 2026-11-15 — Stop means stop; every turn ends 1.5 s sooner
 
 - **Pressing stop in the chat did nothing to the delegated agent.** The MCP server ignored
@@ -329,3 +339,4 @@ Codex are reached through it.
 - One writer per working tree; parallel agents get worktrees.
 - Never widen a consent grant to make something work: ask.
 - No secrets in a transcript; credentials are read inside a process and passed on.
+

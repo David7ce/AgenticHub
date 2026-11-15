@@ -64,3 +64,4 @@ config: `CLAUDE.md`, hooks, settings, permission modes).
 **Harness** runs the loop → fills **Context** each turn → pulling from **Memory**,
 **Skills**, and **Connectors** as needed → **Plugins** are how you install the last three.
 Optimize in that order: a good harness + tight context beats a big pile of plugins.
+

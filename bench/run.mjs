@@ -160,7 +160,7 @@ export function stubFunction(source, symbol) {
 
 function copyWorkspace(dir) {
   // The tasks address the hub as agent-hub/..., whatever this checkout's folder is called.
-  const SKIP = new Set(['results', '.git', 'node_modules', 'workspace-root']);
+  const SKIP = new Set(['results', '.git', 'node_modules', 'templates']);
   cpSync(HUB, join(dir, 'agent-hub'), {
     recursive: true,
     filter: (src) => !SKIP.has(relative(HUB, src).split(sep)[0]),
@@ -504,3 +504,4 @@ main()
     process.stderr.write(`[bench] fatal: ${error?.stack ?? error}\n`);
     process.exit(2);
   });
+

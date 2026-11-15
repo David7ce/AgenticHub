@@ -15,3 +15,4 @@ completeness, failure isolation, tree ownership and visibility.
 | real-handoff | pass | 65460 ms | opencode -> claude kept the token |
 
 7/7 scenarios passed.
+

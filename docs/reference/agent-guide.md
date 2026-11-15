@@ -1,7 +1,7 @@
 # Working with agents in this workspace
 
 A short guide for the person at the keyboard. The rules agents must follow are in
-[`AGENTS.md`](../../AGENTS.md); this page is how to *use* them well.
+[`docs/reference/agent-contract.md`](agent-contract.md); this page is how to *use* them well.
 
 ## Pick the agent
 
@@ -23,16 +23,16 @@ Tool references: [Claude Code](claude-code-reference.md) ·
    `writeTrees`. Widening a grant is a decision for the owner, not for an agent.
 3. **Leave a baton.** Chat history is not shared between agents. Before stopping,
    write what was done and the exact next step where the next session will read
-   it ([session continuity](agent/README.md)).
+   it ([session continuity](session-continuity.md)).
 
 ## Calling another agent
 
 ```bash
 # one agent, through the consent gate
-node agent-hub/acp/hub-acp.mjs --agent codex --prompt "..." --cwd <repo> --permission allow-all
+node acp/hub-acp.mjs --agent codex --prompt "..." --cwd <repo> --permission allow-all
 
 # hand a tree to another agent when one runs out of quota
-node agent-hub/hubctl/hubctl.mjs handoff codex --cwd <repo> --note "what to do next"
+node hubctl/hubctl.mjs handoff codex --cwd <repo> --note "what to do next"
 ```
 
 From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
@@ -51,10 +51,11 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 | Which agent is working right now | `hubctl live` |
 | Leftover checkouts and old backups | `hubctl clean` (dry run) |
 | Too many old conversations | the `/chats` panel in OpenCode |
-| Several agents side by side | `node agent-hub/tools/herdr-layout.mjs` (needs Herdr) |
+| Several agents side by side | `node tools/herdr-layout.mjs` (needs Herdr) |
 
 ## What does not belong here
 
 Personal state (the owner's roadmap, handoff and journal) lives in the git-ignored
 `projects/working/` folder, so a fork gets a clean, generic repo. General notes and research
 live in the external knowledge vault, not in this repository.
+

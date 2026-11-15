@@ -28,7 +28,7 @@ reconstruct the behaviour?
 
 ## Tasks
 
-`tasks.json`. Each entry names a symbol, its file, and the test that judges it.
+`bench/tasks.json`. Each entry names a symbol, its file, and the test that judges it.
 
 | id | symbol | judged by |
 |---|---|---|
@@ -39,35 +39,35 @@ reconstruct the behaviour?
 | `fanout-synthesis-prompt` | `buildSynthesisPrompt` | `acp/tests/fanout.test.mjs` |
 | `fanout-render-markdown` | `renderMarkdown` | `acp/tests/fanout.test.mjs` |
 
-Six is deliberate: enough to separate a real result from luck at one rep, small
-enough to run in an afternoon.
+The table shows the six original function tasks. `bench/tasks.json` is the
+current task inventory and also includes whole-module and hidden-spec tasks.
 
 ## Use
 
 ```bash
 # Prove every task is actually broken. No model calls, no cost.
-node agent-hub/bench/run.mjs --dry-run
+node bench/run.mjs --dry-run
 
 # One attempt per task on the default model.
-node agent-hub/bench/run.mjs --agent opencode --model opencode-go/deepseek-v4.1-flash
+node bench/run.mjs --agent opencode --model opencode-go/deepseek-v4.1-flash
 
 # Three attempts, to see variance.
-node agent-hub/bench/run.mjs --reps 3 --tasks paths-to-wsl,router-decide
+node bench/run.mjs --reps 3 --tasks paths-to-wsl,router-decide
 
 # Keep the copies under /tmp to inspect what the agent did.
-node agent-hub/bench/run.mjs --tasks paths-to-wsl --keep
+node bench/run.mjs --tasks paths-to-wsl --keep
 
-# The Claude arm, once the weekly quota resets (2026-11-01 04:00).
+# The Claude arm, when its provider allowance is available.
 # Run it from PowerShell, not WSL: the ACP adapter authenticates with the
 # Windows credentials in C:\Users\<you>\.claude, and from WSL it fails with
 # "session/prompt: Authentication required (code -32000)". Use --keep because
 # Windows sometimes refuses to delete the temp copy while the adapter is
 # shutting down (EPERM, harmless but it aborts the run).
-node agent-hub/bench/run.mjs --agent claude --model sonnet --reps 3 --keep
+node bench/run.mjs --agent claude --model sonnet --reps 3 --keep
 ```
 
-Results land in `agent-hub/results/bench/` (gitignored): one JSONL line per
-attempt plus a summary JSON. `baseline.json` is the versioned reference: a run
+Results land in `results/bench/` (gitignored): one JSONL line per
+attempt plus a summary JSON. `bench/baseline.json` is the versioned reference: a run
 that scores below it is a regression in the agent or the harness, not noise.
 
 ## What the numbers mean
@@ -79,9 +79,9 @@ that scores below it is a regression in the agent or the harness, not noise.
 | `totalDurationMs` | wall time, including agent startup |
 | `tampered` | files the agent touched beyond the task; non-empty means failure |
 
-**Escalation rate = 1 − passRate.** If the cheap model passes 5 of 6, roughly
-one task in six needs Claude Code. That is the number the weekly plan has to
-survive.
+**Observed failure rate = 1 − passRate** for these benchmark attempts. It does
+not predict the escalation rate or provider allowance needed for unrelated
+production work.
 
 ## Results so far (2026-10-30)
 
@@ -128,7 +128,7 @@ Four tasks from the three hardest tiers, three attempts each: **12/12 passed**.
 
 **Outcome is stable; effort is not.** Time swings by roughly a third run to
 run, so a single slow run is not a regression — only a lower pass count is.
-That is now recorded in `baseline.json`.
+That is now recorded in `bench/baseline.json`.
 
 ## Adding a model to the hub's chain (2026-11-04)
 
@@ -138,12 +138,12 @@ the work, because the whole point of the ladder is that the task still finishes
 after the step up:
 
 ```bash
-node agent-hub/bench/run.mjs --model opencode-go/<candidate> --json
+node bench/run.mjs --model opencode-go/<candidate> --json
 # two models, one command, one comparison table:
-node agent-hub/bench/run.mjs --models opencode-go/deepseek-v4.1-flash,opencode-go/beam-free
+node bench/run.mjs --models opencode-go/deepseek-v4.1-flash,opencode-go/beam-free
 ```
 
-- **Pass ≥ baseline** (15/15 today) → it may join the chain, and the run's
+- **Pass ≥ baseline** (the versioned baseline) → it may join the chain, and the run's
   summary goes to `docs/routing.md` with its price.
 - **Below baseline** → it may still be a good *cheap* first step if the failure
   is a clean error rather than a broken tree, but it may never be the model the
@@ -166,7 +166,7 @@ step up. See `docs/routing.md`.
 - `stubFunction` counts braces. That is exact for these files and throws rather
   than guessing, but it is not a parser; a task whose symbol moves to a class or
   a different export form needs a different stubber.
-- Six small functions are a proxy for real work, not a substitute. A model can
+- These bounded fixtures are a proxy for real work, not a substitute. A model can
   score well here and still fail a 12-file refactor.
 
 ## Collaboration bench
@@ -175,8 +175,8 @@ step up. See `docs/routing.md`.
 asks a different question: does the hub make agents cooperate correctly?
 
 ```bash
-node agent-hub/bench/collab.mjs                 # deterministic, offline, free
-node agent-hub/bench/collab.mjs --real --write  # adds one OpenCode -> Claude handoff
+node bench/collab.mjs                 # deterministic, offline, free
+node bench/collab.mjs --real --write  # adds one OpenCode -> Claude handoff
 ```
 
 It covers fan-out merge, payload handoff, partial failure isolation, tree-lock
@@ -184,8 +184,9 @@ conflict, live visibility and stall detection. The default mode uses the fake
 ACP fixture and a temporary registry, so it never calls a model. `--real` adds
 one short cross-agent handoff (OpenCode writes a token, Claude repeats it).
 
-`COLLABORATION.md` and `collaboration.json` are the durable record; `WORKFLOW.md`
+[collaboration.md](collaboration.md) and `bench/collaboration.json` are the durable record; [workflow.md](workflow.md)
 is the durable recommendation (which worker, which topology). They are
 tracked, unlike the raw JSONL under `results/bench/`. This is intentionally a
 single current report, not a growing history: re-run it when the hub's routing
 or ACP layer changes.
+

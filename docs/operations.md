@@ -1,175 +1,95 @@
-# Operaciones — lanzar, hablar, observar y arreglar
+# Operations
 
-STATUS: actual (2026-11-08)
+Complete [Getting started](getting-started.md) first. Commands below run from the
+repository root. Detailed options live in the [CLI reference](reference/cli.md);
+MCP tool behavior lives in the [MCP reference](reference/mcp.md).
 
-## Dónde correr
+## Inspect before dispatch
 
-- **Hub y hubctl**: Windows. Ahí están Claude, los servicios loopback y las
-  credenciales.
-- **OpenCode**: Windows, nativo (`opencode.cmd acp`). El hub lo lanza
-  directamente; WSL ya no interviene (cambio del 2026-11-09).
-- **MCP de OpenCode**: `opencode.json` del repo usa `cmd.exe /c node`, que
-  funciona tanto desde WSL como desde Windows. Si `opencode mcp list` no dice
-  `agent-hub connected`, esa es la primera cosa a revisar.
-
-## La combinación recomendada
-
-**Windows Terminal con dos paneles**:
-
-1. izquierda: PowerShell → `opencode` (hablar y lanzar);
-2. derecha: PowerShell → `node ...\hubctl\hubctl.mjs live` (ver).
-
-No hay una app única que lance, converse y observe respetando consentimiento,
-auditoría y locks. OpenCode es la superficie de chat; `hubctl live` es el visor.
-`opencode serve` levanta la web v2 si quieres navegador; la config del repo
-aplica igual.
-
-## Cola de tareas
-
-`hubctl tasks` es la cola fina: un SQLite local (`projects/logs/hub.db`), sin daemon y sin
-grafo de dependencias. No lanza agentes por su cuenta: cada tarea pasa por
-`hub-acp`, así que consentimiento, `writeTrees`, presupuesto y auditoría siguen
-en el mismo sitio. Cada tarea corre en su propio worktree; el árbol vivo no se
-toca.
-
-```powershell
-node agent-hub/hubctl/hubctl.mjs tasks add --repo D:\repo --agent opencode --prompt-file tarea.txt
-node agent-hub/hubctl/hubctl.mjs tasks run --parallel 2
-node agent-hub/hubctl/hubctl.mjs tasks list
-node agent-hub/hubctl/hubctl.mjs tasks done <id> --evidence diff.patch
+```bash
+node hub.mjs doctor
+node hub.mjs brief
+node hub.mjs live --once --json
 ```
 
-Estados: `queued → running → review → done`; `blocked` y `cancelled` se
-recuperan con `retry`. `review` no es `done`: cerrar exige `--evidence`. Cada
-línea de auditoría de una tarea lleva `taskId`, y el resultado completo queda en
-`projects/logs/tasks/<id>.json`. El claim es una transacción `BEGIN IMMEDIATE`, así que dos
-terminales no cogen la misma fila.
+Doctor checks configuration coherence and optional local integrations. Brief
+summarizes local state. Live shows inflight runs, managed tree locks and process
+activity visible on the current host. It is advisory: externally started agents
+do not acquire the hub's locks.
 
-## Si se acaba la cuota de Claude
+A Windows Terminal layout with a chat client in one pane and `node hub.mjs live`
+in another is sufficient. The hub does not need a separate dashboard service.
 
-Claude Code no puede cambiar su modelo: si la cuota de Anthropic está agotada,
-la sesión deja de responder y sus subagentes tampoco ayudan (gastan la misma
-cuota). El hub sigue disponible; cambia de superficie:
+## Delegate and review
 
-1. **OpenCode** (fallback principal): desde cualquier repo,
-   `opencode` con `opencode-go/deepseek-v4.1-flash`. El MCP global ya apunta al
-   hub de Windows y funciona fuera de AgentHub.
-2. **Codex CLI** (segunda cuota): `codex exec --approve-for-me ...`. Tiene
-   `agent-hub` como MCP global; `--approve-for-me` es necesario para que Codex
-   acepte las llamadas MCP en modo no interactivo.
-3. **`hubctl run`** para scripts: `hubctl run opencode --prompt "..."` o
-   `hubctl run codex --prompt "..."`.
-
-El consentimiento, la auditoría y los locks son los mismos. Cuando vuelva la
-cuota de Claude, Claude Code puede seguir usando el hub como hasta ahora.
-
-## Lanzar
-
-```powershell
-# un agente, por el hub
-node agent-hub/hubctl/hubctl.mjs run opencode --worktree --prompt "..."
-
-# escalado
-node agent-hub/hubctl/hubctl.mjs run claude --model sonnet --prompt "..."
-
-# revisión read-only
-node agent-hub/hubctl/hubctl.mjs run claude --model sonnet --permission deny --prompt "Revisa este diff"
-
-# Codex: probe (initialize + session/new, sin prompt) y prueba mínima
-node agent-hub/acp/hub-acp.mjs --agent codex --probe --cwd D:\Workspaces\AgenticHub
-node agent-hub/acp/hub-acp.mjs --agent codex --prompt "Reply with exactly: CODEX_OK" --cwd D:\Workspaces\AgenticHub --permission deny --json
-node agent-hub/hubctl/hubctl.mjs models --codex   # última versión por familia vs models.json
-
-# varios agentes, cada uno en su worktree
-node agent-hub/acp/fanout-acp.mjs --agents opencode,claude --worktree --prompt "..."
+```bash
+node hub.mjs ask opencode "Review the current change" --permission deny --json
+node hub.mjs fanout opencode,claude "Implement the task" --worktree
+node hub.mjs verify <worktree>
 ```
 
-Desde el chat, las herramientas MCP `ask_agent`, `fanout`, `route`, `agents` y
-`status` hacen lo mismo con consentimiento y auditoría.
+These agent calls require valid grants and consume provider allowance. Put every
+simultaneous writer in its own worktree. Use the [dispatch playbook](dispatch-playbook.md)
+for handoffs and the [routing policy](routing.md) for quota failover. The caller
+must supply the relevant context; delegated agents do not inherit the chat.
 
-## Observar
+The task queue is a local SQLite file. A task runs through the same consent gate
+in a worktree, then lands in `review`. Marking it `done` requires evidence. For
+queue commands and states, see [CLI: tasks](reference/cli.md#tasks--the-thin-work-queue).
 
-```powershell
-node agent-hub/hubctl/hubctl.mjs status          # salud y consentimientos
-node agent-hub/hubctl/hubctl.mjs live            # quién trabaja ahora
-node agent-hub/hubctl/hubctl.mjs live --once --json
-node agent-hub/hubctl/hubctl.mjs report --days 7 # histórico por agente/modelo
-node agent-hub/hubctl/hubctl.mjs spend --days 7   # tokens por proyecto y día
-node agent-hub/hubctl/hubctl.mjs doctor          # coherencia de config; empieza aquí
+## Observe usage and evidence
+
+```bash
+node hub.mjs report --days 7
+node hub.mjs spend --days 7
+node hub.mjs usage
 ```
 
-- `doctor`: registro vs consent, `limits`, expiraciones, presupuesto escrito vs
-  aplicado, enlaces rotos en docs actuales, inflight/locks huérfanos y
-  `opencode mcp list`. Sale con 1 si hay algún `FAIL`.
+Report groups outcomes and failure causes. Spend reads provider-specific local
+records; usage includes provider allowance readings where configured. Codex token
+and estimated-dollar accounting is supported; the provider's actual subscription
+allowance is a separate measurement. See the [CLI reference](reference/cli.md)
+for attribution and pricing limitations.
 
-- `live`: inflight, locks, cambios por `fs.watch`, procesos externos y últimos
-  runs. `stalled` = 15 min sin updates, salvo tool `running`; en modo
-  interactivo suena una campana una vez por run que se queda atascado.
-- `report`: OK/fallos/timeouts, p50/p95, coste y último run, más los fallos por
-  causa (`quota`, `auth`, `network`, `config`, `spawn`, `agent-error`,
-  `timeout`, `budget`), porque cada una se arregla distinto.
-- `spend`: tokens por proyecto y día. OpenCode es exacto leyendo su DB local;
-  si en Windows no está, se la pide a la copia de WSL automáticamente.
-  `OPENCODE_DB`/`--db` la sobrescriben. Claude es cost-only; los runs desde 2026-11-08 llevan `cwd` y
-  salen con proyecto, los anteriores quedan `unknown`. Codex queda para la
-  siguiente fase.
-- `projects/logs/runs.jsonl`: auditoría completa; no se edita.
+Audit records are appended when attempts finish, not while they run. Inspect
+inflight state for active work. The default locations and environment overrides
+are in [Workspace configuration](reference/workspace-configuration.md).
 
-## Bench
+## Stop and recover
 
-```powershell
-node agent-hub/bench/run.mjs --dry-run
-node agent-hub/bench/run.mjs --agent opencode --model opencode-go/deepseek-v4.1-flash --tasks paths-to-wsl,router-decide --reps 1 --keep
-node agent-hub/bench/collab.mjs --real --write
-```
+Stopping an MCP request or cancelling a background job asks the delegated agent
+to stop and waits for its turn to end. A timeout uses the same ACP cancellation
+path. `cancelAck: false` means there was no confirmation: the callee may still be
+editing, especially when backed by a shared daemon. Confirm it has stopped before
+reusing that tree. A process-tree kill is the backstop, not proof that a remote
+or daemon-backed turn ended.
 
-- `bench/run.mjs`: capacidad de reconstruir una función desde sus tests.
-- `bench/collab.mjs`: comunicación y trabajo en grupo (fan-out, handoff,
-  conflicto, stall, live).
-- Informes durables: `bench/WORKFLOW.md` y `bench/COLLABORATION.md`.
-- Crudos: `results/bench/` (ignorado).
-
-## Worktrees
-
-```powershell
-node agent-hub/hubctl/hubctl.mjs worktree
-node agent-hub/hubctl/hubctl.mjs worktree --prune
-```
-
-Se conservan si tienen cambios. `--force` descarta trabajo: pide permiso antes.
-
-## Problemas típicos
-
-| Síntoma | Causa / arreglo |
+| Symptom | First action |
 |---|---|
-| `agent-hub` no conecta en OpenCode | `cmd.exe`/`node` no resuelven o ruta mala; `opencode mcp list`. |
-| Claude falla con “Authentication required” | El hub está corriendo en WSL; debe correr en Windows. |
-| Codex `-32603` | Se está lanzando el viejo `@zed-industries/codex-acp`; `doctor` lo marca como FAIL. Usar `@agentclientprotocol/codex-acp@2.6.0`. |
-| Codex `denied: allow-all is not granted` | `cwd` fuera de `D:/Workspaces/AgenticHub` y del temp del bench; es el límite del grant. |
-| Codex sin Terra/Luna en `session/new` | No inventarlos: usar Sol y documentarlo; `hubctl models --codex` muestra lo que conoce el Codex local. |
-| Hermes falla en `set_config_option` | Modelo sin prefijo `nous:`; además ya no es worker. |
-| Timeout largo | `hubctl live` muestra `silent`; cancelar no esperar 40 min. |
-| `cancelAck: false` | El árbol puede seguir vivo; no escribir hasta confirmar. |
-| Lock ocupado | Otro run `allow-all` en el mismo árbol; usar worktree o esperar. |
+| Hub missing in OpenCode | Check `opencode mcp list`, the registered Node executable and server path |
+| Authentication failure | Check the agent is signed in on the same host that runs the hub |
+| Consent denied | Inspect expiry, acknowledgement, permission, write trees and caps; never widen a grant automatically |
+| Codex adapter failure | Doctor detects the retired adapter; compare the local registry with the tracked example |
+| Requested model unavailable | Inspect what the configured agent exposes; do not invent an alternate model ID |
+| Long silence | Inspect `live`; a running build may be quiet, whereas a stalled turn needs investigation |
+| Lock occupied | Wait or use a separate worktree; do not remove a live lock to force a run |
+| Quota exhausted | Follow the configured fallback chain or hand off with the task and current tree state |
 
-## Consentimiento y coste
+## Verify and clean
 
-- `consent.json`: `enabled`, `overseerAck`, `expires` (2027-01-08).
-- Sin grant válido no se ejecuta ni `--probe`.
-- `limits` (opcional, aplicado por `acp/consent.mjs` en hub-acp, y por tanto
-  también en MCP y fanout): `maxPermission`, `writeTrees` (dónde puede correr
-  `allow-all`; el temp del sistema siempre vale para el bench; los worktrees de
-  fanout viven dentro del repo y pasan), `maxBudgetUsd` (recorta el
-  presupuesto pedido) y `maxDailyUsd` (coste reportado hoy por ese agente: en el
-  tope deniega, por debajo recorta el presupuesto a lo que queda). Claude: `allow-all` solo en temp. OpenCode: los tres
-  proyectos autorizados.
-- Claude y OpenCode: 2 USD por llamada y 5 USD/día por agente, aplicados por
-  `limits` (decisión del propietario, 2026-11-08). El `--daily-ceiling` del router sigue
-  siendo solo consultivo.
-- OpenRouter deshabilitado; clave solo en `OPENROUTER_API_KEY`.
+```bash
+npm run check
+node bench/collab.mjs
+node hub.mjs clean
+node hub.mjs worktree
+```
 
-## Limpieza
+The first two commands use offline fixtures and make no model calls. The
+collaboration benchmark writes its Markdown report to
+`docs/benchmarks/collaboration.md` only with `--write`; its JSON record stays in
+`bench/collaboration.json`. `--real` adds provider calls. See
+[Benchmarks](benchmarks/README.md) before updating measured evidence.
 
-- `results/fake-*` y `results/codex-*` no son evidencia útil.
-- `results/bench/` se puede vaciar; los informes están en `bench/`.
-- No borrar líneas de `projects/logs/runs.jsonl` ni worktrees con cambios sin permiso.
+Clean defaults to a preview. Preserve audit records and worktrees containing
+changes. Destructive cleanup requires the owner's approval. Raw benchmark output
+belongs in ignored `results/bench/`; durable written evidence belongs under `docs/`.

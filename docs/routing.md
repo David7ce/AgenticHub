@@ -13,7 +13,7 @@ disponibles; elige el conjunto mínimo que resuelve la tarea. Por defecto, uno.
 | **Claude** (`sonnet`) | activo, consentido                          | escalado: multi-módulo, alto riesgo, revisión | 2/2 fixes, 1/1 construct en 68 s, $0,25                                                                  |
 | **Codex**             | registrado, consentido; probado 2026-11-09  | Terra defecto, Sol escalado, Luna lote        | `@agentclientprotocol/codex-acp@2.6.0`; el viejo `@zed-industries/codex-acp@0.16.0` fallaba con `-32603` |
 
-Detalle medido en [`../bench/WORKFLOW.md`](../bench/WORKFLOW.md).
+Detalle medido en [`../docs/benchmarks/workflow.md`](benchmarks/workflow.md).
 
 ## Catálogo
 
@@ -138,3 +138,4 @@ defecto razonable.
 - No manda fan-out automático.
 - No sustituye un `--model` explícito.
 - No usa un modelo `enabled:false`.
+

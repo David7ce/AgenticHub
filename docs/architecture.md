@@ -1,97 +1,71 @@
-# Arquitectura del hub
+# Architecture
 
-STATUS: actual (2026-11-08)
+AgenticHub governs delegation between a chat client and local coding agents. It
+chooses who works, in which tree, with which grant, and records each attempt.
+It is a backend; OpenCode and Claude Code provide the daily chat surfaces.
 
-El hub es una capa de gobierno y orquestación entre un cliente (OpenCode,
-Claude Code, VS Code…) y varios agentes ACP. No es un modelo ni un proxy de
-modelos: decide **quién** trabaja, **dónde**, con **qué permiso** y deja una
-línea de auditoría por cada intento.
-
-## Frontera Windows / WSL
-
-```
-Windows
-  OpenCode Desktop/Web? ─┐
-  Claude Code ───────────┤
-  VS Code/Copilot ───────┤        ┌───────────────┐
-                         ├──────▶ │  hub-mcp      │  stdio JSON-RPC
-  PowerShell / hubctl ───┘        │  (server.mjs) │
-                                  └──────┬────────┘
-                                         │ consent.json + projects/logs/runs.jsonl
-                                  ┌──────▼────────┐
-                                  │  hub-acp      │  ACP Client
-                                  └──┬───────┬────┘
-                    cmd.exe / exe    │       │  npx.cmd / exe
-                         ┌───────────▼─┐   ┌─▼──────────────┐
-                         │ OpenCode    │   │ Claude, etc.   │
-                         │ (Windows)   │   │ (Windows)      │
-                         └─────────────┘   └────────────────┘
+```mermaid
+flowchart TD
+    Client["Chat client"] --> MCP["MCP server"]
+    CLI["hub CLI"] --> Run["ACP execution"]
+    MCP --> Run
+    Run --> Gate["Consent and tree ownership"]
+    Gate --> Agent["Local ACP agent"]
+    Run --> State["Audit and inflight state"]
 ```
 
-El hub canónico corre en **Windows** porque ahí viven las credenciales de
-Claude/Codex y los servicios loopback. OpenCode corre nativo en Windows desde
-2026-11-09 (antes se lanzaba con `wsl.exe`); su MCP se arranca desde
-[`../../opencode.json`](../../opencode.json) con `cmd.exe /c node
-D:\...\server.mjs`.
+## Components
 
-Un proceso no puede ver los PIDs del otro lado. Los **runs del hub** sí se ven
-desde ambos lados porque `results/inflight/` es un fichero; los **agentes
-externos** solo se ven desde el host donde corre `hubctl live`.
-
-Codex entra por `@agentclientprotocol/codex-acp@2.6.0` (`npx.cmd` en Windows),
-un adaptador mantenido que habla ACP v1 y v2 y arranca Codex App Server. El hub
-negocia v1. No hay shim propio.
-
-## Piezas
-
-| Pieza | Qué hace |
+| Path | Responsibility |
 |---|---|
-| `mcp/server.mjs` | Servidor MCP (stdio). Expone `ask_agent`, `fanout`, `route`, `agents`, `status`, jobs. |
-| `acp/hub-acp.mjs` | Cliente ACP: consentimiento, spawn, sesión, prompt, cancelación, presupuesto, auditoría. |
-| `acp/fanout-acp.mjs` | Varios agentes en paralelo, resultado fusionado y síntesis opcional. |
-| `acp/router.mjs` | Elige agente/modelo/topología. Hoy es advisory; no lanza por su cuenta. |
-| `acp/consent.mjs` + `consent.json` | Puerta: `enabled`, `overseerAck`, expiración. |
-| `acp/tree-lock.mjs` | Un escritor por árbol en runs `allow-all`. |
-| `acp/paths.mjs` | Única traducción Windows ↔ WSL. |
-| `hubctl/` | `status`, `live`, `report`, `run`, `attach`, `worktree`, `bench`, `usage`. |
-| `bench/` | Regresión del harness y bench de colaboración. |
-| `projects/logs/runs.jsonl` | Auditoría append-only; una línea por intento terminado. |
+| `hub.mjs` | Short command mapping to the existing entry scripts |
+| `acp/acp-client.mjs` | ACP v1 stdio transport and session protocol |
+| `acp/hub-acp.mjs` | Consent, agent startup, session, prompt, cancellation and audit |
+| `acp/router.mjs` | Selection and execution with quota failover; `--explain` only shows the choice |
+| `acp/fanout-acp.mjs` | Parallel calls, optional worktrees and merged output |
+| `acp/tree-lock.mjs` | A write lock per normalized tree for managed `allow-all` runs |
+| `acp/paths.mjs` | Windows/WSL path translation |
+| `mcp/` | MCP protocol, tool dispatch, per-tree queue and background jobs |
+| `hubctl/` | Control-room commands, local state inspection and task queue |
+| `bench/` | Offline fixtures, benchmark runners and baseline data |
+| `templates/workspace/` | Optional launcher assets rendered by workspace initialization |
 
-## Ciclo de una llamada
+Component details: [ACP](reference/acp.md), [MCP](reference/mcp.md),
+[CLI](reference/cli.md). Written benchmark reports live under
+[docs/benchmarks](benchmarks/README.md).
 
-1. El cliente llama a una herramienta MCP o a `hub-acp`.
-2. Se lee `consent.json`: sin grant válido no hay spawn, ni siquiera `--probe`.
-3. `router` propone agente y modelo (o el caller los fija).
-4. `hub-acp` arranca el agente ACP y crea una sesión con el `cwd` traducido.
-5. Mientras trabaja, escribe `results/inflight/<pid>.json` con agente, árbol,
-   modelo, herramientas, `updated` y último tool. `hubctl live` lo lee.
-6. Si el permiso es `allow-all`, reclama el lock del árbol antes de escribir.
-7. Al terminar, escribe una línea en `projects/logs/runs.jsonl` y borra el inflight.
-8. Si hay timeout, envía `session/cancel` y espera; `cancelAck: false` significa
-   que el árbol puede seguir vivo.
+## Call lifecycle
 
-## Memoria y estado
+1. A CLI command or MCP tool selects an agent, explicitly or through routing.
+2. The exact request is checked against local consent before agent startup.
+3. Managed write calls claim tree ownership; isolated worktrees prevent parallel
+   writers from sharing a checkout.
+4. The ACP client starts the agent, initializes a session and submits the prompt.
+5. Inflight state exposes progress while the run is active. A terminal audit
+   record is appended when the attempt ends, including denied attempts.
+6. Timeout or cancellation requests `session/cancel` and waits for evidence that
+   the turn stopped. `cancelAck: false` means the tree may still be changing.
 
-- **Consentimiento**: `consent.json`, por agente.
-- **Auditoría**: `projects/logs/runs.jsonl`; rota a los 10 MB.
-- **En vuelo**: `results/inflight/<pid>.json`; se borra al salir.
-- **Locks**: `results/locks/*.lock`.
-- **Worktrees**: `.git/agent-worktrees/`; solo se conservan si hay cambios.
-- **Sesiones**: el id va en la respuesta y en la auditoría; `attach` lo reanuda.
+See the [operating contract](reference/agent-contract.md) for enforced limits and
+cancellation rules. Agents started outside the hub do not take its tree lock.
 
-## Seguridad
+## Windows and WSL
 
-- Los secretos no entran en documentos, logs ni prompts. `.env*` está denegado
-  en los harnesses.
-- `--permission deny` es el defecto; `allow-all` solo dentro de un worktree.
-- Los proveedores gratuitos pueden retener datos: el catálogo marca
-  `retention` y el router no manda material sensible a `unknown`/`may-train`.
-- El presupuesto por llamada no limita una suscripción; el límite diario y la
-  cuota real se controlan aparte.
+The supported hub deployment runs on Windows, where the configured agent
+credentials and services live. A WSL chat client must start the Windows hub
+process. Native non-Windows setup generation also exists, but does not make
+Windows credentials available in WSL or Linux.
 
-## Lo que no es
+Processes on one host cannot reliably inspect the other host's PIDs. Shared
+inflight files expose hub runs; external process discovery sees only its own
+host. See [Getting started](getting-started.md) for launcher setup.
 
-- No es un enrutador OpenAI-compatible.
-- No es un daemon: `hubctl` lee ficheros y procesos.
-- No es un sustituto de OpenCode: es la capa que lo hace auditable y
-  coordinable.
+## Runtime state
+
+Configuration is local and ignored by Git. Runtime logs default to a sibling
+`projects/` directory; results, locks and inflight files live under the clone's
+ignored `results/`. This state does not need a separate repository. Exact paths
+and overrides are in [Workspace configuration](reference/workspace-configuration.md).
+The control room reads files and processes rather than requiring a persistent
+hub daemon. The MCP server and any delegated agent service have their own process
+lifetimes.

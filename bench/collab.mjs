@@ -269,9 +269,9 @@ async function main() {
       `${passed}/${results.length} scenarios passed.`,
       '',
     ];
-    writeFileSync(join(HERE, 'COLLABORATION.md'), lines.join('\n'));
+    writeFileSync(join(HERE, '..', 'docs', 'benchmarks', 'collaboration.md'), lines.join('\n'));
     writeFileSync(join(HERE, 'collaboration.json'), JSON.stringify({ stamp, real, results }, null, 2) + '\n');
-    process.stdout.write(`wrote ${join(HERE, 'COLLABORATION.md')}\n`);
+    process.stdout.write(`wrote ${join(HERE, '..', 'docs', 'benchmarks', 'collaboration.md')}\n`);
   }
 
   process.exitCode = passed === results.length ? 0 : 1;
@@ -281,3 +281,4 @@ main().catch((error) => {
   process.stderr.write(`${error?.stack ?? error}\n`);
   process.exit(1);
 });
+

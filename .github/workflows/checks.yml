@@ -20,5 +20,6 @@ jobs:
       - name: Credentials never enter tracked files
         run: node tools/secret-scan.mjs --all
 
-      - name: Hub tests and bench dry-run
+      - name: Documentation, hub tests and bench dry-run
         run: node tools/check.mjs
+

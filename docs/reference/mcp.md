@@ -12,15 +12,8 @@ Claude Code (or any MCP client)
   └── MCP "agent-hub": ask_agent / fanout / route / agents / status
 ```
 
-Created 2026-10-30. Node 18+, no dependencies.
-
-## Why this exists
-
-Claude Code is the best agent surface here, but it cannot reach the free
-OpenCode models or the hub's router. The alternatives either replace
-Claude Code (OpenCode, Kilo) or need a translation layer for Anthropic's
-`tool_use` (an `ANTHROPIC_BASE_URL` gateway). This is the cheap third option:
-keep the surface, give it a tool that reaches the rest of the fleet.
+Node.js 22+, no dependencies. OpenCode and Claude Code can host the hub;
+other MCP clients can register the same stdio server.
 
 ## Files
 
@@ -56,34 +49,22 @@ line to `projects/logs/runs.jsonl`, exactly like
 
 ## Register it
 
-**Claude Code** — [`../../.mcp.json`](../../.mcp.json) is already committed:
+From the repository root, `node hub.mjs init --workspace --dry-run` previews
+client configuration in the clone's parent folder. Remove `--dry-run` to write
+missing files. See [Getting started](../getting-started.md) for the full setup.
+The tracked assets live in `templates/workspace/`; the parent `.mcp.json` is
+local generated configuration, not a committed file.
 
-```json
-{
-  "mcpServers": {
-    "agent-hub": { "type": "stdio", "command": "node", "args": ["D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] }
-  }
-}
-```
-
-**VS Code / Copilot agent mode** — `.vscode/mcp.json`, same command under a
-`servers` key instead of `mcpServers`.
-
-**OpenCode** — `opencode.json` (the shape of the tracked `workspace-root/opencode.json`):
-
-```json
-{ "mcp": { "servers": { "agent-hub": { "type": "local", "command": ["cmd.exe", "/c", "node", "D:\\Workspaces\\AgenticHub\\agent-hub\\mcp\\server.mjs"] } } } }
-```
-
-`node agent-hub/hub.mjs init --workspace` writes both files for where this clone really is (and never
-overwrites one that exists). Check with `opencode mcp list`; `hub doctor` checks it too.
-
-**Zed** — `context_servers` in `settings.json`, with the same `command`/`args`.
+For a manual registration, use `node` with the absolute path to this clone's
+`mcp/server.mjs`. Claude Code uses `mcpServers`; VS Code uses `servers`.
+OpenCode's generated entry uses Windows Node via `cmd.exe /c` on Windows and
+plain `node` on native non-Windows hosts. For a WSL client reaching Windows
+agents, explicitly use the Windows process and paths.
 
 ## Run it by hand
 
 ```
-node agent-hub/mcp/server.mjs
+node mcp/server.mjs
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"agents","arguments":{}}}
 ```
@@ -96,7 +77,7 @@ Ctrl-D closes it. Logs go to stderr; stdout carries only protocol messages.
 node --test agent-hub/mcp/tests/*.test.mjs
 ```
 
-22 protocol/dispatch tests with no I/O, plus 8 end-to-end tests that spawn the
+Protocol/dispatch tests with no I/O, plus end-to-end tests that spawn the
 real server, the real `hub-acp.mjs` and a fake ACP agent in a temp registry —
 so the consent gate and the audit line are proven without a model call.
 
@@ -137,3 +118,4 @@ Used by the tests; also lets a second hub run beside this one.
   must be in the prompt.
 - `ask_agent` passes `--no-save`: the audit line is the record, and
   `results/` stays for deliberate runs. `fanout` still writes its merged file.
+
