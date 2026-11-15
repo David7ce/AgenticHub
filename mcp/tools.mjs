@@ -78,6 +78,14 @@ export const TOOLS = [
             "question. On a budget cut the turn still ends normally (not a crash) and, with " +
             "permission allow-all, a salvage file records what was committed before the cut.",
         },
+        sessionId: {
+          type: 'string',
+          description:
+            'Continue an earlier conversation with this agent: pass the `session` id a previous ' +
+            'answer reported (same agent, same cwd). The agent keeps everything it already read ' +
+            'and said, so a follow-up or a correction needs only the new instruction, not the ' +
+            'task again. Leave it out for an unrelated question.',
+        },
         background: {
           type: 'boolean',
           description:

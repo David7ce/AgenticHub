@@ -12,6 +12,9 @@ export const USAGE = `usage: node hub-acp.mjs --agent NAME|auto (--prompt TEXT |
                         requires the agent's loadSession capability)
   --resume SESSION_ID   resume via session/resume (no replay; requires the
                         agent's sessionCapabilities.resume capability)
+  --continue SESSION_ID continue a session whichever way the agent supports
+                        (resume if it advertises it, otherwise load); this is what
+                        a follow-up question should use: the agent keeps its context
   --mcp FILE            JSON file with mcpServers to pass at session/new
                         (array, or { "mcpServers": [...] })
   --permission POLICY   deny (default) | allow-reads | allow-all
@@ -63,6 +66,7 @@ export function parseArgs(argv) {
       case '--cwd': opts.cwd = next(); break;
       case '--load': opts.loadSession = next(); break;
       case '--resume': opts.resumeSession = next(); break;
+      case '--continue': opts.continueSession = next(); break;
       case '--mcp': opts.mcp = next(); break;
       case '--permission': opts.permission = next(); break;
       case '--allow-concurrent-write': opts.allowConcurrentWrite = true; break;

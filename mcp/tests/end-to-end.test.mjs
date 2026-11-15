@@ -33,6 +33,9 @@ function sandbox() {
           defaultConfig: { model: 'fake/model-1' },
           modelFallbacks: ['fake/paid-model'],
         },
+        // The same fixture, able to continue a session each of the two ACP ways.
+        resumer: { label: 'Resumes', command: process.execPath, args: [FIXTURE], env: { FAKE_ACP_CAPS: 'resume' } },
+        loader: { label: 'Loads', command: process.execPath, args: [FIXTURE], env: { FAKE_ACP_CAPS: 'load' } },
         denied: {
           label: 'Never granted',
           command: process.execPath,
@@ -44,7 +47,14 @@ function sandbox() {
   );
   writeFileSync(
     consent,
-    JSON.stringify({ fake: { enabled: true, overseerAck: true, expires: '2099-01-01T00:00:00Z' } }),
+    JSON.stringify(
+      Object.fromEntries(
+        ['fake', 'resumer', 'loader'].map((name) => [
+          name,
+          { enabled: true, overseerAck: true, expires: '2099-01-01T00:00:00Z' },
+        ]),
+      ),
+    ),
     'utf8',
   );
   return { dir, registry, consent, log };
@@ -554,4 +564,35 @@ test('a background job with an explicit model sends --model exactly once', async
   // see hub-acp.mjs). The bug this guards against made the explicit one count
   // twice (3 total), not the default disappear.
   assert.match(text, /\[modelSets=2\]/, 'the pinned model was sent exactly once on top of the registry default');
+});
+
+// A follow-up should not pay for the task again: `sessionId` continues the
+// earlier conversation, whichever of resume/load the agent offers, and each
+// turn is still its own consent check and audit line.
+test('ask_agent with sessionId continues the session the way the agent supports', async (t) => {
+  const server = await session(t);
+  const ask = (agent, args = {}) =>
+    server.request('tools/call', { name: 'ask_agent', arguments: { agent, prompt: 'follow up', ...args } });
+
+  const first = await ask('resumer');
+  const sessionId = /session: (\S+)/.exec(first.result.content[0].text)?.[1];
+  assert.ok(sessionId, 'the first answer reports its session id');
+
+  assert.equal((await ask('resumer', { sessionId })).result.isError, false);
+  assert.equal((await ask('loader', { sessionId })).result.isError, false);
+  const refused = await ask('fake', { sessionId });
+  assert.equal(refused.result.isError, true);
+  assert.match(refused.result.content[0].text, /cannot continue a session/);
+
+  const records = readFileSync(server.paths.log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual(
+    records.map((record) => [record.agent, record.sessionMode, record.status]),
+    [
+      ['resumer', 'new', 'ok'],
+      ['resumer', 'resume', 'ok'],
+      ['loader', 'load', 'ok'],
+      ['fake', 'continue', 'failed'],
+    ],
+  );
+  assert.equal(records[1].sessionId, sessionId);
 });

@@ -61,9 +61,11 @@ test("renderBrief shows the cached Codex plan usage and how old the reading is",
   const root = mkdtempSync(join(tmpdir(), "brief-limits-"));
   mkdirSync(join(root, "logs"));
   const measuredAt = new Date(Date.now() - 12 * 60_000).toISOString();
+  // In the future relative to the run, not a calendar date: a window whose reset has passed is dropped.
+  const resetsAt = new Date(Date.now() + 3 * 86_400_000).toISOString();
   writeFileSync(join(root, "logs", "codex-limits.json"), JSON.stringify({
     measuredAt, plan: "plus", reached: null,
-    windows: [{ slot: "primary", label: "weekly", usedPercent: 74, windowMins: 10080, resetsAt: "2026-11-14T00:53:35Z" }],
+    windows: [{ slot: "primary", label: "weekly", usedPercent: 74, windowMins: 10080, resetsAt }],
   }));
   const consent = join(root, "consent.json");
   writeFileSync(consent, JSON.stringify({}));

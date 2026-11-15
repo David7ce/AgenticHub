@@ -6,6 +6,45 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — T3 Code is a candidate for the chat surface, not for the hub (read, not run)
+
+Asked: is `pingdotgg/t3code` a better alternative? Read from its README and `docs/user/` on 2026-11-15; nothing was
+installed or run. It is an MIT desktop/web/mobile client for the agents already signed in on the machine (Claude Code,
+Codex, OpenCode, Cursor and "any ACP agent"), on Windows too, with one worktree per thread, a usage view (tokens,
+estimated cost, the providers' subscription windows) and an MCP server through which an outside agent can start,
+message and read threads (`t3_thread_launch`, `t3_thread_wait`, `t3_thread_read`).
+
+- **What it would replace:** the surface work, which is the fragile part here: the patched pre-release AHP gateway
+  behind VS Code's Agents window, `chatmgr/`, and most of what `hubctl live` and `usage` show.
+- **What it does not have** (per its docs): write access limited to named trees, a budget or daily cap, an audit line
+  per attempt, quota failover. Its permission modes are per thread and **Full access is the initial default**; a
+  managed policy can only cap which modes are offered.
+- **So it does not replace the hub; it could sit in front of it.** `ahp/consent-proxy.mjs` is already an ACP stdio
+  proxy, and T3 Code accepts any ACP agent, so registering the three proxied agents there would keep `consent.json`,
+  `writeTrees` and the audit line. Not tried.
+
+Trial criterion, if it is run: the six checks in [`harness.md`](harness.md), with T3 Code as the client and the proxy
+as its agents. If it passes, the AHP gateway and `chatmgr/` can go. Others looked at only through listings: Crystal
+(deprecated), Vibe Kanban (unmaintained), Conductor (closed, macOS).
+
+## 2026-11-15 — A turn starts faster and a follow-up reuses its session; no warm process
+
+The hub's own overhead is small, so the two costs worth removing were measured and removed where they are:
+
+- **npx on every start.** Claude and Codex are registered as `npx -y <pkg>@<version>`, and npx resolves the package
+  each time even when cached. To the `initialize` response of `codex-acp@2.6.0` through the hub's own client (Linux,
+  Node 22): 700-1056 ms through npx, 178-230 ms running the cached file with node. `acp/npx-direct.mjs` does that
+  when the line is exactly `-y name@exact-version` and npx's cache holds that version; anything else, and the first
+  run, still goes through npx. It applies to every path that starts an agent (hub, fan-out, the AHP proxy).
+  `HUB_NO_NPX_SHORTCUT=1` turns it off. Not measured on Windows, where the cmd.exe wrapper also disappears.
+- **A follow-up paying for the task again.** `hub-acp --continue <sessionId>` continues a session whichever way the
+  agent offers (resume, else load), and the MCP `ask_agent` takes `sessionId`. Each turn is still its own consent
+  check and audit line (`sessionMode` says which way).
+
+Left out: a pool of agent processes kept alive between turns. It needs a daemon, which the hub does not have on
+purpose, and it would make the tree lock, the inflight record and "is the callee really stopped" depend on a
+long-lived process. Revisit only if start-up is still the bottleneck after these two.
+
 ## 2026-11-13 — The official SDKs are not adopted (measured); one front door, `hub`
 
 Asked: would the hub be simpler or faster on the official SDKs than on its own ACP client and MCP server?

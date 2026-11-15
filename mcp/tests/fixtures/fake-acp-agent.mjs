@@ -46,7 +46,13 @@ rl.on('line', (line) => {
         id,
         result: {
           protocolVersion: 1,
-          agentCapabilities: {},
+          // FAKE_ACP_CAPS=resume|load makes this agent able to continue a session.
+          agentCapabilities:
+            process.env.FAKE_ACP_CAPS === 'resume'
+              ? { sessionCapabilities: { resume: {} } }
+              : process.env.FAKE_ACP_CAPS === 'load'
+                ? { loadSession: true }
+                : {},
           agentInfo: { name: 'fake-agent', title: 'Fake ACP agent', version: '0.0.0' },
         },
       });
@@ -62,6 +68,11 @@ rl.on('line', (line) => {
           configOptions: [{ id: 'model', category: 'model', currentValue: 'unset' }],
         },
       });
+      break;
+
+    case 'session/resume':
+    case 'session/load':
+      send({ jsonrpc: '2.0', id, result: {} });
       break;
 
     case 'session/set_config_option':
