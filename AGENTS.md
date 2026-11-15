@@ -9,25 +9,18 @@ git-ignored); this file is the map.
 
 One backend that lets any agent call any other agent on this machine, behind a
 consent gate and with an audit line for every run. It is not a UI. Two surfaces
-call it (decided 2026-11-11, see [`docs/harness.md`](docs/harness.md)): **Claude Code**
-for hard work and orchestration, **OpenCode** for cheap daily work. Codex and Hermes
-are reached through the hub, not through a UI of their own. VS Code's Agents window
-over AHP is on trial as a single pane (`ahp/`). (2026-11-01: talking to a model
-directly beats VS Code's Copilot session target, which relays prompts through its own
-SDK with capped context and extra latency.)
+call it (see [`docs/harness.md`](docs/harness.md)): **OpenCode**, the daily place to
+work, and **Claude Code** for hard work and orchestration. Codex and Hermes are reached
+through the hub, not through a UI of their own. The owner talks to the model in
+OpenCode and the model calls the hub's MCP tools; nobody is expected to type hub
+commands. (The VS Code Agents window over AHP was retired on 2026-11-15, and the
+conversation manager moved out of this repo: `docs/decisions.md`.)
 
 ```
 OpenCode ── MCP "agent-hub" ──> consent.json ──> runs.jsonl
    │                                              │
    └── Claude / Codex / Go models                 └── claude · opencode · codex
 ```
-
-**Vocabulary, because four words get mixed up.** A *harness* is the program with the agent loop
-(Copilot, Claude Code, Codex, OpenCode). A *host* serves those harnesses to a client (AgentHub over
-AHP, plus VS Code's local `agentHost`s). A *bridge* only turns a harness into a model endpoint, with
-no tools and no sessions (the retired `bridge/`). A *model* is just where the tokens come from, and
-BYOK models exist only in the Copilot harness. One door per agent: Copilot on `This Computer`,
-OpenCode/Claude/Codex on `AgentHub`. Full map: [`docs/surfaces.md`](docs/surfaces.md).
 
 ## The one rule
 
@@ -43,10 +36,8 @@ trees.
 |---|---|
 | `hub.mjs` | The front door: `hub ask`, `hub fanout`, `hub route`, `hub mcp`, `hub check`, and every `hubctl` command |
 | `acp/` | ACP v1 client, registry (`agents.json`, from `agents.example.json`), consent gate, router with failover, fan-out, handoff prompt, spend estimate, path policy |
-| `ahp/` | AHP gateway integration for VS Code's Agents window: `gen-config.mjs` (from `agents.json` + `consent.json`) and `consent-proxy.mjs` (ACP stdio proxy: grant check, per-turn audit). See `ahp/README.md` |
 | `mcp/` | The hub as an MCP server (`ask_agent`, `fanout`, `route`, `agents`, `status`, `brief`, `search`, `job_*`) |
 | `hubctl/` | Control room: status, live, report, spend, usage, doctor, run, handoff, tasks, clean, verify, worktree (one module per command in `commands/`) |
-| `chatmgr/` | OpenCode TUI plugin: every agent's conversations in one list, filtered batch delete |
 | `models.json` | Local catalogue: providers, tiers, estimated cost, retention, capabilities |
 | `bench/` | The internal benchmark and its versioned baseline; `collab.mjs` is its offline cooperation check |
 | `tools/` | Egress posture, consent reminder, `check.mjs`, `herdr-layout.mjs` (Herdr workspace: OpenCode, Codex, Claude and `hubctl live`) |
@@ -188,5 +179,5 @@ node agent-hub/bench/collab.mjs        # offline: fan-out, handoff, conflict, st
 
 Done and verified: ACP path, fan-out with worktrees, MCP server, consent/audit with
 enforced limits, quota failover and `handoff`, path policy, bench (Codex and OpenCode
-both 14/14 on 2026-11-10), conversation manager. Open: the Claude arm of the bench
+both 14/14 on 2026-11-10). Open: the Claude arm of the bench
 after the quota reset, and a real end-to-end failover test.

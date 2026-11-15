@@ -536,3 +536,13 @@ test('brief and search are described well enough for a model to choose them', ()
   }
   assert.deepEqual(TOOLS.find((t) => t.name === 'search').inputSchema.required, ['query']);
 });
+
+// The person talks to the client's model and never names a tool, so every tool
+// has to be reachable from the manual the model is given at connect time.
+test('the instructions name every tool, and initialize sends them', async () => {
+  const { INSTRUCTIONS, TOOLS, handleMessage } = await import('../core.mjs');
+  for (const tool of TOOLS) assert.ok(INSTRUCTIONS.includes(`\`${tool.name}\``), `instructions mention ${tool.name}`);
+  const init = await handleMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }, {});
+  assert.equal(init.result.instructions, INSTRUCTIONS);
+  assert.ok(INSTRUCTIONS.length < 2500, 'short enough to be read on every connect');
+});

@@ -31,6 +31,30 @@ function isRealDate(text) {
 
 export const SERVER_INFO = { name: 'agent-hub', version: '1.0.0' };
 
+// What the client's model reads when it connects. The person talks to that
+// model and does not run hub commands, so this is the manual: which tool a
+// plain request maps to. Short on purpose; the details are in each tool.
+export const INSTRUCTIONS = [
+  'agent-hub lets you call the other coding agents on this machine (claude, codex, opencode). Every call is ' +
+    'checked against the owner\'s consent grant and logged. The person talks to you and does not run commands: ' +
+    'you choose the tool.',
+  '',
+  '- Start of a session, or "where are we", "the roadmap", "what is next": call `brief`. The roadmap itself is ' +
+    'projects/working/ROADMAP.md in the workspace folder; read it yourself.',
+  '- "Ask", "consult", "get a second opinion from" Claude or Codex: `ask_agent`. The callee sees nothing of this ' +
+    'conversation, so the prompt must carry the task, the paths that matter and what you want back.',
+  '- The same question to several agents (for example Claude and Codex on a plan): `fanout`, with `synthesize` ' +
+    'to merge their answers.',
+  '- Unsure who should take a task: `route`; add `run: true` to execute the choice.',
+  '- A follow-up or a correction to an agent\'s answer: `ask_agent` again with the `sessionId` that answer reported.',
+  '- Anything longer than a couple of minutes: `background: true`, then `job_status` and `job_result`; `job_cancel` stops it.',
+  '- "What did we do about X", "when did that run": `search` (the audit log, the working notes, git history).',
+  '- The default permission is deny: the callee can read, not edit. For edits pass `permission: "allow-all"` and ' +
+    'a `cwd` the grant allows; for several agents editing at once use `fanout` with `worktree`.',
+  '- A refusal that mentions consent, a cap or a tree is the owner\'s decision. Report it; do not work around it.',
+  '- `agents` lists who is available and granted; `status` shows health and running jobs.',
+].join('\n');
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 
 // handlers: { ask, fanout, route, agents } — each async, already I/O-bound.
@@ -200,9 +224,7 @@ export async function handleMessage(message, handlers, { log = () => {} } = {}) 
             protocolVersion: PROTOCOL_VERSION,
             capabilities: { tools: { listChanged: false } },
             serverInfo: SERVER_INFO,
-            instructions:
-              'agent-hub exposes this machine\'s other coding agents. Every call goes through ' +
-              'consent.json and is logged to logs/runs.jsonl.',
+            instructions: INSTRUCTIONS,
           },
         };
       case 'notifications/initialized':

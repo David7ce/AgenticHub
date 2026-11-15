@@ -21,8 +21,6 @@ const TEST_DIRS = [
   'tools/tests',
   'hubctl/tests',
   'mcp/tests',
-  'chatmgr/test',
-  'ahp/tests',
 ];
 
 // `node --test <dir>` is not supported on this Node, so the files are listed.

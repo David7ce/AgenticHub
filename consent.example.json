@@ -10,7 +10,6 @@
     "limits": {
       "maxPermission": "allow-reads",
       "writeTrees": [],
-        "attendedWriteTrees": [],
       "maxBudgetUsd": 1,
       "maxDailyUsd": 3
     }

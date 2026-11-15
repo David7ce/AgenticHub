@@ -53,11 +53,6 @@ export function resolveAgent(registry, name) {
     notes: entry.notes,
     defaultConfig: entry.defaultConfig,
     effort: entry.effort,
-    permissionModes: entry.permissionModes,
-    // Models the AHP proxy offers for this agent: { allow: [prefix...], default }.
-    modelPolicy: entry.modelPolicy,
-    // Extra environment only for attended sessions started through the AHP proxy.
-    attendedEnv: entry.attendedEnv,
   };
 }
 

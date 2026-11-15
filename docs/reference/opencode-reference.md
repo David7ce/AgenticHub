@@ -106,8 +106,3 @@ OpenCode executes its own built-in tools without asking, so the hub's permission
 policy only sees what the agent chooses to raise. The real fence is the consent
 grant: `limits.writeTrees`, the budget, and one writer per tree.
 
-## Conversation manager (TUI plugin)
-
-[`chatmgr/`](../../chatmgr/README.md) adds a panel to OpenCode
-(`/conversations`, or `/chats`) listing every agent's conversations (OpenCode,
-Codex, Claude Code, Hermes) in one place, with preview and batch delete.
