@@ -5,78 +5,114 @@
  * search rebuilds it. Sources are fixed — `logs/runs*.jsonl`, the working
  * JOURNAL/HANDOFF/history notes and `git log` — nothing else is ever read.
  */
-import { closeSync, existsSync, openSync, readSync, readdirSync, statSync, readFileSync, mkdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync, readFileSync, mkdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { createHash } from "node:crypto";
 
 const SCHEMA = `
   create table if not exists meta (key text primary key, value text);
   create virtual table if not exists runs using fts5(
-    time unindexed, agent unindexed, status unindexed, cwd unindexed, prompt, output,
+    time unindexed, agent unindexed, status unindexed, cwd unindexed, prompt, output, file unindexed,
     tokenize = 'unicode61 remove_diacritics 2');
   create virtual table if not exists notes using fts5(
-    source unindexed, date unindexed, heading unindexed, text,
+    source unindexed, date unindexed, heading unindexed, text, file unindexed,
     tokenize = 'unicode61 remove_diacritics 2');
 `;
+
+// This cache contains only derived rows. Older caches lack source ownership;
+// rebuild them once so stale rows from a previous rotation cannot survive.
+const SCHEMA_VERSION = "2";
+
+function transaction(db, work) {
+  db.exec("begin");
+  try {
+    const result = work();
+    db.exec("commit");
+    return result;
+  } catch (error) {
+    db.exec("rollback");
+    throw error;
+  }
+}
 
 export function openIndex(path) {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
-  db.exec(SCHEMA);
-  return db;
+  try {
+    db.exec("create table if not exists meta (key text primary key, value text)");
+    if (getMeta(db, "schema-version") !== SCHEMA_VERSION) {
+      transaction(db, () => {
+        db.exec("drop table if exists runs; drop table if exists notes; delete from meta");
+        db.exec(SCHEMA);
+        setMeta(db, "schema-version", SCHEMA_VERSION);
+      });
+    }
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 const getMeta = (db, key) => db.prepare("select value from meta where key = ?").get(key)?.value ?? null;
 const setMeta = (db, key, value) =>
   db.prepare("insert into meta(key, value) values(?, ?) on conflict(key) do update set value = excluded.value").run(key, String(value));
+const hash = (buffer) => createHash("sha256").update(buffer).digest("hex");
+const signature = (stat) => [stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs].join(":");
 
-/** Read bytes [from, size) of a file, returning only whole lines and the new offset. */
-function readNewLines(file, from) {
-  const size = statSync(file).size;
-  if (size <= from) return { lines: [], offset: from };
-  const fd = openSync(file, "r");
-  try {
-    const buffer = Buffer.alloc(size - from);
-    readSync(fd, buffer, 0, buffer.length, from);
-    const lastNewline = buffer.lastIndexOf(0x0a);
-    if (lastNewline < 0) return { lines: [], offset: from };
-    const chunk = buffer.subarray(0, lastNewline + 1);
-    return { lines: chunk.toString("utf8").split("\n").filter((l) => l.trim()), offset: from + chunk.length };
-  } finally {
-    closeSync(fd);
+// Only these two internal table names are used; file paths are bound values.
+function removeMissing(db, table, prefix, current) {
+  const previous = db.prepare("select key from meta where key like ?").all(`${prefix}%`);
+  const removeRows = db.prepare(`delete from ${table} where file = ?`);
+  const removeMeta = db.prepare("delete from meta where key = ?");
+  for (const { key } of previous) {
+    const file = key.slice(prefix.length);
+    if (current.has(file)) continue;
+    removeRows.run(file);
+    removeMeta.run(key);
   }
 }
 
 export function indexRuns(db, logsDir) {
-  if (!existsSync(logsDir)) return 0;
-  const files = readdirSync(logsDir).filter((n) => /^runs(-.*)?\.jsonl$/.test(n)).sort();
-  const insert = db.prepare("insert into runs(time, agent, status, cwd, prompt, output) values(?, ?, ?, ?, ?, ?)");
-  let added = 0;
-  for (const name of files) {
-    const path = join(logsDir, name);
-    const key = `runs-offset:${name}`;
-    let offset = Number(getMeta(db, key) ?? 0);
-    if (statSync(path).size < offset) {
-      // A file that shrank was rewritten: start the whole runs table over.
-      db.exec("delete from runs; delete from meta where key like 'runs-offset:%'");
-      return indexRuns(db, logsDir);
+  const files = existsSync(logsDir)
+    ? readdirSync(logsDir).filter((name) => /^runs(-.*)?\.jsonl$/.test(name)).sort().map((name) => resolve(logsDir, name))
+    : [];
+  return transaction(db, () => {
+    removeMissing(db, "runs", "runs-state:", new Set(files));
+    const insert = db.prepare("insert into runs(time, agent, status, cwd, prompt, output, file) values(?, ?, ?, ?, ?, ?, ?)");
+    let added = 0;
+    for (const file of files) {
+      const key = `runs-state:${file}`;
+      const previous = JSON.parse(getMeta(db, key) ?? "null");
+      const currentSignature = signature(statSync(file));
+      if (previous?.signature === currentSignature) continue;
+      const buffer = readFileSync(file);
+      let offset = previous?.offset ?? 0;
+      // File size alone cannot distinguish append from rotation or an in-place
+      // rewrite. Check the already-indexed prefix before trusting its offset.
+      if (previous && (buffer.length < offset || hash(buffer.subarray(0, offset)) !== previous.hash)) {
+        db.prepare("delete from runs where file = ?").run(file);
+        offset = 0;
+      }
+      const lastNewline = buffer.lastIndexOf(0x0a);
+      const next = lastNewline >= offset ? lastNewline + 1 : offset;
+      for (const line of buffer.subarray(offset, next).toString("utf8").split("\n")) {
+        if (!line.trim()) continue;
+        let rec;
+        try { rec = JSON.parse(line); } catch { continue; }
+        if (!rec || typeof rec !== "object" || Array.isArray(rec)) continue;
+        insert.run(
+          String(rec.time ?? ""), String(rec.agent ?? ""), String(rec.status ?? ""), String(rec.cwd ?? ""),
+          String(rec.prompt ?? ""), String(rec.output ?? rec.reason ?? ""), file,
+        );
+        added += 1;
+      }
+      setMeta(db, key, JSON.stringify({ signature: currentSignature, offset: next, hash: hash(buffer.subarray(0, next)) }));
     }
-    const { lines, offset: next } = readNewLines(path, offset);
-    db.exec("begin");
-    for (const line of lines) {
-      let rec;
-      try { rec = JSON.parse(line); } catch { continue; }
-      insert.run(
-        String(rec.time ?? ""), String(rec.agent ?? ""), String(rec.status ?? ""), String(rec.cwd ?? ""),
-        String(rec.prompt ?? ""), String(rec.output ?? rec.reason ?? ""),
-      );
-      added += 1;
-    }
-    setMeta(db, key, next);
-    db.exec("commit");
-  }
-  return added;
+    return added;
+  });
 }
 
 /** Split Markdown on `## ` headings; text before the first heading is kept under the file title. */
@@ -100,33 +136,38 @@ export function splitSections(markdown) {
 const dateOf = (text, fallback) => text.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? fallback;
 
 export function indexNotes(db, workingDir) {
-  if (!existsSync(workingDir)) return 0;
   const files = [];
   for (const name of ["JOURNAL.md", "HANDOFF.md"]) {
-    if (existsSync(join(workingDir, name))) files.push({ path: join(workingDir, name), source: name.replace(".md", "").toLowerCase() });
+    const file = resolve(workingDir, name);
+    if (existsSync(file)) files.push({ file, source: name.replace(".md", "").toLowerCase() });
   }
   const history = join(workingDir, "history");
   if (existsSync(history)) {
-    for (const name of readdirSync(history).filter((n) => n.endsWith(".md")).sort()) files.push({ path: join(history, name), source: "history" });
-  }
-  const insert = db.prepare("insert into notes(source, date, heading, text) values(?, ?, ?, ?)");
-  let added = 0;
-  for (const { path, source } of files) {
-    const mtime = String(statSync(path).mtimeMs);
-    const key = `notes-mtime:${path}`;
-    if (getMeta(db, key) === mtime) continue;
-    const day = new Date(statSync(path).mtimeMs).toISOString().slice(0, 10);
-    db.exec("begin");
-    db.prepare("delete from notes where source = ? and heading like ?").run(source, `${basename(path)}%`);
-    for (const section of splitSections(readFileSync(path, "utf8"))) {
-      const heading = `${basename(path)} ${section.heading}`.trim();
-      insert.run(source, dateOf(section.heading, day), heading, section.text || section.heading);
-      added += 1;
+    for (const name of readdirSync(history).filter((name) => name.endsWith(".md")).sort()) {
+      files.push({ file: resolve(history, name), source: "history" });
     }
-    setMeta(db, key, mtime);
-    db.exec("commit");
   }
-  return added;
+  return transaction(db, () => {
+    removeMissing(db, "notes", "notes-state:", new Set(files.map(({ file }) => file)));
+    const insert = db.prepare("insert into notes(source, date, heading, text, file) values(?, ?, ?, ?, ?)");
+    let added = 0;
+    for (const { file, source } of files) {
+      const stat = statSync(file);
+      const key = `notes-state:${file}`;
+      const currentSignature = signature(stat);
+      if (getMeta(db, key) === currentSignature) continue;
+      const sections = splitSections(readFileSync(file, "utf8"));
+      const day = new Date(stat.mtimeMs).toISOString().slice(0, 10);
+      db.prepare("delete from notes where file = ?").run(file);
+      for (const section of sections) {
+        const heading = `${basename(file)} ${section.heading}`.trim();
+        insert.run(source, dateOf(section.heading, day), heading, section.text || section.heading, file);
+        added += 1;
+      }
+      setMeta(db, key, currentSignature);
+    }
+    return added;
+  });
 }
 
 export function indexGit(db, repo) {
@@ -185,3 +226,4 @@ export function search(db, query, { since = null, source = null, limit = 20 } = 
   }
   return hits.sort((a, b) => a.rank - b.rank).slice(0, limit);
 }
+

@@ -112,6 +112,29 @@ node hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidence path\to\
 - A worktree with changes is kept and named in `tasks list`; a clean one is
   removed.
 
+## search — history from current source files
+
+```bash
+node hub.mjs search "timeout" --source runs --json
+```
+
+Search refreshes a disposable local SQLite index from audit logs, the working
+handoff/journal/history notes, and Git commit messages. It never edits those
+source files. Log rows belong to an exact file path: rotation, replacement and
+truncation refresh the affected rows without duplicating archived records or
+skipping the start of a new live log. Complete appended records remain incremental;
+a partial last line waits for its terminating newline.
+
+Deleted or renamed note/log sources are reconciled on the next refresh. Note
+filenames are matched exactly, including SQL wildcard characters. Refreshes
+update source rows and their progress metadata in one transaction; a failed
+refresh can be retried without keeping a partial replacement.
+
+Existing caches upgrade automatically by rebuilding their derived rows once.
+The first search after upgrading may take longer. Unchanged files are skipped
+using filesystem metadata; a changed log's indexed prefix is checked before its
+old byte offset is reused. This is cache consistency, not tamper detection.
+
 ## spend — tokens by project and day
 
 ```bash

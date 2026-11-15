@@ -6,6 +6,15 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Search rows belong to their source file
+
+Search previously tracked log offsets by filename alone: a rotated live log
+could duplicate archived rows and skip new records. Notes were replaced using
+SQL wildcard matching and deleted notes stayed searchable. The derived index
+now records exact file ownership, verifies a changed log's indexed prefix,
+reconciles removed sources and commits each refresh transactionally. Old caches
+rebuild once; source audit logs and working notes are never modified.
+
 ## 2026-11-15 — Bound completed job retention and preserve live controllers
 
 Background-job cleanup now counts actual remaining records after expiry and
