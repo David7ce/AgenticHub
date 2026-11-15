@@ -26,15 +26,9 @@
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { HUB_CONFIG } from './config.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-// AGENT_HUB_CONSENT lets tests and alternate hubs point at their own grants
-// without editing the real file.
-export const CONSENT_PATH = process.env.AGENT_HUB_CONSENT
-  ? resolve(process.env.AGENT_HUB_CONSENT)
-  : join(HERE, '..', 'consent.json');
+export const CONSENT_PATH = HUB_CONFIG.consentPath;
 
 export const PERMISSION_RANK = { deny: 0, 'allow-reads': 1, 'allow-all': 2 };
 
@@ -199,3 +193,4 @@ export function testConsent(agentName, path = CONSENT_PATH, request = null) {
   if (request) return checkLimits(entry.limits, request);
   return { ok: true };
 }
+

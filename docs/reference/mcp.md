@@ -101,6 +101,12 @@ Used by the tests; also lets a second hub run beside this one.
   satisfy that limit. Results needed later should be read from their saved
   files; an evicted job id is no longer available through `job_status` or
   `job_result`.
+- Child stdout and stderr each have an 8 MiB capture limit. Overflow requests
+  graceful cancellation and continues draining while discarding excess bytes,
+  with the normal stop-grace/tree-kill backstop. The result reports a capture
+  error rather than treating truncated JSON as success, even if the other
+  stream contains valid JSON. This bounds capture memory; it does not prove a
+  daemon-backed agent stopped. Saved results and audit records remain separate.
 - Calls are serialized **per working tree**: two `ask_agent` calls on the same
   `cwd` queue, calls on different repos do not, and reads (`status`, `agents`)
   never queue. Use `fanout` (with `worktree`) for one prompt across N agents.

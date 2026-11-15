@@ -6,19 +6,14 @@ import { killTree } from '../acp/process-utils.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { HUB_CONFIG } from '../acp/config.mjs';
 
 export const HERE = dirname(fileURLToPath(import.meta.url));
 export const ACP_DIR = resolve(HERE, '..', 'acp');
 export const HUB_ACP = join(ACP_DIR, 'hub-acp.mjs');
 export const FANOUT_ACP = join(ACP_DIR, 'fanout-acp.mjs');
-// Local registry first; a fresh clone runs with the shipped example.
-export const DEFAULT_REGISTRY = existsSync(join(ACP_DIR, 'agents.json'))
-  ? join(ACP_DIR, 'agents.json')
-  : join(ACP_DIR, 'agents.example.json');
-
-export const REGISTRY = process.env.AGENT_HUB_REGISTRY
-  ? resolve(process.env.AGENT_HUB_REGISTRY)
-  : DEFAULT_REGISTRY;
+export const DEFAULT_REGISTRY = HUB_CONFIG.defaultRegistryPath;
+export const REGISTRY = HUB_CONFIG.registryPath;
 
 // A callee may take minutes; MCP clients have their own patience. This is the
 // hard stop for the child process, deliberately later than hub-acp's own
@@ -36,6 +31,8 @@ export const STOP_GRACE_MS = 15_000;
 // the cap on most real tasks. This is the MCP layer's own default -- it
 // always passes --budget explicitly, so the silent 0.5 is never inherited.
 export const DEFAULT_BUDGET_USD = 3;
+// Independent caps prevent either child stream from growing without bound.
+export const MAX_CAPTURE_BYTES = 8 * 1024 * 1024;
 
 export function log(line) {
   process.stderr.write(`[hub-mcp] ${line}\n`);
@@ -43,7 +40,8 @@ export function log(line) {
 
 // Spawn one of the hub's own scripts and collect its streams. Detached from
 // any single tool call, so a background job and a foreground turn share it.
-export function spawnHub(script, args, { input = '', env } = {}) {
+export function spawnHub(script, args, { input = '', env, maxOutputBytes = MAX_CAPTURE_BYTES } = {}) {
+  if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes <= 0) throw new Error('maxOutputBytes must be a positive safe integer');
   const child = spawn(process.execPath, [script, ...args], {
     cwd: process.cwd(),
     env: env ? { ...process.env, ...env } : process.env,
@@ -52,22 +50,51 @@ export function spawnHub(script, args, { input = '', env } = {}) {
     windowsHide: true,
   });
 
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8');
-  child.stderr.setEncoding('utf8');
-  child.stdout.on('data', (chunk) => {
-    stdout += chunk;
-  });
-  child.stderr.on('data', (chunk) => {
-    stderr += chunk;
-  });
+  const streams = {
+    stdout: { buffer: Buffer.alloc(0), bytes: 0 },
+    stderr: { buffer: Buffer.alloc(0), bytes: 0 },
+  };
+  let outputLimitExceeded = null;
+  const capture = (name, chunk) => {
+    const stream = streams[name];
+    const remaining = maxOutputBytes - stream.bytes;
+    const kept = Math.min(remaining, chunk.length);
+    if (kept > 0) {
+      const needed = stream.bytes + kept;
+      if (needed > stream.buffer.length) {
+        // Grow geometrically up to the cap, rather than retaining an object
+        // for every small chunk or allocating the full cap for quiet jobs.
+        const capacity = Math.min(maxOutputBytes, Math.max(4096, needed, stream.buffer.length * 2));
+        const buffer = Buffer.alloc(capacity);
+        stream.buffer.copy(buffer, 0, 0, stream.bytes);
+        stream.buffer = buffer;
+      }
+      chunk.copy(stream.buffer, stream.bytes, 0, kept);
+      stream.bytes += kept;
+    }
+    if (chunk.length > remaining && !outputLimitExceeded) {
+      outputLimitExceeded = { stream: name, limitBytes: maxOutputBytes };
+      requestStop(child);
+    }
+    // Continue draining after overflow while cancellation/audit completes.
+  };
+  child.stdout.on('data', (chunk) => capture('stdout', chunk));
+  child.stderr.on('data', (chunk) => capture('stderr', chunk));
 
   const exit = new Promise((resolvePromise, reject) => {
     child.on('error', (err) => reject(new Error(`cannot start ${script}: ${err.message}`)));
-    child.on('close', (code) => resolvePromise({ code, stdout, stderr }));
+    child.on('close', (code) => {
+      // Decode once so UTF-8 characters split across chunks remain intact.
+      const stdout = streams.stdout.buffer.subarray(0, streams.stdout.bytes).toString('utf8');
+      const stderr = streams.stderr.buffer.subarray(0, streams.stderr.bytes).toString('utf8');
+      streams.stdout.buffer = Buffer.alloc(0);
+      streams.stderr.buffer = Buffer.alloc(0);
+      resolvePromise({ code, stdout, stderr, outputLimitExceeded });
+    });
   });
 
+  // A cancelled/failed callee may close stdin before consuming the prompt.
+  child.stdin.on('error', () => {});
   if (input) child.stdin.end(input, 'utf8');
   else child.stdin.end();
 
@@ -84,7 +111,7 @@ export function requestStop(child, { graceMs = STOP_GRACE_MS } = {}) {
   let asked = false;
   try {
     if (child.connected) {
-      child.send({ type: 'cancel' });
+      child.send({ type: 'cancel' }, (error) => { if (error) killTree(child); });
       asked = true;
     }
   } catch {}
@@ -98,7 +125,10 @@ export function requestStop(child, { graceMs = STOP_GRACE_MS } = {}) {
 }
 
 export function parseHubJson(exit, label) {
-  const { code, stdout, stderr } = exit;
+  const { code, stdout, stderr, outputLimitExceeded } = exit;
+  if (outputLimitExceeded) {
+    throw new Error(`${label}: ${outputLimitExceeded.stream} exceeded the ${outputLimitExceeded.limitBytes}-byte capture limit; cancellation requested and output truncated`);
+  }
   const text = stdout.trim();
   if (!text) throw new Error(stderr.trim() || `${label} exited ${code} with no output`);
   try {
@@ -110,9 +140,9 @@ export function parseHubJson(exit, label) {
 
 // Run one of the hub's own scripts to completion and capture its --json output.
 // `signal` (an AbortSignal) stops the run when the caller gives up on it.
-export function runHubScript(script, args, { input = '', timeoutMs = DEFAULT_TURN_TIMEOUT_MS, signal } = {}) {
+export function runHubScript(script, args, { input = '', timeoutMs = DEFAULT_TURN_TIMEOUT_MS, signal, maxOutputBytes = MAX_CAPTURE_BYTES } = {}) {
   if (signal?.aborted) return Promise.resolve({ ok: false, status: 'cancelled', error: 'stopped by the caller before it started' });
-  const { child, exit } = spawnHub(script, args, { input });
+  const { child, exit } = spawnHub(script, args, { input, maxOutputBytes });
   const onAbort = () => requestStop(child);
   signal?.addEventListener('abort', onAbort, { once: true });
   child.once('close', () => signal?.removeEventListener('abort', onAbort));
@@ -195,3 +225,4 @@ export function hubArgsFor({ agent, cwd, permission, timeoutMs, model, budgetUsd
   if (cwd) args.push('--cwd', resolvedCwd);
   return { args, cwd: resolvedCwd };
 }
+

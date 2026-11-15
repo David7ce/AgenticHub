@@ -7,34 +7,21 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { limitsPath } from "../acp/codex-limits.mjs";
+import { HUB_CONFIG } from "../acp/config.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const HUB = resolve(HERE, "..");
-// ROOT is the hub's own repository (git, hooks, docs); the state folder is separate.
+export const HUB = HUB_CONFIG.hubDir;
 export const ROOT = HUB;
-export const WORKSPACE_DIR = resolve(HUB, "..");
-export const STATE_DIR = process.env.AGENT_HUB_STATE
-  ? resolve(process.env.AGENT_HUB_STATE)
-  : join(WORKSPACE_DIR, "projects");
+export const {
+  workspaceDir: WORKSPACE_DIR, stateDir: STATE_DIR, resultsDir: RESULTS_DIR,
+  logPath: LOG_PATH, consentPath: CONSENT_PATH, registryPath: REGISTRY_PATH,
+  tasksDb: TASKS_DB, indexPath: INDEX_PATH, inflightDir: INFLIGHT_DIR, locksDir: LOCKS_DIR,
+} = HUB_CONFIG;
 export const HUBCTL_ENTRY = join(HERE, "hubctl.mjs");
-export const LOG_PATH = process.env.AGENT_HUB_LOG
-  ? resolve(process.env.AGENT_HUB_LOG)
-  : join(STATE_DIR, "logs", "runs.jsonl");
-export const CONSENT_PATH = join(HUB, "consent.json");
-// Last reading of Codex's plan usage windows (acp/codex-limits.mjs); refreshed by `hubctl usage`.
 export const CODEX_LIMITS_PATH = limitsPath(STATE_DIR);
-export const TASKS_DB = process.env.AGENT_HUB_TASKS_DB
-  ? resolve(process.env.AGENT_HUB_TASKS_DB)
-  : join(STATE_DIR, "logs", "hub.db");
-export const INFLIGHT_DIR = process.env.AGENT_HUB_INFLIGHT
-  ? resolve(process.env.AGENT_HUB_INFLIGHT)
-  : join(HUB, "results", "inflight");
-export const LOCKS_DIR = process.env.AGENT_HUB_LOCKS
-  ? resolve(process.env.AGENT_HUB_LOCKS)
-  : join(HUB, "results", "locks");
 export const MAX_RUNS = 5;
 
 export const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -179,3 +166,4 @@ export function spawnHub(args, prompt) {
     child.stdin.end(prompt);
   });
 }
+

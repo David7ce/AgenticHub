@@ -6,6 +6,19 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Execution and diagnostics share paths; MCP output capture is bounded
+
+`acp/config.mjs` owns the core registry, consent, state, log, results, inflight,
+lock and database paths. Direct ACP calls and fan-out now honor the environment
+registry, doctor/status inspect the same selected files, routing uses the same
+log, and a results override also moves default locks/inflight. Explicit missing
+files stay errors; grants are not widened or rewritten.
+
+MCP child stdout/stderr each retain at most 8 MiB, allocated on demand. Overflow
+requests normal cancellation, keeps draining the pipes and fails result parsing
+explicitly instead of returning truncated success. UTF-8 is decoded only after
+capture so characters split across pipe chunks remain intact.
+
 ## 2026-11-15 — Search rows belong to their source file
 
 Search previously tracked log offsets by filename alone: a rotated live log

@@ -6,10 +6,9 @@
  */
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, STATE_DIR } from "../common.mjs";
+import { ROOT, STATE_DIR, INDEX_PATH } from "../common.mjs";
 import { openIndex, reindex, search } from "../search.mjs";
 
-const INDEX_PATH = process.env.AGENT_HUB_INDEX || join(STATE_DIR, "logs", "index.db");
 
 export async function runSearch(argv) {
   const words = [];
@@ -48,3 +47,4 @@ export async function runSearch(argv) {
     db.close();
   }
 }
+

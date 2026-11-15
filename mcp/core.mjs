@@ -6,7 +6,8 @@
 // consent.json, logs/runs.jsonl, budgets, permissions and worktrees keep
 // working exactly as they do from the command line.
 
-import { agentChain, DEFAULT_REGISTRY, isQuotaError, readAgentEntry } from '../acp/router.mjs';
+import { configuredRegistryPath } from '../acp/config.mjs';
+import { agentChain, isQuotaError, readAgentEntry } from '../acp/router.mjs';
 import { buildHandoffPrompt } from '../acp/handoff.mjs';
 
 import { TOOLS } from './tools.mjs';
@@ -145,7 +146,7 @@ export async function callTool(name, args, handlers, ctx = {}) {
       // one, and say so, rather than reporting an exhausted pool as the answer.
       let failedOver = null;
       if (!result.ok && !ctx.signal?.aborted && isQuotaError(result.error)) {
-        const registry = process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY;
+        const registry = configuredRegistryPath();
         for (const next of agentChain(readAgentEntry(registry, decision.agent), decision.agent)) {
           failedOver = next;
           const handedOver = cwd
@@ -267,3 +268,4 @@ export async function handleMessage(message, handlers, { log = () => {}, signal 
 }
 
 export { ToolError };
+

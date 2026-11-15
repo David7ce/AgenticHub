@@ -30,7 +30,7 @@ import {
 } from '../acp/router.mjs';
 import { CONSENT_PATH, testConsent } from '../acp/consent.mjs';
 import { gatherBrief, renderBrief } from '../hubctl/commands/brief.mjs';
-import { ROOT as WORKSPACE_ROOT, STATE_DIR } from '../hubctl/common.mjs';
+import { ROOT as WORKSPACE_ROOT, STATE_DIR, INDEX_PATH } from '../hubctl/common.mjs';
 import { openIndex, reindex, search as searchIndex } from '../hubctl/search.mjs';
 import { gatherStatus, readInflight, renderStatus } from '../hubctl/hubctl.mjs';
 
@@ -279,7 +279,7 @@ async function brief({ json }) {
 }
 
 async function searchHistory({ query, since, source, limit }) {
-  const db = openIndex(process.env.AGENT_HUB_INDEX || join(STATE_DIR, 'logs', 'index.db'));
+  const db = openIndex(INDEX_PATH);
   try {
     reindex(db, { logsDir: join(STATE_DIR, 'logs'), workingDir: join(STATE_DIR, 'working'), repo: WORKSPACE_ROOT });
     const hits = searchIndex(db, query, { since, source, limit });
@@ -451,3 +451,4 @@ function main() {
 }
 
 main();
+

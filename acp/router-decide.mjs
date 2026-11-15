@@ -1,9 +1,9 @@
 // router-decide.mjs — the routing rules: prompt signals, audit-log health, model pick.
 import { readFileSync } from 'node:fs';
+import { configuredRegistryPath } from './config.mjs';
 import {
   CHEAP_AGENT,
   DEFAULT_COST_CEILING,
-  DEFAULT_REGISTRY,
   MODELS_PATH,
   RECENT_FAILURE_WINDOW_MS,
   STRONG_AGENT,
@@ -159,6 +159,7 @@ export function decideRoute(prompt, {
   force = null,
   review = false,
   catalog = null,
+  registryPath = configuredRegistryPath(),
 } = {}) {
   const base = force
     ? { agent: force, reason: '--force override' }
@@ -180,7 +181,7 @@ export function decideRoute(prompt, {
   const wantsReview = review || /\b(review|revisa|revisión|cross-?check|second opinion)\b/i.test(String(prompt ?? ''));
   const topology = wantsReview && agent === CHEAP_AGENT ? 'review' : 'solo';
   const fallbacks = modelChain(readAgentEntry(
-    process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY,
+    registryPath,
     agent,
   )).filter((id) => id !== model?.id);
 
@@ -193,3 +194,4 @@ export function decideRoute(prompt, {
     fallbacks,
   };
 }
+

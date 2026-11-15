@@ -19,6 +19,7 @@ flowchart TD
 | Path | Responsibility |
 |---|---|
 | `hub.mjs` | Short command mapping to the existing entry scripts |
+| `acp/config.mjs` | Shared core runtime path resolution for execution and diagnostics |
 | `acp/acp-client.mjs` | ACP v1 stdio transport and session protocol |
 | `acp/hub-acp.mjs` | Consent, agent startup, session, prompt, cancellation and audit |
 | `acp/router.mjs` | Selection and execution with quota failover; `--explain` only shows the choice |

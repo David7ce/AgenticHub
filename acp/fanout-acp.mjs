@@ -23,7 +23,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { rotateIfNeeded } from './log-rotation.mjs';
-import { STATE_DIR } from './hub-env.mjs';
+import { DEFAULT_REGISTRY, RESULTS_DIR, LOG_PATH } from './hub-env.mjs';
 
 
 import { createWorktree, removeWorktree, repoInfo, worktreePath, worktreeHasChanges } from './worktree.mjs';
@@ -35,14 +35,6 @@ export { buildSynthesisPrompt, renderMarkdown } from './fanout-render.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB = join(HERE, 'hub-acp.mjs');
-const RESULTS_DIR = resolve(HERE, '..', 'results');
-// Local registry first; a fresh clone runs with the shipped example.
-const DEFAULT_REGISTRY = existsSync(join(HERE, 'agents.json'))
-  ? join(HERE, 'agents.json')
-  : join(HERE, 'agents.example.json');
-const LOG_PATH = process.env.AGENT_HUB_LOG
-  ? resolve(process.env.AGENT_HUB_LOG)
-  : join(STATE_DIR, 'logs', 'runs.jsonl');
 const MAX_PROMPT_CHARS = 4000;
 
 const USAGE = `usage: node fanout-acp.mjs --agents NAME[,NAME...] (--prompt TEXT | --prompt -) [options]
@@ -526,3 +518,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       process.exit(1);
     });
 }
+

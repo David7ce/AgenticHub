@@ -12,6 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { PERMISSION_RANK } from '../acp/consent.mjs';
+import { resolveHubConfig } from '../acp/config.mjs';
 import { checkByokModels, userConfigPath } from '../tools/vscode-models.mjs';
 import { spentTodayAll, spentTokensToday } from '../acp/spend-estimate.mjs';
 import { toWsl } from '../acp/paths.mjs';
@@ -348,19 +349,20 @@ export function checkFrontier(catalog) {
   return on.map((m) => row('models', 'warn', `${m.id} is frontier but enabled for routing; it should be explicit-only`));
 }
 
-export function gatherDoctor({ root, stateDir = join(dirname(root), 'projects'), hub, readJson, inflight, locks, fast = false, codexCache = null }) {
-  const consent = readJson(join(hub, 'consent.json'));
-  const localRegistry = join(hub, 'acp', 'agents.json');
-  const usingExample = !existsSync(localRegistry);
-  const registry = readJson(usingExample ? join(hub, 'acp', 'agents.example.json') : localRegistry);
+export function gatherDoctor({ root, stateDir, hub, readJson, inflight, locks, fast = false, codexCache = null }) {
+  const config = resolveHubConfig({ hubDir: hub, stateDir });
+  stateDir = config.stateDir;
+  const consent = readJson(config.consentPath);
+  const usingExample = config.usingExampleRegistry;
+  const registry = readJson(config.registryPath);
   const catalog = readJson(join(hub, 'models.json'));
   const checks = [];
-  if (!consent) checks.push(row('consent', 'fail', 'consent.json is missing or not valid JSON'));
-  if (!registry) checks.push(row('registry', 'fail', 'acp/agents.json is missing or not valid JSON'));
+  if (!consent) checks.push(row('consent', 'fail', `consent.json is missing or not valid JSON: ${config.consentPath}`));
+  if (!registry) checks.push(row('registry', 'fail', `agent registry is missing or not valid JSON: ${config.registryPath}`));
   else if (usingExample) checks.push(row('registry', 'warn', 'using agents.example.json; copy it to acp/agents.json and set your agent paths'));
   if (consent && registry) checks.push(...checkRegistryConsent(registry, consent));
   if (consent) checks.push(...checkGrants(consent, { exists: pathExists }));
-  if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, process.env.AGENT_HUB_LOG ?? join(stateDir, 'logs', 'runs.jsonl'))));
+  if (consent) checks.push(...checkDailySpend(consent, (name) => spentTodayAll(name, config.logPath)));
   if (consent) checks.push(...checkDailyTokens(consent, (name) => spentTokensToday(name)));
   if (consent?.codex?.enabled) checks.push(...checkCodexLimits(readLimitsCache(limitsPath(stateDir))));
   if (consent && catalog) checks.push(...checkUnpricedCaps(consent, catalog));

@@ -20,18 +20,31 @@ never needs the author's other repositories or knowledge vault.
 | Environment variable | Overrides |
 |---|---|
 | `AGENT_HUB_STATE` | State directory, normally `<parent>/projects` |
-| `AGENT_HUB_RESULTS` | ACP result directory, normally `<clone>/results` |
+| `AGENT_HUB_RESULTS` | ACP/fan-out result directory and default locks/inflight location, normally `<clone>/results` |
 | `AGENT_HUB_LOG` | Audit log path |
-| `AGENT_HUB_REGISTRY` | Agent registry path for dispatch |
-| `AGENT_HUB_CONSENT` | Consent file for dispatch |
+| `AGENT_HUB_REGISTRY` | Agent registry for execution and diagnostics |
+| `AGENT_HUB_CONSENT` | Consent file for execution and diagnostics |
 | `AGENT_HUB_INFLIGHT` | Inflight directory |
 | `AGENT_HUB_LOCKS` | Write-lock directory |
 | `AGENT_HUB_TASKS_DB` | Task database path |
+| `AGENT_HUB_INDEX` | Search index database path |
 
-These overrides are component-specific; they do not relocate every local file as
-one unit. In particular, doctor reads the checkout's local consent and registry,
-and some control-room views use their own default paths. Inspect the relevant
-component before creating multiple installations or a fully isolated test setup.
+`acp/config.mjs` resolves the core runtime paths for dispatch, MCP, routing,
+status and doctor. Relative overrides resolve against the process's startup
+working directory. Prefer absolute paths for a server launched by a chat client.
+An explicit `--registry` argument wins over `AGENT_HUB_REGISTRY`; without either,
+the checkout's `acp/agents.json` is used when present, otherwise its tracked
+example. An explicit missing registry or consent file is an error, never a
+reason to silently use another file. Consent rules and limits are unchanged.
+
+The results override also relocates the default locks and inflight directories;
+explicit `AGENT_HUB_LOCKS` / `AGENT_HUB_INFLIGHT` values take precedence. Benchmark
+output and auxiliary tools may retain their own locations; this is not a global
+relocation of every file the repository can produce.
+
+Paths are resolved when modules load. Restart a long-running MCP server after
+changing its environment. `hub init` still creates checkout-local configuration
+from examples; it does not create or modify files named by external overrides.
 
 `hub init --workspace` keeps existing files. After moving or renaming the clone,
 review existing client configurations and update their server paths. Claude's

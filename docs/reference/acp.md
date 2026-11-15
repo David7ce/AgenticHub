@@ -23,6 +23,7 @@ other major version instead of silently drifting.
 ## Layout
 
     acp/
+      config.mjs        shared runtime path resolution for execution and diagnostics
       acp-client.mjs    stdio transport, JSON-RPC dispatch, permissions
       hub-acp.mjs        CLI: consent -> spawn -> initialize -> session -> prompt
         hub-env.mjs        paths, limits and AGENT_HUB_* overrides

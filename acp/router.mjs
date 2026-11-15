@@ -99,6 +99,7 @@ function main() {
   let withContext = true;
   let costCeiling = DEFAULT_COST_CEILING;
   let logPath = DEFAULT_LOG;
+  let registryPath = DEFAULT_REGISTRY;
   const passthrough = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -131,6 +132,10 @@ function main() {
         process.stderr.write('--cost-ceiling must be zero or a positive number\n');
         process.exit(1);
       }
+    } else if (arg === '--registry') {
+      registryPath = argv[++i];
+      if (!registryPath) usageAndExit(1);
+      passthrough.push('--registry', registryPath);
     } else if (arg === '--log') {
       logPath = argv[++i];
     } else if (arg === '--help' || arg === '-h') {
@@ -149,7 +154,7 @@ function main() {
   const prompt = readPrompt(promptArg);
   const stats = health ? readRunStats(logPath) : null;
   const decision = decideRoute(prompt, {
-    stats, costCeiling, dailyCeiling, health, force, review,
+    stats, costCeiling, dailyCeiling, health, force, review, registryPath,
   });
 
   if (explain) {
@@ -212,7 +217,6 @@ function main() {
     passthrough.includes('--model') ||
     passthrough.some((arg) => arg.startsWith('model=')) ||
     passthrough.some((arg, i) => arg === '--config' && String(passthrough[i + 1]).startsWith('model='));
-  const registryPath = process.env.AGENT_HUB_REGISTRY ?? DEFAULT_REGISTRY;
   const chain = explicitModel
     ? [null]
     : modelChain(readAgentEntry(registryPath, decision.agent));

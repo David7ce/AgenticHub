@@ -71,7 +71,7 @@ async function main() {
     // Read stdin/text once here: the choice needs the real prompt, and the
     // later read would otherwise consume an already-drained stdin.
     opts.promptText = readPrompt(opts);
-    const decision = chooseAutoAgent(opts.promptText);
+    const decision = chooseAutoAgent(opts.promptText, { registryPath: opts.registry ?? DEFAULT_REGISTRY });
     opts.agent = decision.agent;
     process.stderr.write(`[acp] auto -> ${decision.agent}: ${decision.reason}\n`);
   }
@@ -582,3 +582,4 @@ main()
     process.stderr.write(`[acp] fatal: ${err?.stack ?? err}\n`);
     process.exitCode = 1;
   });
+
