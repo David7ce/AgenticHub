@@ -16,12 +16,19 @@
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { normalizeTree } from './consent.mjs';
 
 // Only malformed records expire by age; live holders retain their claims.
 export const STALE_MS = 30 * 60 * 1000;
 
+// One tree, one lock file, however the caller spelled it: the key is the real
+// path (symlinks and junctions resolved, case folded on Windows), the same
+// form the consent gate compares writeTrees in. Keyed on the text as typed,
+// `D:\\Repo` and `d:\\repo`, or a tree and a link to it, each got a lock of
+// their own and two writers. Windows and WSL spellings of one tree are still
+// two keys: neither side can resolve the other's.
 export function lockPathFor(locksDir, cwd) {
-  const key = String(cwd).replace(/[\\/:]+/g, '_').replace(/^_+/, '');
+  const key = normalizeTree(cwd).replace(/[\\/:]+/g, '_').replace(/^_+/, '');
   return join(locksDir, `${key}.lock`);
 }
 

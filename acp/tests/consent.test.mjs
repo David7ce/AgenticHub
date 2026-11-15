@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { checkLimits, isInside, normalizeTree, spentToday, testConsent } from '../consent.mjs';
+import { rotateIfNeeded } from '../log-rotation.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HUB_ACP = resolve(HERE, '..', 'hub-acp.mjs');
@@ -175,4 +176,21 @@ test('an "expires" that is not a date denies instead of never expiring', (t) => 
   assert.match(testConsent('words', file).reason, /not a date/);
   assert.equal(testConsent('fine', file).ok, true);
   assert.equal(testConsent('open', file).ok, true);
+});
+
+test('spentToday still counts what was spent before the log rotated today', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'consent-rotated-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const log = join(dir, 'runs.jsonl');
+  const now = new Date();
+  const line = (agent, amount, time = now) => JSON.stringify({ time: time.toISOString(), agent, status: 'ok', cost: { amount } });
+
+  writeFileSync(log, [line('a', 2), line('a', 9, new Date(now.getTime() - 2 * 86_400_000)), line('b', 7)].join('\n') + '\n');
+  assert.ok(rotateIfNeeded(log, { maxBytes: 1, now }), 'the log rotates');
+  writeFileSync(log, line('a', 0.5) + '\n');
+  // An unrelated file with the same prefix shape is not a run log of this agent's day.
+  writeFileSync(join(dir, 'runs-notes.txt'), line('a', 100));
+
+  assert.equal(spentToday('a', log, now), 2.5, 'today, both sides of the rotation; not the old day, not agent b');
+  assert.equal(spentToday('a', join(dir, 'missing.jsonl'), now), 0);
 });

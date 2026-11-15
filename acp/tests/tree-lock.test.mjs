@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -14,7 +14,27 @@ test('lockPathFor flattens a path into a stable, collision-free filename', () =>
   const a = lockPathFor('/locks', 'D:\\Workspaces\\AgentHub');
   const b = lockPathFor('/locks', '/mnt/d/Workspaces/AgentHub');
   assert.notEqual(a, b, 'the two spellings of the same tree are not unified here -- each caller locks by its own cwd spelling');
-  assert.match(a, /AgentHub\.lock$/);
+  assert.match(a, /AgentHub\.lock$/i);
+});
+
+test('one tree reached by two spellings is one lock', (t) => {
+  const dir = locksDir();
+  const repo = join(dir, 'repo');
+  mkdirSync(repo);
+  assert.equal(lockPathFor(dir, repo), lockPathFor(dir, `${repo}/`), 'a trailing separator is the same tree');
+  assert.equal(lockPathFor(dir, repo), lockPathFor(dir, join(dir, 'x', '..', 'repo')));
+  const link = join(dir, 'link');
+  try {
+    symlinkSync(repo, link, 'junction');
+  } catch {
+    return t.skip('cannot create a link here');
+  }
+  assert.equal(acquireTreeLock(dir, repo, { agent: 'a' }).ok, true);
+  const second = acquireTreeLock(dir, link, { agent: 'b' });
+  assert.equal(second.ok, false, 'a link to a claimed tree is the claimed tree');
+  assert.equal(second.holder.agent, 'a');
+  releaseTreeLock(dir, link);
+  assert.equal(acquireTreeLock(dir, link, { agent: 'b' }).ok, true);
 });
 
 test('an unclaimed tree is acquired', () => {
