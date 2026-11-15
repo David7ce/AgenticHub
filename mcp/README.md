@@ -126,10 +126,11 @@ Used by the tests; also lets a second hub run beside this one.
   line records `cancelAck`; when it is `false` the tree may still be changing.
   A callee that lives in a shared daemon (OpenCode: `opencode serve`) can keep
   going past the client being killed.
-- A cancelled MCP request does not kill the child; it runs to `--timeout`.
-  While it runs, `results/inflight/<pid>.json` makes it visible in `hubctl
-  status` (the `running` line). A failed write run also leaves a salvage file
-  (HEAD, `git status`, diffstat) named in the tool result.
+- A cancelled MCP request (the person presses stop: `notifications/cancelled`) stops the run:
+  the server asks hub-acp to stop, hub-acp sends `session/cancel`, waits for proof and writes
+  its audit line with status `cancelled` and `cancelAck`. Only a run that does not stop within
+  15 s is killed. `job_cancel` and a cancelled `fanout` go the same way. A failed or cancelled
+  write run also leaves a salvage file (HEAD, `git status`, diffstat) named in the result.
 - Answers come back as text. An image produced by a callee cannot be returned
   through MCP; write it to a file and reference the path instead.
 - The callee starts with no context from the conversation. Anything it needs

@@ -596,3 +596,62 @@ test('ask_agent with sessionId continues the session the way the agent supports'
   );
   assert.equal(records[1].sessionId, sessionId);
 });
+
+// Pressing stop in the chat sends `notifications/cancelled`. It used to be
+// ignored: the delegated agent worked on until its timeout. Now the run is told
+// to stop, cancels its agent, and still writes its audit line.
+test('a cancelled tool call stops the agent and is audited as cancelled', async (t) => {
+  const before = process.env.HUB_CANCEL_WAIT_MS;
+  process.env.HUB_CANCEL_WAIT_MS = '400';
+  t.after(() => {
+    if (before === undefined) delete process.env.HUB_CANCEL_WAIT_MS;
+    else process.env.HUB_CANCEL_WAIT_MS = before;
+  });
+  const server = await session(t);
+
+  const lastRecord = async (count) => {
+    for (let i = 0; i < 300; i++) {
+      let lines = [];
+      try { lines = readFileSync(server.paths.log, 'utf8').trim().split('\n').filter(Boolean); } catch {}
+      if (lines.length >= count) return JSON.parse(lines[count - 1]);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`no audit line ${count}; stderr:\n${server.stderr()}`);
+  };
+  const call = (id, prompt) => server.raw(JSON.stringify({
+    jsonrpc: '2.0', id, method: 'tools/call',
+    params: { name: 'ask_agent', arguments: { agent: 'fake', prompt, timeoutMs: 60_000 } },
+  }));
+  const cancelWhenRunning = async (id) => {
+    // The turn is open once the inflight record names a session.
+    for (let i = 0; i < 300 && !/model fake\/model-1|fake-session-1/.test(server.stderr() + JSON.stringify(await inflight())); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    server.raw(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: id } }));
+  };
+  const inflight = async () => {
+    const dir = join(server.paths.dir, 'inflight');
+    try { return readdirSync(dir).map((name) => readFileSync(join(dir, name), 'utf8')); } catch { return []; }
+  };
+
+  // An agent that honours session/cancel.
+  call(9001, 'HANG-ACK');
+  await cancelWhenRunning(9001);
+  const acked = await lastRecord(1);
+  assert.equal(acked.status, 'cancelled');
+  assert.equal(acked.cancelAck, true);
+  assert.equal(acked.stopReason, 'cancelled');
+
+  // One that ignores it: terminated after the wait, and the line says so.
+  call(9002, 'HANG-IGNORE');
+  await cancelWhenRunning(9002);
+  const ignored = await lastRecord(2);
+  assert.equal(ignored.status, 'cancelled');
+  assert.equal(ignored.cancelAck, false);
+  assert.match(ignored.error, /did not confirm/);
+
+  // The server is still healthy and never answered the cancelled ids.
+  const after = await server.request('tools/call', { name: 'ask_agent', arguments: { agent: 'fake', prompt: 'still here' } });
+  assert.match(after.result.content[0].text, /ECHO:still here/);
+  assert.equal((await inflight()).length, 0, 'no inflight record is left behind');
+});

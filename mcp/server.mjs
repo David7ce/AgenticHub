@@ -35,12 +35,11 @@ import { openIndex, reindex, search as searchIndex } from '../hubctl/search.mjs'
 import { gatherStatus, readInflight, renderStatus } from '../hubctl/hubctl.mjs';
 
 import {
-  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor,
+  HUB_ACP, FANOUT_ACP, REGISTRY, DEFAULT_TURN_TIMEOUT_MS, log, spawnHub, parseHubJson, runHubScript, registryArgs, defaultModels, resolveCwd, hubArgsFor, requestStop,
 } from './hub-process.mjs';
-import { killTree } from '../acp/process-utils.mjs';
 
 
-async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd, effort, sessionId }) {
+async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd, effort, sessionId }, { signal } = {}) {
 
   // Free models run out mid-day and say so in an ordinary error. That is a
   // price step, not a failed task: walk the registry's fallbacks (Go models,
@@ -68,13 +67,14 @@ async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd
     result = await runHubScript(HUB_ACP, args, {
       input: prompt,
       timeoutMs: timeoutMs ?? DEFAULT_TURN_TIMEOUT_MS,
+      signal,
     });
     attempts.push({
       model: result.model ?? candidate,
       status: result.status ?? (result.ok ? 'ok' : 'failed'),
     });
 
-    if (!shouldTryNextModel(result) || index === chain.length - 1) break;
+    if (signal?.aborted || !shouldTryNextModel(result) || index === chain.length - 1) break;
     log(`model ${candidate} is out of quota; retrying on ${chain[index + 1]}`);
   }
 
@@ -98,7 +98,7 @@ async function ask({ agent, prompt, model, cwd, permission, timeoutMs, budgetUsd
   };
 }
 
-async function fanout({ agents, prompt, synthesize, worktree, permission, effort }) {
+async function fanout({ agents, prompt, synthesize, worktree, permission, effort }, { signal } = {}) {
   const args = [
     '--agents',
     agents.join(','),
@@ -113,7 +113,7 @@ async function fanout({ agents, prompt, synthesize, worktree, permission, effort
   if (worktree) args.push('--worktree');
   if (effort) args.push('--effort', effort);
 
-  const result = await runHubScript(FANOUT_ACP, args, { input: prompt });
+  const result = await runHubScript(FANOUT_ACP, args, { input: prompt, signal });
   return {
     ok: result.ok === true,
     okCount: result.okCount ?? 0,
@@ -215,7 +215,7 @@ const jobs = createJobRegistry({
       },
       kill: () => {
         cancelled = true;
-        killTree(current?.child);
+        requestStop(current?.child);
       },
       promise,
     };
@@ -318,7 +318,8 @@ const handlers = {
       : job;
   },
   jobResult: async (id) => jobs.result(id),
-  jobCancel: async (id) => jobs.cancel(id),
+  // Long enough for the run to cancel its agent and write its audit line.
+  jobCancel: async (id) => jobs.cancel(id, { waitMs: 12_000 }),
 };
 
 // ── per-tree serialization ──────────────────────────────────────────────────
@@ -379,11 +380,18 @@ function main() {
     process.stdout.write(JSON.stringify(message) + '\n');
   };
 
+  // One AbortController per tool call in flight (or queued), by request id, so
+  // `notifications/cancelled` -- what a client sends when the person presses
+  // stop -- reaches the run instead of being ignored while it works on.
+  const calls = new Map();
+
   const dispatch = (message, treeKey = null) => {
     if (treeKey) markTree(treeKey);
-    const task = handleMessage(message, handlers, { log })
+    const signal = calls.get(message.id)?.signal;
+    const task = handleMessage(message, handlers, { log, signal })
       .then((response) => {
-        if (response) write(response);
+        // A cancelled request gets no response (MCP): the client stopped waiting.
+        if (response && !signal?.aborted) write(response);
       })
       .catch((err) => {
         log(`fatal dispatch error: ${err?.stack ?? err}`);
@@ -391,6 +399,7 @@ function main() {
     inFlight.add(task);
     void task.finally(() => {
       inFlight.delete(task);
+      calls.delete(message.id);
       if (treeKey) unmarkTree(treeKey);
     });
     return task;
@@ -407,6 +416,15 @@ function main() {
     }
     // One write() per message keeps single-line JSON-RPC intact, so concurrent
     // replies cannot interleave; only the working tree needs a lock.
+    if (message?.method === 'notifications/cancelled') {
+      const call = calls.get(message.params?.requestId);
+      if (call) {
+        log(`request ${message.params.requestId} cancelled by the client`);
+        call.abort();
+      }
+      return;
+    }
+    if (message?.method === 'tools/call' && message.id != null) calls.set(message.id, new AbortController());
     const key = queueKeyFor(message);
     if (key == null) {
       void dispatch(message);

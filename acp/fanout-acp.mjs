@@ -71,6 +71,20 @@ const USAGE = `usage: node fanout-acp.mjs --agents NAME[,NAME...] (--prompt TEXT
   --verbose              forward each agent's stderr
 `;
 
+// A caller that gives up (the MCP server relays the chat's stop over IPC) stops
+// every agent of the fan-out: each hub-acp run cancels its own turn and still
+// writes its audit line.
+const running = new Set();
+let stopRequested = false;
+process.on('message', (message) => {
+  if (message?.type !== 'cancel' || stopRequested) return;
+  stopRequested = true;
+  for (const child of running) {
+    try { if (child.connected) child.send({ type: 'cancel' }); } catch {}
+  }
+});
+process.channel?.unref?.();
+
 function parseArgs(argv) {
   const opts = {
     permission: 'deny',
@@ -192,9 +206,13 @@ function runOne({ agent, prompt, opts, configs, maxPromptChars, noSave = false, 
 
     const child = spawn(process.execPath, args, {
       cwd: process.cwd(),
-      stdio: ['pipe', 'pipe', 'pipe'],
+      // The fourth channel passes a caller's `cancel` on to this agent's run.
+      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       windowsHide: true,
     });
+    running.add(child);
+    child.once('close', () => running.delete(child));
+    if (stopRequested) child.send({ type: 'cancel' });
 
     if (opts.verbose) process.stderr.write(`[fanout] ${label}: started\n`);
 
