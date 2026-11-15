@@ -85,3 +85,26 @@ npm run check
 
 These checks use fixtures and make no real model calls. Windows CI runs the full
 suite. See [Operations](operations.md) if a configured agent cannot start.
+
+
+## Test a fresh installation offline
+
+```bash
+npm run smoke
+```
+
+This creates a local Git snapshot of tracked working-tree files and clones it
+into a temporary workspace with spaces in its path and a different clone name.
+Untracked and ignored files, including your grants and agent registry, are not
+copied. Stage new source files before running it if they belong in the checkout.
+
+The check exercises dry-run initialization, disabled grants, repeat initialization,
+permission denial, doctor, a saved CLI answer, and real MCP exchanges through both
+generated launcher commands. Only a temporary fake ACP agent is configured; no
+provider installation, sign-in, npm download or network connection is needed.
+It verifies five audit records, cleared inflight/lock directories and a clean Git
+checkout, then removes its temporary workspace.
+
+Windows/Node 22 CI runs this as a separate installation smoke step after the
+normal checks. It validates the generated server commands and MCP protocol, not
+the Claude/OpenCode application UI or real-provider authentication.

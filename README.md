@@ -47,6 +47,7 @@ Coding agents must read [AGENTS.md](AGENTS.md) before editing.
 ```bash
 npm test       # offline tests and documentation links
 npm run check  # the same checks plus the benchmark dry-run
+npm run smoke  # clean local clone, setup and fake CLI/MCP delegation
 ```
 
 No dependencies need installing. `npm link` optionally installs the short `hub`

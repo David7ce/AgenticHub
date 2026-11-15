@@ -6,6 +6,16 @@ The standing decisions behind the hub, newest first. Each says what was decided 
 what it left out. Old surveys of the alternatives are not kept in the tree; they are
 in git history.
 
+## 2026-11-15 — Verify a clean installation separately from unit tests
+
+`npm run smoke` snapshots tracked working-tree files, makes a real local clone
+under a renamed path with spaces, and exercises setup plus CLI/MCP delegation
+with a fake agent. No ignored machine configuration or real-provider credentials
+are required. Both generated workspace launch commands are executed. The check
+asserts disabled-grant and permission denial, config preservation, saved output,
+five single audit records and clean runtime/Git state before deleting its own
+temporary workspace. Windows CI runs it as a separate step after the full checks.
+
 ## 2026-11-15 — Cancellation keeps its verdict through jobs, fan-out and shutdown
 
 A job's wrapper exiting no longer turns an explicit negative `cancelAck` into

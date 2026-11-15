@@ -23,3 +23,5 @@ jobs:
       - name: Documentation, hub tests and bench dry-run
         run: node tools/check.mjs
 
+      - name: Fresh-clone installation smoke (offline fake agent)
+        run: node tools/smoke.mjs
