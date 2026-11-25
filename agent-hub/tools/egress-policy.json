@@ -1,0 +1,6 @@
+{
+  "acceptSandboxNetwork": true,
+  "reason": "Routine agent work needs package installs, git fetch and API calls; untrusted work runs in a container instead.",
+  "decidedAt": "2026-10-30",
+  "decidedBy": "OpenCode, on the Commander's instruction to decide"
+}
