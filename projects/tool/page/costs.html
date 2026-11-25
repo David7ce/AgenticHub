@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Workspaces · Uso de IA</title>
+  <!--SHARED_CSS-->
+  <style>
+/*COSTS_STYLES*/
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <!--SHELL-->
+
+    <section class="card" id="room">
+      <div class="section-head"><div><h2 id="roomTitle"></h2><p class="note" id="roomHint"></p></div></div>
+      <p class="unknown" id="roomNote" hidden></p>
+      <div class="room-list" id="roomList"></div>
+    </section>
+
+    <details class="card cal" id="usageCalendar" open>
+<!--CALENDAR-->
+    </details>
+
+    <section class="agent-grid" id="agents" aria-label="Agent token usage"></section>
+
+    <section class="card" id="dailyCard">
+      <div class="section-head">
+        <div><h2 id="dailyTitle"></h2><p class="note" id="dailyHint"></p></div>
+        <label class="filter"><span id="metricLabel"></span><select id="metric"></select></label>
+      </div>
+      <div class="chart-wrap"><svg id="dailyChart" role="img"></svg></div>
+      <div class="legend" id="dailyLegend"></div>
+      <div class="table-wrap">
+        <table><thead id="dailyHead"></thead><tbody id="dailyBody"></tbody></table>
+      </div>
+    </section>
+
+    <section class="card" id="hourlyCard" hidden>
+      <div class="section-head">
+        <div><h2 id="hourlyTitle"></h2><p class="note" id="hourlyHint"></p></div>
+      </div>
+      <div class="chart-wrap"><svg id="hourlyChart" role="img"></svg></div>
+      <div class="legend" id="hourlyLegend"></div>
+      <div class="table-wrap">
+        <table><thead id="hourlyHead"></thead><tbody id="hourlyBody"></tbody></table>
+      </div>
+      <p class="unknown" id="unknownHour" hidden></p>
+    </section>
+
+    <section class="card" id="spenders">
+      <div class="section-head">
+        <div><h2 id="spendTitle"></h2><p class="note" id="spendHint"></p></div>
+      </div>
+      <div class="table-wrap" id="spendAgents"></div>
+      <div class="spend-split">
+        <div class="table-wrap" id="spendProjects"></div>
+        <div class="table-wrap" id="spendModels"></div>
+      </div>
+    </section>
+
+    <footer id="footer"></footer>
+  </main>
+  <!--SHARED_JS-->
+  <script>
+/*COSTS_SCRIPT*/
+  </script>
+</body>
+</html>

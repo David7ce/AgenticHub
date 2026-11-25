@@ -1,0 +1,36 @@
+/* shell.css — the Workspaces header: title, Repos | IA tabs, language and theme. */
+.shell { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px 10px; margin-bottom: 14px;
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+/* Brand on the left, tabs in the centre, language and theme on the right. */
+.shell-brand { margin: 0; font-size: 18px; line-height: 1.3; letter-spacing: normal; min-width: 0; justify-self: start; }
+.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; font-weight: 700; white-space: nowrap; border-radius: 6px; }
+.brand:hover { color: var(--accent); }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.brand-icon { width: 24px; height: 24px; flex: none; color: var(--accent); }
+.tabs { display: inline-flex; gap: 2px; padding: 2px; background: var(--head); border: 1px solid var(--line); border-radius: 8px; justify-self: center; }
+.tabs a { padding: 3px 14px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shell-controls { display: flex; gap: 6px; align-items: center; justify-self: end; }
+.shell-tool { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.shell-tool:hover { border-color: var(--accent); }
+.shell-stamp { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+#themeBtn { min-width: 32px; padding: 4px 8px; line-height: 1.2; }
+.shell-stamp.stale { color: #b45309; font-weight: 600; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shell-stamp.stale { color: #f2bc61; } }
+:root[data-theme="dark"] .shell-stamp.stale { color: #f2bc61; }
+/* Narrow screens: brand and controls on the first row, the tabs on their own row. */
+@media (max-width: 640px) {
+  .shell { grid-template-columns: minmax(0, 1fr) auto; }
+  .tabs { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; display: flex; }
+  .tabs a { flex: 1; text-align: center; padding: 3px 6px; }
+  .shell-stamp { grid-row: 3; }
+}
+@media (max-width: 420px) { .shell-brand { font-size: 16px; } .shell-tool { padding: 4px 6px; } }
+/* Skip link: off-screen until it takes focus, then the first thing on the page. */
+.skip { position: absolute; left: 8px; top: -48px; z-index: 20; padding: 6px 12px; border-radius: 6px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+.skip:focus { top: 8px; outline: 2px solid var(--accent); outline-offset: 1px; }
+#content { display: block; outline: none; scroll-margin-top: 8px; }

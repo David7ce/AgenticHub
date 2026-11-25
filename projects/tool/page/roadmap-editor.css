@@ -1,0 +1,21 @@
+/* roadmap-editor.css — the Markdown editor of the roadmap: toolbar, two panes. */
+.doc-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.editor-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.editor-bar .shell-tool:focus-visible, #edOpen:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.editor-bar .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+#edStatus { color: var(--muted); font-size: 13px; }
+
+.editor-panes { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .editor-panes { grid-template-columns: 1fr 1fr; } }
+.editor-pane { min-width: 0; }
+.editor-pane > label, .editor-pane > h3 { display: block; margin: 0 0 6px; font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); font-weight: 600; }
+#edText { width: 100%; min-height: 60vh; resize: vertical; padding: 10px 12px; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; tab-size: 2;
+  font: 13px/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; }
+#edText:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#edPreview { max-height: 70vh; overflow: auto; padding: 4px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+
+/* The dark theme's accent is light: white text on it fails contrast, so the label goes dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .editor-bar .primary { color: #0b1220; } }
+:root[data-theme="dark"] .editor-bar .primary { color: #0b1220; }

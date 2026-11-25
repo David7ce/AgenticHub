@@ -1,0 +1,31 @@
+/* base.css — the frame every Workspaces page shares: reset, body, wrap, cards,
+   headings, the muted line and the table wrapper. Page sheets only add what is
+   theirs, so the same class name means the same thing on all three pages. */
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+button, select, input, textarea, a { font: inherit; }
+a { color: var(--accent); }
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 16px; }
+
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin-bottom: 12px;
+}
+h2 { margin: 0 0 12px; font-size: 15px; }
+.note { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+.section-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 12px; margin-bottom: 12px;
+}
+.section-head h2 { margin: 0; }
+
+.empty { text-align: center; color: var(--muted); padding: 24px; }
+
+.table-wrap { overflow-x: auto; border-radius: 8px; }

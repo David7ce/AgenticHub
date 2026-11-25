@@ -1,0 +1,81 @@
+/* styles.css — the Repos page. The frame (reset, wrap, card, headings, table
+   wrapper) comes from base.css; this file only adds what is Repos-specific. */
+
+/* Header and chrome */
+.sub { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.tool, .toolbar input, .toolbar select { font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+button.tool, select.tool, .toolbar select { cursor: pointer; }
+.tool:hover { border-color: var(--accent); }
+.tool:disabled { opacity: .4; cursor: default; border-color: var(--line); }
+.tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Exclusive view toggles joined into one control. */
+.segmented { display: inline-flex; }
+.segmented .tool:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.segmented .tool:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; }
+.toolbar label { display: inline-flex; gap: 6px; align-items: center; }
+.toolbar .search { flex: 1 1 220px; min-width: 160px; }
+.count { font-size: 12px; color: var(--muted); margin-left: auto; }
+/* Wide cards scroll sideways instead of clipping. */
+.card { overflow-x: auto; }
+.usage-preview { overflow: hidden; }
+.usage-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.usage-head h2 { margin: 0; }
+.usage-head .note { margin-top: 3px; }
+.usage-agents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.usage-agent { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 11px 12px;
+  border: 1px solid var(--line); border-left: 3px solid var(--agent-color); border-radius: 8px; background: var(--head); }
+.usage-agent b { font-size: 12px; }
+.usage-agent strong { grid-row: span 2; align-self: center; font-size: 17px; font-variant-numeric: tabular-nums; }
+.usage-agent span, .usage-agent small { color: var(--muted); font-size: 10px; }
+.usage-agent[data-agent="claude"] { --agent-color: var(--claude); }
+.usage-agent[data-agent="opencode"] { --agent-color: var(--opencode); }
+.usage-agent[data-agent="codex"] { --agent-color: var(--codex); }
+
+/* Tables: narrow screens scroll the table sideways; from 900px it fits, so the
+   wrapper stops clipping and the header can stick to the top of the window. */
+@media (min-width: 900px) { .table-wrap { overflow: visible; } }
+/* separate + spacing 0 instead of collapse: sticky cells keep their borders and
+   the rounded corners need no overflow: hidden (which would break sticky). */
+table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  font-size: 13px; vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+th { background: var(--head); white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+th:first-child { border-top-left-radius: 8px; }
+th:last-child { border-top-right-radius: 8px; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover { color: var(--accent); }
+th .arrow { color: var(--accent); margin-left: 3px; }
+tbody tr:hover { background: var(--hover); }
+td a, td a:visited { color: var(--accent); text-decoration: none; }
+td a:hover { text-decoration: underline; }
+td.num, td.date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.nowrap { white-space: nowrap; }
+.disabled { color: var(--disabled); font-size: 12px; }
+.status { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+  white-space: nowrap; color: var(--muted); border: 1px solid var(--line); background: var(--panel); }
+.chip.pending { color: #fff; background: var(--ok); border-color: var(--ok); }
+.chip.clean { font-weight: 400; color: var(--faint); }
+.star { color: var(--star); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.star.zero { color: var(--muted); opacity: .65; }
+img.acct { width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; margin-right: 6px; object-fit: cover; }
+img.acct.generic { border-radius: 4px; opacity: .7; }
+a.open { display: inline-block; padding: 3px 9px; font-size: 11px; text-decoration: none;
+  color: var(--accent); border: 1px solid var(--line); border-radius: 6px; }
+a.open:hover { background: var(--hover); text-decoration: none; }
+button.copy-code { margin-left: 4px; padding: 2px 6px; font-size: 11px; line-height: 1.4;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 6px; cursor: pointer; }
+button.copy-code:hover { color: var(--accent); border-color: var(--accent); }
+
+@media (max-width: 680px) {
+  .usage-agents { grid-template-columns: 1fr; }
+  .usage-head { align-items: flex-start; flex-direction: column; }
+}

@@ -1,0 +1,32 @@
+    <summary><span data-cal="title"></span> · <span class="stat" data-cal="yearStat"></span></summary>
+    <div class="calendar-controls">
+      <select data-cal="granularity" class="cal-tool">
+        <option value="day"></option><option value="week"></option><option value="month"></option>
+      </select>
+      <div class="year-nav">
+        <button data-cal="yearPrev" class="cal-tool" type="button">&#8249;</button>
+        <select data-cal="year" class="cal-tool"></select>
+        <button data-cal="yearNext" class="cal-tool" type="button">&#8250;</button>
+      </div>
+    </div>
+    <div class="grid-wrap">
+      <div class="weekday-labels" data-cal="weekdayLabels"></div>
+      <div>
+        <div class="month-row" data-cal="months"></div>
+        <div class="weeks" data-cal="weeks" role="group"></div>
+      </div>
+    </div>
+    <div class="calendar-foot">
+      <p class="selection" data-cal="selection" role="status" aria-live="polite" hidden>
+        <span data-cal="selectionText"></span>
+        <span class="hint" data-cal="hint"></span>
+        <button type="button" class="cal-tool" data-cal="clear"></button>
+      </p>
+      <div class="legend">
+        <span data-cal="less"></span>
+        <span class="day" data-level="0"></span><span class="day" data-level="1"></span>
+        <span class="day" data-level="2"></span><span class="day" data-level="3"></span>
+        <span class="day" data-level="4"></span>
+        <span data-cal="more"></span>
+      </div>
+    </div>

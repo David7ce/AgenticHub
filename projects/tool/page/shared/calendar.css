@@ -1,0 +1,51 @@
+/* calendar.css — the year calendar (day / week / month) shared by Repos and IA. */
+/* Activity calendar */
+.cal > summary { cursor: pointer; font-weight: 600; margin-bottom: 0; }
+.cal[open] > summary { margin-bottom: 14px; }
+.cal > summary .stat { font-weight: 400; margin: 0; }
+.cal .calendar-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cal .selection .hint { color: var(--muted); }
+.cal .calendar-controls { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cal .year-nav { display: flex; align-items: center; gap: 6px; }
+.cal .stat { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+.cal .stat b { color: var(--ink); }
+.cal .grid-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.cal .weekday-labels { display: grid; grid-template-rows: 14px repeat(7, 12px); row-gap: 3px;
+  font-size: 10px; color: var(--faint); flex: 0 0 auto; }
+.cal .weekday-labels span { height: 12px; line-height: 12px; }
+.cal .weekday-labels.compact { grid-template-rows: 17px repeat(7, 12px); row-gap: 0; }
+.cal .weekday-labels.compact-month { grid-template-rows: 17px repeat(7, 12px); row-gap: 2px; }
+.cal .month-row { display: grid; column-gap: 3px; font-size: 10px; color: var(--faint); height: 14px; margin-bottom: 3px; }
+.cal .month-row span { white-space: nowrap; grid-row: 1; line-height: 14px; text-align: center; }
+.cal .weeks { display: grid; grid-auto-flow: column; gap: 3px; }
+.cal .day { width: 12px; height: 12px; border-radius: 3px; background: var(--heat-0);
+  outline: 1px solid var(--line); outline-offset: -1px; transition: opacity .12s ease; }
+.cal .day[data-level="1"] { background: var(--heat-1); }
+.cal .day[data-level="2"] { background: var(--heat-2); }
+.cal .day[data-level="3"] { background: var(--heat-3); }
+.cal .day[data-level="4"] { background: var(--heat-4); }
+.cal .day.is-empty-cell { background: transparent; outline: none; }
+.cal .day:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cal button.day { padding: 0; border: 0; font: inherit; cursor: pointer; }
+.cal button.day:hover { outline-color: var(--faint); }
+.cal .weeks.has-selection .day { opacity: .35; }
+.cal .weeks.has-selection .day.is-selected { opacity: 1; }
+/* Week and Month merge each group into one solid block. */
+.cal .weeks.mode-week { row-gap: 0; }
+.cal .weeks.mode-month { gap: 2px; }
+.cal .weeks.mode-week .day, .cal .weeks.mode-month .day { outline: none; border-radius: 0; }
+.cal .weeks.mode-week .day:nth-child(7n + 1) { border-radius: 3px 3px 0 0; }
+.cal .weeks.mode-week .day:nth-child(7n) { border-radius: 0 0 3px 3px; }
+.cal .legend { display: flex; align-items: center; gap: 6px; margin: 14px 0 0 auto; font-size: 11px; color: var(--faint); }
+.cal .selection { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.cal .selection b { color: var(--ink); }
+#tooltip { position: fixed; pointer-events: none; background: var(--ink); color: var(--panel);
+  font-size: 12px; padding: 5px 9px; border-radius: 6px; transform: translate(-50%, -100%);
+  white-space: nowrap; opacity: 0; transition: opacity .08s ease; z-index: 10; }
+#tooltip.visible { opacity: 1; }
+.cal > summary { list-style-position: inside; }
+.cal .cal-tool { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.cal .cal-tool:hover { border-color: var(--accent); }
+.cal .cal-tool:disabled { opacity: .4; cursor: default; border-color: var(--line); }

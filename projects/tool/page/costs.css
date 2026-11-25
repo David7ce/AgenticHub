@@ -1,0 +1,78 @@
+/* costs.css — the IA page. The frame (reset, body, wrap, card, headings, note,
+   section head, table wrapper) comes from base.css; this file only adds the
+   charts, the agent cards and the tables of this page. */
+
+.filter { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 700; min-width: 160px; }
+.filter select {
+  min-height: 30px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink); background: var(--panel);
+}
+
+/* Agent cards: the card look plus the colour stripe on the left. */
+.agent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.agent-card { padding: 16px; position: relative; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.agent-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--agent-color); }
+.agent-name { color: var(--muted); font-size: 12px; font-weight: 800; }
+.agent-value { margin-top: 8px; font-size: clamp(24px, 4vw, 32px); line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.agent-metric { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.agent-secondary { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.agent-secondary span { color: var(--faint); font-size: 10px; }
+.agent-secondary b { display: block; color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Charts */
+.chart-wrap { width: 100%; overflow-x: auto; }
+svg.chart { display: block; width: 100%; min-width: 660px; height: 280px; overflow: visible; }
+.grid-line { stroke: var(--line); stroke-width: 1; }
+.axis-label, .bar-label { fill: var(--muted); font: 10px system-ui, sans-serif; }
+.bar-label { text-anchor: middle; }
+.bar { rx: 4px; }
+.bar:hover { filter: brightness(1.15); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 14px; color: var(--muted); font-size: 11px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 9px; height: 9px; border-radius: 3px; background: var(--swatch); }
+.tooltip { fill: var(--ink); }
+
+/* Tables: numbers right, names left, no wrapping. */
+.table-wrap { border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--panel); }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th { color: var(--muted); background: var(--head); font-weight: 700; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr:last-child td { border-bottom: 0; }
+.unknown { margin: 12px 0 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; }
+footer { padding: 0 4px; color: var(--faint); font-size: 11px; }
+
+/* room left */
+.room-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.room-row { border: 1px solid var(--line); border-left: 3px solid var(--agent-color); border-radius: 8px; padding: 12px 14px; background: var(--panel); }
+.room-head { display: flex; align-items: center; gap: 8px; }
+.room-name { font-weight: 800; font-size: 13px; }
+.room-pct { margin-left: auto; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.src-measured { color: var(--accent); border-color: var(--accent); }
+.meter { height: 8px; margin: 10px 0 8px; border-radius: 999px; background: var(--head); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--agent-color); border-radius: inherit; }
+.room-row.state-high .meter i { background: #dc2626; }
+.room-row.state-high .room-pct { color: #dc2626; }
+.room-row.state-reset { opacity: .7; }
+.room-detail { color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+
+/* who spends most */
+#spenders .table-wrap { margin-top: 12px; }
+.spend-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+td.rank-name, th:first-child { text-align: left; }
+td.rank-name { position: relative; min-width: 160px; }
+td.rank-name span:last-child { position: relative; }
+.rank-bar { position: absolute; left: 0; top: 4px; bottom: 4px; background: var(--agent-color); opacity: .14; border-radius: 6px; }
+td.rank-name { white-space: normal; min-width: 0; word-break: break-word; }
+.spend-split table { table-layout: auto; min-width: 0; }
+
+@media (max-width: 700px) {
+  .agent-grid { grid-template-columns: 1fr; }
+  .agent-card { padding: 13px 15px; }
+  .section-head { align-items: flex-start; flex-direction: column; }
+  .filter { width: 100%; }
+  .filter select { width: 100%; }
+  .card { padding: 14px; }
+}
