@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-commit guard for the whole AgenticHub repo. Enable once, per clone:
+#
+#   git config core.hooksPath .githooks
+#
+# Git exports GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE to hooks, and the tests that
+# build throwaway repositories would inherit them. Clear them first.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+
+# Credentials first, over every staged file of the repo (run from the root).
+node agent-hub/tools/secret-scan.mjs || exit 1
+
+# Hub fast checks (the bench dry-run is left to CI: ~6 s per commit is too slow).
+(cd agent-hub && node tools/check.mjs --no-bench) || exit 1
+
+# Panel tests.
+exec node --test projects/tool/test/*.test.mjs

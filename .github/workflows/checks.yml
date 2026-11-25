@@ -1,0 +1,34 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    # The hub is Windows-first: path translation, the OpenCode launcher and the
+    # sandbox assumptions are exercised there.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Credentials never enter tracked files (whole repo)
+        run: node agent-hub/tools/secret-scan.mjs --all
+
+      - name: Hub - documentation, tests and bench dry-run
+        working-directory: agent-hub
+        run: node tools/check.mjs
+
+      - name: Hub - fresh-clone installation smoke (offline fake agent)
+        working-directory: agent-hub
+        run: node tools/smoke.mjs
+
+      - name: Projects - inventory and panel tests
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem projects/tool/test -Filter *.test.mjs | ForEach-Object { $_.FullName }
+          node --test $files
