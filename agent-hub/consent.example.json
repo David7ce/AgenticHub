@@ -1,0 +1,60 @@
+{
+  "_note": "Example consent gate. Copy this file to consent.json and edit it. An agent runs only when enabled is true, overseerAck is true and the grant has not expired. Optional `limits` are enforced by acp/consent.mjs: maxPermission (deny < allow-reads < ask < allow-all; ask is write-capable but below full allow-all), writeTrees (where allow-all may run; the system temp dir is always allowed for bench copies), maxBudgetUsd (clamps the requested budget), maxDailyUsd (reported cost today for that agent), maxContextTokens (cancels a turn whose reported context window crosses it, so a session cannot keep re-reading a prefix that is too big). Every grant below is disabled on purpose: a fresh clone runs nothing until its owner decides otherwise.",
+  "claude": {
+    "enabled": false,
+    "overseerAck": false,
+    "grantedBy": null,
+    "grantedAt": null,
+    "expires": "2027-01-01T00:00:00Z",
+    "scope": "Example: prompt-only runs. Set enabled and overseerAck to grant more.",
+    "limits": {
+      "maxPermission": "allow-reads",
+      "writeTrees": [],
+      "maxBudgetUsd": 1,
+      "maxDailyUsd": 3
+    }
+  },
+  "opencode": {
+    "enabled": false,
+    "overseerAck": false,
+    "grantedBy": null,
+    "grantedAt": null,
+    "expires": "2027-01-01T00:00:00Z",
+    "scope": "Example: the default worker. Add the trees it may write to writeTrees.",
+    "limits": {
+      "maxPermission": "allow-reads",
+      "writeTrees": [],
+      "maxBudgetUsd": 1,
+      "maxDailyUsd": 3,
+      "maxContextTokens": 200000
+    }
+  },
+  "codex": {
+    "enabled": false,
+    "overseerAck": false,
+    "grantedBy": null,
+    "grantedAt": null,
+    "expires": "2027-01-01T00:00:00Z",
+    "scope": "Example: escalation and hard coding work. Codex harness settings stay native.",
+    "limits": {
+      "maxPermission": "allow-reads",
+      "writeTrees": [],
+      "maxBudgetUsd": 1,
+      "maxDailyTokens": 2000000
+    }
+  },
+  "hermes": {
+    "enabled": false,
+    "overseerAck": false,
+    "grantedBy": null,
+    "grantedAt": null,
+    "expires": "2027-01-01T00:00:00Z",
+    "scope": "Experimento manual. Retencion de Nous: puede entrenar; solo arboles sin credenciales.",
+    "limits": {
+      "maxPermission": "allow-reads",
+      "writeTrees": [],
+      "maxBudgetUsd": 0,
+      "maxDailyTokens": 500000
+    }
+  }
+}

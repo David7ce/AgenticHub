@@ -1,0 +1,21 @@
+{
+  "name": "agent-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One backend that lets any coding agent call any other on this machine, behind a consent gate and an audit log.",
+  "license": "AGPL-3.0-or-later",
+  "bin": {
+    "hub": "./hub.mjs"
+  },
+  "scripts": {
+    "check": "node tools/check.mjs",
+    "test": "node tools/check.mjs --no-bench",
+    "doctor": "node hub.mjs doctor",
+    "docs:check": "node tools/docs-check.mjs",
+    "smoke": "node tools/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
