@@ -1,0 +1,109 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+
+import { gatherBrief, parseWatchList, pendingSection, renderBrief, summarizePending, MAX_LINES } from "../commands/brief.mjs";
+
+const doctorOk = { ok: true, counts: { ok: 14, warn: 1, fail: 0 }, checks: [
+  { level: "ok", check: "consent", detail: "fine" },
+  { level: "warn", check: "links", detail: "one broken link" },
+] };
+
+test("pendingSection returns the section body without blanks or later sections", () => {
+  const md = "# H\n\n## Pendiente, en orden\n\nuno\n\ndos\n\n## Estado\nno\n";
+  assert.deepEqual(pendingSection(md), ["uno", "dos"]);
+  assert.deepEqual(pendingSection("# nada"), []);
+});
+
+test("parseWatchList skips comments and resolves relative paths", () => {
+  const rows = parseWatchList("# c\n\nfoo\n", join(tmpdir(), "base"));
+  assert.equal(rows.length, 1);
+  assert.ok(rows[0].endsWith("foo"));
+});
+
+test("gatherBrief + renderBrief stay within the line budget and report dirty repos", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-"));
+  mkdirSync(join(root, "working"));
+  const pending = Array.from({ length: 80 }, (_, i) => `- item ${i}`).join("\n");
+  writeFileSync(join(root, "working", "HANDOFF.md"), `## Pendiente\n${pending}\n`);
+  const log = join(root, "runs.jsonl");
+  const today = new Date().toISOString();
+  writeFileSync(log, `${JSON.stringify({ time: today, agent: "claude", status: "ok", durationMs: 2500, cost: 0.25 })}\n`);
+  const consent = join(root, "consent.json");
+  writeFileSync(consent, JSON.stringify({ claude: { enabled: true, overseerAck: true } }));
+
+  const brief = gatherBrief({
+    root,
+    stateDir: root,
+    hub: root,
+    logPath: log,
+    consentPath: consent,
+    doctor: doctorOk,
+    dirty: (dir) => ({ dir, name: "AgentHub", missing: false, changed: 3 }),
+  });
+  assert.equal(brief.spend.claude, 0.25);
+  assert.equal(brief.runs[0].agent, "claude");
+  const text = renderBrief(brief);
+  const lines = text.split("\n");
+  assert.ok(lines.length <= MAX_LINES, `${lines.length} lines`);
+  assert.match(text, /warn links: one broken link/);
+  assert.match(text, /AgentHub \(3\)/);
+  assert.match(text, /claude \$0\.25/);
+  assert.match(text, /puntos más en HANDOFF/);
+  assert.equal(brief.codexLimits, null);
+  assert.doesNotMatch(text, /uso de codex/);
+});
+
+test("renderBrief shows the cached Codex plan usage and how old the reading is", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-limits-"));
+  mkdirSync(join(root, "logs"));
+  const measuredAt = new Date(Date.now() - 12 * 60_000).toISOString();
+  // In the future relative to the run, not a calendar date: a window whose reset has passed is dropped.
+  const resetsAt = new Date(Date.now() + 3 * 86_400_000).toISOString();
+  writeFileSync(join(root, "logs", "codex-limits.json"), JSON.stringify({
+    measuredAt, plan: "plus", reached: null,
+    windows: [{ slot: "primary", label: "weekly", usedPercent: 74, windowMins: 10080, resetsAt }],
+  }));
+  const consent = join(root, "consent.json");
+  writeFileSync(consent, JSON.stringify({}));
+  const brief = gatherBrief({ root, stateDir: root, hub: root, logPath: join(root, "none.jsonl"), consentPath: consent, doctor: doctorOk, dirty: (dir) => ({ dir, name: "x", missing: false, changed: 0 }) });
+  assert.match(renderBrief(brief), /uso de codex: plus · semanal 74% \(reinicia .*\) · hace 12 min/);
+});
+
+test("summarizePending joins wrapped bullets, drops link targets and keeps one sentence", () => {
+  const out = summarizePending([
+    "0. **Uno (2026-11-10)**: primera frase larga con [`link`](ruta.md) y `code`.",
+    "   Continuación que no debe salir.",
+    "desfasado, y esto tampoco debe empezar un punto.",
+    "",
+    "- **Dos** — solo una frase",
+  ]);
+  assert.equal(out.length, 2);
+  assert.equal(out[0], "**Uno (2026-11-10)**: primera frase larga con link y code.");
+  assert.equal(out[1], "**Dos** — solo una frase");
+});
+
+test("brief on a real git repo counts uncommitted files", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-git-"));
+  spawnSync("git", ["-C", root, "init", "-q"]);
+  writeFileSync(join(root, "a.txt"), "x");
+  const brief = gatherBrief({ root, stateDir: root, hub: root, logPath: join(root, "none.jsonl"), consentPath: join(root, "none.json"), doctor: doctorOk });
+  assert.equal(brief.repos[0].changed, 1);
+  assert.equal(brief.pending, null);
+});
+
+import { refreshCodexLimitsInBackground } from "../commands/brief.mjs";
+test("refreshCodexLimitsInBackground stays out of the way when Codex is off, opted out, or tried recently", () => {
+  const root = mkdtempSync(join(tmpdir(), "brief-refresh-"));
+  mkdirSync(join(root, "logs"));
+  const on = { codex: { enabled: true } };
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: {} }), false); // Codex not granted
+  process.env.AGENT_HUB_NO_REFRESH = "1";
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: on }), false); // opted out
+  delete process.env.AGENT_HUB_NO_REFRESH;
+  writeFileSync(join(root, "logs", "codex-limits.stamp"), "");
+  assert.equal(refreshCodexLimitsInBackground({ stateDir: root, consent: on }), false); // attempted just now
+});
