@@ -3,11 +3,12 @@
 // The page opens from disk with no server: CSS and the client scripts in
 // page/client/ are inlined, and the data is embedded.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { summarizeUsage } from '../lib/costs.mjs';
+import { buildCostsView, summarizeUsage } from '../lib/costs.mjs';
 import { DIST_DIR } from '../lib/paths.mjs';
+import { CLAUDE_LIVE_PATH, claudeLiveScript, readClaudeUsage } from '../lib/subscription-usage.mjs';
 import { OWNER_ICONS, PROJECT_ICONS } from './icons.mjs';
 import { renderCostsPage } from './costs-render.mjs';
 import { INDEX_ROOT_HTML, renderHomePage, summarizeHome } from './home.mjs';
@@ -76,6 +77,21 @@ export function writeSite(rows, days, meta, ledger = null, activity = null) {
   }));
   mkdirSync(DIST_DIR, { recursive: true });
   writeSharedAssets(DIST_DIR);
+  // Don't overwrite a newer reading produced by an active Claude status line.
+  try { writeFileSync(CLAUDE_LIVE_PATH, claudeLiveScript(readClaudeUsage()), { flag: 'wx' }); }
+  catch (error) { if (error.code !== 'EEXIST') throw error; }
+  // Already-open pages can pick up freshly rebuilt quota readings without reloading.
+  const quotaPath = join(DIST_DIR, 'shared', 'account-usage-live.js');
+  const quotaTemp = `${quotaPath}.${process.pid}.tmp`;
+  const quota = {
+    generatedAt: data.limits?.measuredAt ?? null,
+    rows: buildCostsView(data).room.filter((r) => r.agent !== 'claude'
+      && ['measured', 'manual'].includes(r.source) && ['week', 'month'].includes(r.label)),
+  };
+  try {
+    writeFileSync(quotaTemp, `window.acceptAccountUsage?.(${JSON.stringify(quota).replace(/</g, '\\u003c')});\n`);
+    renameSync(quotaTemp, quotaPath);
+  } finally { rmSync(quotaTemp, { force: true }); }
   writeFileSync(REPOS_JSON, `${JSON.stringify(rows, null, 2)}\n`);
   writeFileSync(INDEX_HTML, html);
   writeFileSync(COSTS_HTML, costsHtml);

@@ -10,7 +10,7 @@
 .tabs { display: inline-flex; gap: 2px; padding: 2px; background: var(--head); border: 1px solid var(--line); border-radius: 8px; justify-self: center; }
 .tabs a { padding: 3px 14px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; }
 .tabs a:hover { color: var(--ink); }
-.tabs a[aria-current="page"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.tabs a[aria-current="page"] { background: var(--hover); color: var(--accent); box-shadow: inset 0 -2px var(--accent); }
 .tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .shell-controls { display: flex; gap: 6px; align-items: center; justify-self: end; }
 .shell-tool { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line);

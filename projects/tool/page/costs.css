@@ -9,7 +9,7 @@
 }
 
 /* Agent cards: the card look plus the colour stripe on the left. */
-.agent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .agent-card { padding: 16px; position: relative; overflow: hidden;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
 .agent-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--agent-color); }
@@ -44,19 +44,34 @@ tbody tr:last-child td { border-bottom: 0; }
 footer { padding: 0 4px; color: var(--faint); font-size: 11px; }
 
 /* room left */
-.room-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.quota-table { min-width: 0; margin-top: 10px; table-layout: fixed; }
+.quota-table th, .quota-table td { text-align: left; white-space: normal; }
+.quota-name { border-left: 3px solid var(--agent-color); }
+.quota-value { font-size: clamp(14px, 2vw, 19px); display: block; }
+.quota-note { font-size: 10px; color: var(--muted); display: block; }
+.quota-high { color: #dc2626; }
+.quota-old { color: var(--muted); }
 .room-row { border: 1px solid var(--line); border-left: 3px solid var(--agent-color); border-radius: 8px; padding: 12px 14px; background: var(--panel); }
-.room-head { display: flex; align-items: center; gap: 8px; }
-.room-name { font-weight: 800; font-size: 13px; }
-.room-pct { margin-left: auto; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-.chip.src-measured { color: var(--accent); border-color: var(--accent); }
-.meter { height: 8px; margin: 10px 0 8px; border-radius: 999px; background: var(--head); overflow: hidden; }
-.meter i { display: block; height: 100%; background: var(--agent-color); border-radius: inherit; }
-.room-row.state-high .meter i { background: #dc2626; }
-.room-row.state-high .room-pct { color: #dc2626; }
-.room-row.state-reset { opacity: .7; }
 .room-detail { color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.usage-settings { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.usage-settings summary { cursor: pointer; font-weight: 700; }
+.scope-field { border: 0; padding: 0; margin: 10px 0 0; }
+.scope-field legend, .model-scope summary { font-size: 12px; font-weight: 700; color: var(--muted); }
+.scope-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.scope-toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
+.scope-toggles label:has(:checked) { color: var(--ink); border-color: var(--accent); background: var(--panel); }
+.scope-toggles input { margin: 0; accent-color: var(--accent); }
+.model-scope { margin-top: 7px; }
+.model-scope summary { cursor: pointer; }
+.model-scope .scope-field { margin-top: 6px; }
+.recommendation { margin-top: 12px; }
+.usage-options { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; align-items: center; }
+.usage-breakdown summary { cursor: pointer; font-weight: 800; }
+.usage-breakdown .table-wrap { margin-top: 8px; max-height: 22rem; }
+.usage-breakdown thead { position: sticky; top: 0; z-index: 1; }
+.usage-breakdown table { text-align: left; }
+.usage-breakdown td, .usage-breakdown th { text-align: left; }
+.usage-breakdown td span { display: block; white-space: nowrap; }
 
 /* who spends most */
 #spenders .table-wrap { margin-top: 12px; }

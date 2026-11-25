@@ -1,8 +1,16 @@
     <summary><span data-cal="title"></span> · <span class="stat" data-cal="yearStat"></span></summary>
     <div class="calendar-controls">
-      <select data-cal="granularity" class="cal-tool">
-        <option value="day"></option><option value="week"></option><option value="month"></option>
-      </select>
+      <div class="calendar-options">
+        <select data-cal="granularity" class="cal-tool">
+          <option value="day"></option><option value="week"></option><option value="month"></option>
+        </select>
+        <label><span data-cal="calendarLabel"></span> <select data-cal="calendar" class="cal-tool"></select></label>
+        <label class="cal-switch">
+          <input type="checkbox" role="switch" data-cal="weekStart">
+          <span class="cal-switch-track" aria-hidden="true"></span>
+          <span data-cal="weekStartLabel"></span>
+        </label>
+      </div>
       <div class="year-nav">
         <button data-cal="yearPrev" class="cal-tool" type="button">&#8249;</button>
         <select data-cal="year" class="cal-tool"></select>

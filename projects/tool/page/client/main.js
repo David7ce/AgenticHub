@@ -13,7 +13,9 @@ const calendar = createCalendar({
   days: commitDays,
   countText: (n) => plural(n, 'commitOne', 'commitMany'),
   titleText: () => t('activity'),
-  yearText: (total, year) => formatYearActivity(DATA.activity, year, { total, author: DATA.author }),
+  yearText: (total, year, { system }) => system === 'gregory'
+    ? formatYearActivity(DATA.activity, year, { total, author: DATA.author })
+    : `<b>${plural(total, 'commitOne', 'commitMany')}</b> · ${year}`,
   hintText: () => t('selectionHint'),
   onSelect: () => repos && repos.render(),
   storageKey: 'calendar',

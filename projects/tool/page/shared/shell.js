@@ -34,6 +34,31 @@ function rememberLang(lang) {
   writeStored('lang', lang);
 }
 
+/** A fragment carries focus between offline pages without relying on cross-file storage. */
+function initTabFocus(links, location = globalThis.location, history = globalThis.history) {
+  if (!location) return;
+  const marker = '#ws-tab-focus';
+  const current = links.find((link) => link.getAttribute('aria-current') === 'page');
+  for (const link of links) {
+    link.addEventListener('click', (event) => {
+      if (link === current || event.defaultPrevented || event.button !== 0
+          || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const target = new URL(link.href, location.href);
+      target.hash = marker;
+      event.preventDefault();
+      location.assign(target.href);
+    });
+  }
+  if (current && location.hash === marker) {
+    current.focus({ preventScroll: true });
+    try {
+      const clean = new URL(location.href);
+      clean.hash = '';
+      history.replaceState(history.state, '', clean.href);
+    } catch { /* navigation focus still works if history is restricted */ }
+  }
+}
+
 /**
  * Wire the header. `stamp()` returns the line under the title and is optional
  * (the notes page ships it already rendered); `onLang(lang)` re-renders the page
@@ -87,5 +112,6 @@ function initShell({ tab, stamp, onLang }) {
     });
   }
   paint();
+  initTabFocus(['tabRepos', 'tabIa', 'tabNotes'].map(byId));
   return { paint };
 }

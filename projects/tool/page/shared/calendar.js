@@ -1,77 +1,145 @@
-// calendar.js — a year calendar (day / week / month) shared by Repos and IA.
-// It is fed a Map<'YYYY-MM-DD', number>; the page says how a number reads
-// (commits, tokens). Clicking a square selects that period and calls onSelect.
-
+// Year heatmap shared by Projects and AI Usage. Data and selection bounds are
+// ISO dates in UTC; the chosen calendar controls year and month boundaries.
 const CAL_COPY = {
   es: {
     locale: 'es-ES', groupBy: 'Agrupar por', day: 'Día', week: 'Semana', month: 'Mes', year: 'Año',
     prevYear: 'Año anterior', nextYear: 'Año siguiente', less: 'Menos', more: 'Más', clear: 'Quitar',
     tipDay: '{value} el {label}', tipWeek: '{value} en la semana del {label}', tipMonth: '{value} en {label}',
-    weekOf: 'Semana del {label}',
+    weekOf: 'Semana del {label}', calendar: 'Calendario', mondayFirst: 'Lunes primero',
+    weekStartHelp: 'Desactivado: la semana empieza en domingo.',
+    gregory: 'Gregoriano', 'islamic-civil': 'Islámico (civil)',
+    hebrew: 'Hebreo', persian: 'Persa', buddhist: 'Budista', chinese: 'Chino',
   },
   en: {
     locale: 'en-US', groupBy: 'Group by', day: 'Day', week: 'Week', month: 'Month', year: 'Year',
     prevYear: 'Previous year', nextYear: 'Next year', less: 'Less', more: 'More', clear: 'Clear',
     tipDay: '{value} on {label}', tipWeek: '{value} in the week of {label}', tipMonth: '{value} in {label}',
-    weekOf: 'Week of {label}',
+    weekOf: 'Week of {label}', calendar: 'Calendar', mondayFirst: 'Monday first',
+    weekStartHelp: 'Off: the week starts on Sunday.',
+    gregory: 'Gregorian', 'islamic-civil': 'Islamic (civil)',
+    hebrew: 'Hebrew', persian: 'Persian', buddhist: 'Buddhist', chinese: 'Chinese',
   },
 };
 
-/** 4 GitHub-style levels against the view's own maximum: max -> 4, zero -> 0. */
+const CAL_SYSTEMS = ['gregory', 'islamic-civil', 'hebrew', 'persian', 'buddhist', 'chinese'];
+const calDate = (iso) => new Date(iso + 'T00:00:00Z');
+const calIso = (date) => date.toISOString().slice(0, 10);
+
+/** 4 GitHub-style levels against the view's own maximum. */
 function bucketLevels(counts) {
   const max = Math.max(0, ...counts.values());
-  const levels = new Map();
-  for (const [key, count] of counts) {
-    levels.set(key, { count, level: count > 0 && max > 0 ? Math.max(1, Math.min(4, Math.ceil((count / max) * 4))) : 0 });
-  }
-  return levels;
+  return new Map([...counts].map(([key, count]) => [key, {
+    count, level: count > 0 && max > 0 ? Math.min(4, Math.ceil((count / max) * 4)) : 0,
+  }]));
 }
 
 function addDays(iso, n) {
-  const d = new Date(iso + 'T00:00:00Z');
+  const d = calDate(iso);
   d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
+  return calIso(d);
 }
 
-/** Weeks start on Sunday and are keyed by that date, so a week across Dec/Jan stays one bucket. */
-function weekStart(iso) {
-  return addDays(iso, -new Date(iso + 'T00:00:00Z').getUTCDay());
+function weekOffset(iso, firstDay = 0) {
+  return (calDate(iso).getUTCDay() - firstDay + 7) % 7;
 }
 
-/** Per-granularity `{ key -> { count, level } }` from a days map. */
-function aggregateActivity(days) {
+function weekStart(iso, firstDay = 0) {
+  return addDays(iso, -weekOffset(iso, firstDay));
+}
+
+function mondayFirst(query, stored) {
+  if (query === 'monday' || query === 'sunday') return query === 'monday';
+  return stored !== '0';
+}
+
+const calFormatters = new Map();
+function calendarParts(iso, system) {
+  if (system === 'gregory') return { year: iso.slice(0, 4), day: Number(iso.slice(-2)) };
+  if (!calFormatters.has(system)) calFormatters.set(system, new Intl.DateTimeFormat('en', {
+    calendar: system, numberingSystem: 'latn', year: 'numeric', day: 'numeric', month: 'numeric', timeZone: 'UTC',
+  }));
+  const p = Object.fromEntries(calFormatters.get(system).formatToParts(calDate(iso)).map(({ type, value }) => [type, value]));
+  return { year: p.relatedYear ?? p.year, day: Number(p.day) };
+}
+
+function calendarMonthKey(iso, system) {
+  // The ISO first day is unique even for calendars that repeat a month name in a leap year.
+  return system === 'gregory' ? iso.slice(0, 7) : addDays(iso, 1 - calendarParts(iso, system).day);
+}
+
+function aggregateActivity(days, firstDay = 0, system = 'gregory') {
   const sums = { day: new Map(), week: new Map(), month: new Map() };
   for (const [date, count] of days) {
-    for (const [granularity, key] of [['day', date], ['week', weekStart(date)], ['month', date.slice(0, 7)]]) {
+    for (const [granularity, key] of [['day', date], ['week', weekStart(date, firstDay)], ['month', calendarMonthKey(date, system)]]) {
       sums[granularity].set(key, (sums[granularity].get(key) || 0) + count);
     }
   }
   return { day: bucketLevels(sums.day), week: bucketLevels(sums.week), month: bucketLevels(sums.month) };
 }
 
-/** Inclusive `[start, end]` dates of one calendar square. */
-function periodRange(granularity, key) {
+/** Inclusive ISO dates of one heatmap block. */
+function periodRange(granularity, key, system = 'gregory') {
   if (granularity === 'day') return [key, key];
   if (granularity === 'week') return [key, addDays(key, 6)];
-  const [y, m] = key.split('-').map(Number);
-  return [key + '-01', new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)];
+  if (system === 'gregory') {
+    const start = `${key}-01`;
+    const d = calDate(start);
+    d.setUTCMonth(d.getUTCMonth() + 1, 0);
+    return [start, calIso(d)];
+  }
+  let next = addDays(key, 28);
+  while (calendarMonthKey(next, system) === key) next = addDays(next, 1);
+  return [key, addDays(next, -1)];
 }
 
-/**
- * Mount the calendar in `root` (a <details class="card cal">) and return
- * `{ render, range }`. Text callbacks run on every render, so they follow the
- * page language. `yearText` returns HTML; everything else is plain text.
- */
-function createCalendar({ root, days, countText, titleText, yearText, hintText, onSelect, storageKey }) {
-  const levels = aggregateActivity(days);
-  const years = [...new Set([...levels.day.keys()].map((d) => d.slice(0, 4)))].sort().reverse();
-  if (!years.length) years.push(String(new Date().getFullYear()));
+function calendarYearRange(iso, system) {
+  if (system === 'gregory') return [iso.slice(0, 4) + '-01-01', iso.slice(0, 4) + '-12-31'];
+  const year = calendarParts(iso, system).year;
+  if (year == null) throw new Error(`No year from calendar ${system}`);
+  const boundary = (sign) => {
+    let edge = iso;
+    while (calendarParts(addDays(edge, sign * 28), system).year === year) edge = addDays(edge, sign * 28);
+    while (calendarParts(addDays(edge, sign), system).year === year) edge = addDays(edge, sign);
+    return edge;
+  };
+  return [boundary(-1), boundary(1)];
+}
 
+function createCalendar({ root, days, countText, titleText, yearText, hintText, onSelect, storageKey }) {
   const part = (name) => root.querySelector('[data-cal="' + name + '"]');
   const yearEl = part('year');
   const granularityEl = part('granularity');
+  const systemEl = part('calendar');
+  const weekStartEl = part('weekStart');
   const weeksEl = part('weeks');
   const monthsEl = part('months');
+  const params = new URLSearchParams(location.search);
+  const preferred = params.get('calendar') || readStored('calendar.system');
+  const supported = CAL_SYSTEMS.filter((id) => new Intl.DateTimeFormat('en', { calendar: id }).resolvedOptions().calendar === id);
+  for (const id of supported) {
+    const option = document.createElement('option');
+    option.value = id;
+    systemEl.append(option);
+  }
+  systemEl.value = supported.includes(preferred) ? preferred : 'gregory';
+  weekStartEl.checked = mondayFirst(params.get('weekStart'), readStored('calendar.firstDay'));
+  const today = () => calIso(new Date());
+  const system = () => systemEl.value;
+  const firstDay = () => Number(weekStartEl.checked);
+  const copy = () => CAL_COPY[shellLang()];
+  const localized = new Map();
+  const fmt = (options) => {
+    const key = JSON.stringify([copy().locale, system(), options]);
+    if (!localized.has(key)) localized.set(key, new Intl.DateTimeFormat(copy().locale, { calendar: system(), timeZone: 'UTC', ...options }));
+    return localized.get(key);
+  };
+  const say = (key, vars = {}) => copy()[key].replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+  let sourceDays = days;
+  let levels;
+  let years;
+  let selection = null;
+  let tabStop = null;
+
   let tooltip = document.getElementById('tooltip');
   if (!tooltip) {
     tooltip = document.createElement('div');
@@ -79,106 +147,139 @@ function createCalendar({ root, days, countText, titleText, yearText, hintText, 
     tooltip.setAttribute('role', 'tooltip');
     document.body.appendChild(tooltip);
   }
-  let selection = null;
-
-  const copy = () => CAL_COPY[shellLang()];
-  const say = (key, vars = {}) => copy()[key].replace(/\{(\w+)\}/g, (_, name) => (name in vars ? vars[name] : '{' + name + '}'));
-  const escape = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
-  const fmt = (options) => new Intl.DateTimeFormat(copy().locale, { timeZone: 'UTC', ...options });
-
   if (storageKey) {
     if (readStored(storageKey) === 'closed') root.open = false;
     root.addEventListener('toggle', () => writeStored(storageKey, root.open ? 'open' : 'closed'));
   }
-
-  yearEl.innerHTML = years.map((y) => '<option>' + y + '</option>').join('');
-  const params = new URLSearchParams(location.search);
   if (['day', 'week', 'month'].includes(params.get('granularity'))) granularityEl.value = params.get('granularity');
-  yearEl.value = years.includes(params.get('year')) ? params.get('year') : years[0];
 
-  function weekLabel(startIso) {
-    const start = new Date(startIso + 'T00:00:00Z');
-    const end = new Date(addDays(startIso, 6) + 'T00:00:00Z');
-    return fmt({ month: 'short', day: 'numeric' }).format(start) + ' – ' + fmt({ month: 'short', day: 'numeric', year: 'numeric' }).format(end);
+  const yearLabel = (iso) => fmt({ year: 'numeric' }).format(calDate(iso));
+  function replaceDays(nextDays, anchor) {
+    sourceDays = nextDays;
+    levels = aggregateActivity(sourceDays, firstDay(), system());
+    const dates = [today(), ...sourceDays.keys()].sort();
+    years = [];
+    for (let iso = dates[0]; iso <= dates.at(-1); ) {
+      const [start, end] = calendarYearRange(iso, system());
+      years.unshift({ start, end });
+      iso = addDays(end, 1);
+    }
+    yearEl.replaceChildren(...years.map(({ start }) => {
+      const option = document.createElement('option');
+      option.value = start;
+      option.textContent = yearLabel(start);
+      return option;
+    }));
+    const numericYear = params.get('year');
+    const requested = !anchor && /^\d+$/.test(numericYear ?? '')
+      ? years.find((item) => calendarParts(item.start, system()).year === numericYear) : null;
+    const containing = years.find(({ start, end }) => start <= (anchor || today()) && (anchor || today()) <= end);
+    yearEl.value = (requested || containing || years[0]).start;
+  }
+  replaceDays(days);
+
+  function weekLabel(key) {
+    const date = fmt({ month: 'short', day: 'numeric' });
+    return date.format(calDate(key)) + ' – ' + fmt({ month: 'short', day: 'numeric', year: 'numeric' }).format(calDate(addDays(key, 6)));
   }
 
-  /** Everything one square needs in the current view: its group key, label, count, level and tooltip. */
-  function period(date, granularity) {
-    const iso = date.toISOString().slice(0, 10);
-    if (granularity === 'week') {
-      const key = weekStart(iso);
-      const entry = levels.week.get(key);
-      const count = entry ? entry.count : 0;
-      return { key, entry, count, label: say('weekOf', { label: weekLabel(key) }), tip: say('tipWeek', { value: countText(count), label: weekLabel(key) }) };
-    }
-    if (granularity === 'month') {
-      const key = iso.slice(0, 7);
-      const entry = levels.month.get(key);
-      const count = entry ? entry.count : 0;
-      const label = fmt({ month: 'long', year: 'numeric' }).format(date);
-      return { key, entry, count, label, tip: say('tipMonth', { value: countText(count), label }) };
-    }
-    const entry = levels.day.get(iso);
-    const count = entry ? entry.count : 0;
-    const label = fmt({ month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-    return { key: iso, entry, count, label, tip: say('tipDay', { value: countText(count), label }) };
+  function period(iso, granularity) {
+    const key = granularity === 'week' ? weekStart(iso, firstDay())
+      : granularity === 'month' ? calendarMonthKey(iso, system()) : iso;
+    const entry = levels[granularity].get(key);
+    const count = entry?.count ?? 0;
+    const label = granularity === 'week' ? weekLabel(key) : fmt(granularity === 'month'
+      ? { month: 'long', year: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' }).format(calDate(iso));
+    const tip = say({ day: 'tipDay', week: 'tipWeek', month: 'tipMonth' }[granularity], { label, value: countText(count) });
+    return { iso, key, count, level: entry?.level ?? 0, label: granularity === 'week' ? say('weekOf', { label }) : label, tip, granularity };
   }
 
-  /** Inclusive date bounds of the selection; null is all time. */
   function range() {
-    return selection ? periodRange(selection.granularity, selection.key) : null;
+    return selection ? periodRange(selection.granularity, selection.key, system()) : null;
+  }
+
+  function select(next) {
+    selection = next;
+    for (const el of weeksEl.querySelectorAll('button.day')) {
+      const on = Boolean(selection && selection.key === el.dataset.key);
+      el.classList.toggle('is-selected', on);
+      el.setAttribute('aria-pressed', String(on));
+    }
+    weeksEl.classList.toggle('has-selection', Boolean(selection));
+    part('selection').hidden = !selection;
+    if (selection) {
+      const label = document.createElement('b');
+      label.textContent = selection.label;
+      part('selectionText').replaceChildren(label, ` · ${countText(selection.count)}`);
+    }
+    onSelect(range());
   }
 
   function showTip(x, y, text) {
-    tooltip.textContent = text;
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = (y - 8) + 'px';
+    if (tooltip.textContent !== text) tooltip.textContent = text;
+    const edge = tooltip.offsetWidth / 2 + 8;
+    const below = y < tooltip.offsetHeight + 8;
+    tooltip.style.left = Math.max(edge, Math.min(window.innerWidth - edge, x)) + 'px';
+    tooltip.style.top = (below ? y + 16 : y - 8) + 'px';
+    tooltip.classList.toggle('below', below);
     tooltip.classList.add('visible');
   }
   const hideTip = () => tooltip.classList.remove('visible');
 
-  function select(next) {
-    selection = next;
-    weeksEl.querySelectorAll('button.day').forEach((el) => {
-      const on = Boolean(selection && selection.key === el.dataset.key);
-      el.classList.toggle('is-selected', on);
-      el.setAttribute('aria-pressed', String(on));
-    });
-    weeksEl.classList.toggle('has-selection', Boolean(selection));
-    part('selection').hidden = !selection;
-    if (selection) part('selectionText').innerHTML = '<b>' + escape(selection.label) + '</b> · ' + escape(countText(selection.count));
-    onSelect(range());
+  function setTabStop(cell) {
+    if (!cell) return;
+    if (tabStop && tabStop !== cell) tabStop.tabIndex = -1;
+    tabStop = cell;
+    tabStop.tabIndex = 0;
   }
+  weeksEl.addEventListener('focusin', (event) => {
+    if (event.target.matches('button.day')) setTabStop(event.target);
+  });
+  weeksEl.addEventListener('keydown', (event) => {
+    if (!event.target.matches('button.day')) return;
+    if (event.key === 'Escape' && selection) {
+      select(null);
+      event.preventDefault();
+      return;
+    }
+    const offset = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 }[event.key];
+    if (!offset && !['Home', 'End'].includes(event.key)) return;
+    const cells = [...weeksEl.querySelectorAll('button.day')];
+    const target = event.key === 'Home' ? cells[0] : event.key === 'End' ? cells.at(-1)
+      : cells[cells.indexOf(event.target) + offset];
+    event.preventDefault();
+    target?.focus();
+  });
 
-  function paintText() {
+  function render() {
+    hideTip();
+    const focusedDate = weeksEl.contains(document.activeElement) ? document.activeElement.dataset.date : null;
     const c = copy();
     part('title').textContent = titleText();
     part('hint').textContent = hintText ? hintText() : '';
-    part('clear').textContent = c.clear;
-    part('less').textContent = c.less;
-    part('more').textContent = c.more;
+    for (const key of ['clear', 'less', 'more']) part(key).textContent = c[key];
+    part('calendarLabel').textContent = c.calendar;
+    part('weekStartLabel').textContent = c.mondayFirst;
+    part('weekStartLabel').parentElement.title = c.weekStartHelp;
+    for (const el of [granularityEl, systemEl]) for (const option of el.options) option.textContent = c[option.value];
+    for (const option of yearEl.options) option.textContent = yearLabel(option.value);
     granularityEl.setAttribute('aria-label', c.groupBy);
     yearEl.setAttribute('aria-label', c.year);
     part('yearPrev').title = c.prevYear;
     part('yearNext').title = c.nextYear;
-    for (const option of granularityEl.options) option.textContent = c[option.value];
-  }
 
-  function render() {
-    paintText();
-    const year = Number(yearEl.value);
+    const index = years.findIndex((y) => y.start === yearEl.value);
+    const { start, end } = years[index];
     const granularity = granularityEl.value;
-    const start = new Date(Date.UTC(year, 0, 1));
-    const cells = Array(start.getUTCDay()).fill(null);
-    for (let d = new Date(start); d.getUTCFullYear() === year; d.setUTCDate(d.getUTCDate() + 1)) cells.push(new Date(d));
+    const offset = weekOffset(start, firstDay());
+    const cells = Array(offset).fill(null);
+    for (let iso = start; iso <= end; iso = addDays(iso, 1)) cells.push(iso);
     while (cells.length % 7) cells.push(null);
     const weekCount = cells.length / 7;
-
-    selection = null;
-    weeksEl.innerHTML = '';
-    monthsEl.innerHTML = '';
-    weeksEl.setAttribute('aria-label', titleText() + ' ' + year);
-    weeksEl.style.gridTemplateColumns = monthsEl.style.gridTemplateColumns = 'repeat(' + weekCount + ', 12px)';
+    weeksEl.replaceChildren();
+    monthsEl.replaceChildren();
+    weeksEl.setAttribute('aria-label', `${titleText()} ${yearLabel(start)}`);
+    weeksEl.style.gridTemplateColumns = monthsEl.style.gridTemplateColumns = `repeat(${weekCount}, 12px)`;
     weeksEl.style.gridTemplateRows = 'repeat(7, 12px)';
     weeksEl.classList.toggle('mode-week', granularity === 'week');
     weeksEl.classList.toggle('mode-month', granularity === 'month');
@@ -187,76 +288,98 @@ function createCalendar({ root, days, countText, titleText, yearText, hintText, 
     labels.classList.toggle('compact', granularity === 'week');
     labels.classList.toggle('compact-month', granularity === 'month');
     const weekday = fmt({ weekday: 'short' });
-    // Sunday-first rows; label Mon, Wed and Fri like GitHub does (2026-11-01 is a Sunday).
-    labels.innerHTML = '<span></span>' + [0, 1, 2, 3, 4, 5, 6]
-      .map((i) => '<span>' + (i % 2 ? escape(weekday.format(new Date(Date.UTC(2026, 10, 1 + i)))) : '') + '</span>').join('');
+    labels.replaceChildren(document.createElement('span'), ...Array.from({ length: 7 }, (_, i) => {
+      const label = document.createElement('span');
+      // Keep the original three labeled rows, including Monday as a reference.
+      const dow = (firstDay() + i) % 7;
+      if ([1, 3, 5].includes(dow)) label.textContent = weekday.format(calDate(addDays('2026-11-01', dow)));
+      return label;
+    }));
 
-    const sameMonth = (a, b) => b && a.getUTCMonth() === b.getUTCMonth();
-    cells.forEach((date, index) => {
-      if (!date) {
-        const empty = document.createElement('span');
-        empty.className = 'day is-empty-cell';
-        weeksEl.appendChild(empty);
+    const dayOffset = (iso) => offset + Math.round((calDate(iso) - calDate(start)) / 86400000);
+    const monthKeys = cells.map((iso) => iso && calendarMonthKey(iso, system()));
+    cells.forEach((iso, i) => {
+      if (!iso) {
+        const blank = document.createElement('span');
+        blank.className = 'day is-empty-cell';
+        weeksEl.append(blank);
         return;
       }
-      const p = period(date, granularity);
-      const level = p.entry ? p.entry.level : 0;
+      const p = period(iso, granularity);
       const el = document.createElement('button');
       el.type = 'button';
+      el.tabIndex = -1;
       el.className = 'day';
-      el.dataset.level = String(level);
+      el.dataset.level = String(p.level);
       el.dataset.key = p.key;
+      el.dataset.date = iso;
       el.setAttribute('aria-label', p.tip);
-      el.addEventListener('click', () => select(selection && selection.key === p.key ? null : { key: p.key, granularity, label: p.label, count: p.count }));
+      el.addEventListener('click', () => select(selection?.key === p.key ? null : p));
       el.addEventListener('mouseenter', (e) => showTip(e.clientX, e.clientY, p.tip));
       el.addEventListener('mousemove', (e) => showTip(e.clientX, e.clientY, p.tip));
       el.addEventListener('mouseleave', hideTip);
-      el.addEventListener('focus', () => { const r = el.getBoundingClientRect(); showTip(r.left + r.width / 2, r.top, p.tip); });
+      el.addEventListener('focus', () => {
+        const r = el.getBoundingClientRect();
+        showTip(r.left + r.width / 2, r.top, p.tip);
+      });
       el.addEventListener('blur', hideTip);
       if (granularity === 'month') {
-        // Fill the 2px gaps inside a month with its own colour so it reads as one block.
-        const right = cells[index + 7];
-        const below = index % 7 < 6 ? cells[index + 1] : null;
-        const color = 'var(--heat-' + level + ')';
-        const shadows = [];
-        if (sameMonth(date, right)) shadows.push('2px 0 0 0 ' + color);
-        if (sameMonth(date, below)) shadows.push('0 2px 0 0 ' + color);
-        if (sameMonth(date, right) && sameMonth(date, below)) shadows.push('2px 2px 0 0 ' + color);
+        const right = monthKeys[i + 7] === monthKeys[i];
+        const below = i % 7 < 6 && monthKeys[i + 1] === monthKeys[i];
+        const color = `var(--heat-${p.level})`;
+        const shadows = [right && `2px 0 0 0 ${color}`, below && `0 2px 0 0 ${color}`,
+          right && below && `2px 2px 0 0 ${color}`].filter(Boolean);
         if (shadows.length) el.style.boxShadow = shadows.join(', ');
       }
-      weeksEl.appendChild(el);
+      weeksEl.append(el);
     });
-
-    const monthName = fmt({ month: 'short' });
-    for (let m = 0; m < 12; m++) {
-      const first = start.getUTCDay() + Math.round((Date.UTC(year, m, 1) - start) / 86400000);
-      const last = start.getUTCDay() + Math.round((Date.UTC(year, m + 1, 0) - start) / 86400000);
+    const monthFmt = fmt({ month: 'short' });
+    for (let iso = start; iso <= end; ) {
+      const [, last] = periodRange('month', calendarMonthKey(iso, system()), system());
       const label = document.createElement('span');
-      label.style.gridColumn = (Math.floor(first / 7) + 1) + ' / ' + (Math.floor(last / 7) + 2);
-      label.textContent = monthName.format(new Date(Date.UTC(year, m, 1)));
-      monthsEl.appendChild(label);
+      label.style.gridColumn = `${Math.floor(dayOffset(iso) / 7) + 1} / ${Math.floor(dayOffset(last < end ? last : end) / 7) + 2}`;
+      label.textContent = monthFmt.format(calDate(iso));
+      monthsEl.append(label);
+      iso = addDays(last, 1);
     }
-
     let total = 0;
-    for (const [date, entry] of levels.day) if (date.startsWith(String(year))) total += entry.count;
-    part('yearStat').innerHTML = yearText(total, year);
-    const index = years.indexOf(yearEl.value);
+    for (const [date, entry] of levels.day) if (date >= start && date <= end) total += entry.count;
+    const year = system() === 'gregory' ? Number(start.slice(0, 4)) : yearLabel(start);
+    part('yearStat').innerHTML = yearText(total, year, { system: system(), start, end });
     part('yearPrev').disabled = index >= years.length - 1;
     part('yearNext').disabled = index <= 0;
-    select(null);
+    const keep = selection && selection.iso >= start && selection.iso <= end ? selection.iso : null;
+    const buttons = [...weeksEl.querySelectorAll('button.day')];
+    const oldFocus = buttons.find((button) => button.dataset.date === focusedDate);
+    setTabStop(oldFocus || buttons.find((button) => button.dataset.date === (keep || today())) || buttons[0]);
+    select(keep ? period(keep, granularity) : null);
+    oldFocus?.focus({ preventScroll: true });
   }
 
   const step = (direction) => {
-    const next = years.indexOf(yearEl.value) + direction;
-    if (next < 0 || next >= years.length) return;
-    yearEl.value = years[next];
-    render();
+    const next = years[years.findIndex((y) => y.start === yearEl.value) + direction];
+    if (next) { yearEl.value = next.start; render(); }
   };
   part('yearPrev').addEventListener('click', () => step(1));
   part('yearNext').addEventListener('click', () => step(-1));
   yearEl.addEventListener('change', render);
   granularityEl.addEventListener('change', render);
-  part('clear').addEventListener('click', () => select(null));
+  weekStartEl.addEventListener('change', () => {
+    writeStored('calendar.firstDay', weekStartEl.checked ? '1' : '0');
+    levels = aggregateActivity(sourceDays, firstDay(), system());
+    render();
+  });
+  systemEl.addEventListener('change', () => {
+    const shown = years.find((y) => y.start === yearEl.value);
+    const anchor = selection?.iso ?? (shown.start <= today() && today() <= shown.end ? today() : addDays(shown.start, 180));
+    writeStored('calendar.system', system());
+    replaceDays(sourceDays, anchor);
+    render();
+  });
+  part('clear').addEventListener('click', () => {
+    select(null);
+    tabStop?.focus();
+  });
 
-  return { render, range };
+  return { render, range, setDays(nextDays) { replaceDays(nextDays, yearEl.value); render(); } };
 }

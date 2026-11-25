@@ -193,7 +193,7 @@ test('reset window is not reported as used', () => {
       { label: 'weekly', usedPercent: 90, resetsAt: '2026-11-23T19:00:00Z', windowMins: 10080 }] } } }) });
   const codex = buildCostsView(ledgerWith([], limits), NOW).room.find((r) => r.agent === 'codex');
   assert.equal(codex.state, 'reset');
-  assert.equal(codex.pct, 0);
+  assert.equal(codex.pct, null);
 });
 
 test('high state at 80 percent and go rows merged by model', () => {
@@ -235,6 +235,26 @@ test('view without limits snapshot', () => {
   const view = buildCostsView(ledgerWith(rows, undefined), NOW);
   assert.equal(view.noLimits, true);
   assert.deepEqual(view.room, []);
+});
+
+test('account windows take precedence and missing subscription windows remain unknown', () => {
+  const reading = { usedPercent: 73, resetsAt: '2026-11-26T00:00:00Z' };
+  const limits = collectLimits({
+    now: NOW, runUsage: () => USAGE, readConfig: () => ({ opencode: { plan: 'go' }, claude: { plan: 'pro' } }),
+    findHits: () => [],
+  });
+  limits.subscription = {
+    goManual: { measuredAt: NOW.toISOString(), windows: [{ ...reading, label: 'week' }] },
+    claude: { measuredAt: NOW.toISOString(), windows: [{ ...reading, label: 'week' }] },
+  };
+  const view = buildCostsView(ledgerWith([], limits), NOW);
+  assert.equal(view.detectedPlans.codex, 'plus');
+  assert.equal(view.configuredPlans.opencode, 'go');
+  assert.equal(view.room.find((r) => r.id === 'opencode-week').pct, 0.73);
+  assert.equal(view.room.find((r) => r.id === 'opencode-week').source, 'manual');
+  assert.equal(view.room.find((r) => r.id === 'claude-7d').source, 'measured');
+  assert.equal(view.room.filter((r) => r.label === 'month' && r.source === 'unavailable').length, 3);
+  assert.ok(!view.room.some((r) => r.id === 'opencode-gpt-6-luna'));
 });
 
 test('stale flag', () => {

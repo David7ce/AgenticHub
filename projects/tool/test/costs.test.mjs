@@ -15,6 +15,7 @@ import {
   projectLabel,
   readCostLedger,
   summarizeUsage,
+  subscriptionHistory,
   renderCostsMarkdown,
   writeCostLedger,
 } from '../lib/costs.mjs';
@@ -90,6 +91,13 @@ test('OpenCode session DB maps provider/model and keeps token categories separat
     'session-1', repo, 'build', JSON.stringify({ id: 'model-a', providerID: 'provider-a' }),
     Date.parse('2026-11-02T12:00:00Z'), 2, 5, 3, 7, 11,
   );
+  db.exec('CREATE TABLE session_message (session_id TEXT, type TEXT, time_created INTEGER, data TEXT)');
+  const response = db.prepare('INSERT INTO session_message VALUES (?, ?, ?, ?)');
+  for (const [hour, id, providerID] of [[13, 'm-go', 'opencode-go'], [14, 'm-gpt', 'openai']]) {
+    response.run('session-1', 'assistant', Date.parse(`2026-11-02T${hour}:00:00Z`), JSON.stringify({
+      model: { id, providerID }, tokens: { input: 1, output: 1 }, content: 'must not be copied',
+    }));
+  }
   db.close();
   try {
     const result = collectOpenCodeUsage({ dbPath, workspaceRoot: workspace });
@@ -101,6 +109,11 @@ test('OpenCode session DB maps provider/model and keeps token categories separat
       Object.fromEntries(['input_tokens', 'cache_write_tokens', 'cache_read_tokens', 'output_tokens', 'reasoning_tokens'].map((k) => [k, result.rows[0][k]])),
       { input_tokens: 2, cache_write_tokens: 11, cache_read_tokens: 7, output_tokens: 5, reasoning_tokens: 3 },
     );
+    const detailed = subscriptionHistory({ rows: result.rows, openCodeAttribution: result.attribution });
+    assert.deepEqual(detailed.map(({ hour, model, output_tokens }) => [hour, model, output_tokens]), [
+      [12, 'unknown-model', 3], [13, 'm-go (opencode-go)', 1], [14, 'm-gpt (openai)', 1],
+    ]);
+    assert.ok(!JSON.stringify(detailed).includes('must not be copied'));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -130,6 +143,18 @@ test('Codex records only its recoverable per-thread total, not guessed categorie
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('only an unambiguous Go label can provisionally attribute retained aggregates', () => {
+  const base = { date: '2026-11-02', source: 'opencode', agent: 'opencode', project: 'p' };
+  const go = { ...base, hour: 12, model: 'deepseek (opencode-go)', output_tokens: 20 };
+  const result = subscriptionHistory({
+    rows: [go, { ...go, hour: 13 }, { ...go, hour: 13, model: 'gpt (openai)', output_tokens: 10 }],
+    openCodeAttribution: { first: base.date, rows: [], covered: [{ ...go, output_tokens: 5 }] },
+  });
+  assert.deepEqual(result.map(({ model, output_tokens, inferred }) => [model, output_tokens, inferred]), [
+    ['deepseek (opencode-go)', 15, true], ['unknown-model', 30, undefined],
+  ]);
 });
 
 test('Agent Hub audit coverage is reported without treating missing token fields as zero spend', () => {

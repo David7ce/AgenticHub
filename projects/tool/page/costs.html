@@ -15,10 +15,24 @@
     <!--SHELL-->
 
     <section class="card" id="room">
-      <div class="section-head"><div><h2 id="roomTitle"></h2><p class="note" id="roomHint"></p></div></div>
-      <p class="unknown" id="roomNote" hidden></p>
-      <div class="room-list" id="roomList"></div>
+      <div class="section-head">
+        <div><h2 id="roomTitle"></h2><p class="note" id="roomHint"></p></div>
+      </div>
+      <fieldset class="scope-field"><legend id="scopeLabel"></legend><div class="scope-toggles" id="scope"></div></fieldset>
+      <details class="model-scope" id="modelScope"><summary id="modelScopeTitle"></summary><div id="modelToggles"></div></details>
+      <div id="roomList"></div>
+      <details class="usage-settings">
+        <summary id="usageSettingsTitle"></summary>
+        <p class="note" id="usageSettingsHint"></p>
+        <div class="usage-options" id="planOptions"></div>
+        <p class="note" id="roomNote" hidden></p>
+      </details>
     </section>
+
+    <details class="card usage-breakdown" id="codexStatsCard" hidden>
+      <summary id="codexStatsTitle"></summary>
+      <div id="codexStats"></div>
+    </details>
 
     <details class="card cal" id="usageCalendar" open>
 <!--CALENDAR-->
@@ -33,9 +47,6 @@
       </div>
       <div class="chart-wrap"><svg id="dailyChart" role="img"></svg></div>
       <div class="legend" id="dailyLegend"></div>
-      <div class="table-wrap">
-        <table><thead id="dailyHead"></thead><tbody id="dailyBody"></tbody></table>
-      </div>
     </section>
 
     <section class="card" id="hourlyCard" hidden>
@@ -44,9 +55,6 @@
       </div>
       <div class="chart-wrap"><svg id="hourlyChart" role="img"></svg></div>
       <div class="legend" id="hourlyLegend"></div>
-      <div class="table-wrap">
-        <table><thead id="hourlyHead"></thead><tbody id="hourlyBody"></tbody></table>
-      </div>
       <p class="unknown" id="unknownHour" hidden></p>
     </section>
 
@@ -59,6 +67,7 @@
         <div class="table-wrap" id="spendProjects"></div>
         <div class="table-wrap" id="spendModels"></div>
       </div>
+      <p class="note recommendation" id="modelRecommendation"></p>
     </section>
 
     <footer id="footer"></footer>

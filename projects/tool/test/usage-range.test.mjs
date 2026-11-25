@@ -39,6 +39,21 @@ test('work_counts_undisclosed_but_not_cache_reads', () => {
   assert.equal(c.workOf(r({ input_tokens: 1, output_tokens: 2, cache_write_tokens: 3, unknown_tokens: 4, cache_read_tokens: 1000 })), 10);
 });
 
+test('bills by provider rather than client or model name, and merges the same model across clients', () => {
+  const c = load();
+  const source = [
+    r({ source: 'opencode', agent: 'opencode', model: 'gpt-sol (openai)', output_tokens: 10 }),
+    r({ source: 'codex', agent: 'codex', model: 'gpt-sol (openai)', output_tokens: 5 }),
+    r({ source: 'opencode', agent: 'opencode', model: 'claude-haiku (opencode-go)', output_tokens: 25 }),
+    r({ source: 'opencode', agent: 'opencode', model: 'claude-haiku (opencode)', output_tokens: 2 }),
+  ];
+  assert.equal(c.billingOf(source[0], false), 'other');
+  const models = c.breakdown(c.billedRows(source, true), null).models.map((entry) => [entry.key, entry.work]);
+  assert.deepEqual(JSON.parse(JSON.stringify(models)), [
+    ['opencode · claude-haiku', 25], ['codex · gpt-sol', 15], ['other · claude-haiku (opencode)', 2],
+  ]);
+});
+
 test('ranking orders by work tokens with cache reads apart', () => {
   const c = load();
   const rows = [

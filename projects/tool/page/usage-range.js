@@ -1,8 +1,29 @@
 // usage-range.js — what the IA page shows for a calendar selection, from the
 // ledger rows alone. Pure functions; `range` is [startISO, endISO] or null (all).
 
-const RANGE_AGENTS = ['claude', 'opencode', 'codex'];
+const RANGE_AGENTS = ['claude', 'opencode', 'codex', 'other'];
 const RANGE_FIELDS = ['input_tokens', 'cache_write_tokens', 'cache_read_tokens', 'output_tokens', 'reasoning_tokens', 'unknown_tokens'];
+
+/** Model family is not billing evidence: e.g. Haiku running on Go belongs to Go. */
+function billingOf(row, openAiViaChatGpt) {
+  const provider = /\(([^()]+)\)$/.exec(row.model ?? '')?.[1];
+  if (provider === 'opencode-go') return 'opencode';
+  if (row.source === 'claude-code' && (!provider || provider === 'anthropic')) return 'claude';
+  if ((row.source === 'codex' && (!provider || provider === 'openai'))
+      || (row.source === 'opencode' && provider === 'openai' && openAiViaChatGpt)) return 'codex';
+  return 'other';
+}
+
+function billedRows(rows, openAiViaChatGpt) {
+  return rows.map((row) => ({
+    ...row, client: row.agent, agent: billingOf(row, openAiViaChatGpt),
+    model: row.model?.replace(/ \((opencode-go|openai|anthropic)\)$/, '') || 'unknown-model',
+  }));
+}
+
+function modelScopeKey(row) {
+  return JSON.stringify([row.agent, row.model]);
+}
 
 /** Work tokens: input + output + cache writes + undisclosed (same as workTokens in costs.mjs). */
 function workOf(row) {
@@ -32,6 +53,7 @@ function rankBy(rows, keyFn) {
     const key = keyFn(row);
     const g = groups.get(key) || { key, work: 0, cacheRead: 0 };
     g.work += workOf(row);
+    if (row.inferred) g.inferredWork = (g.inferredWork ?? 0) + workOf(row);
     g.cacheRead += Number(row.cache_read_tokens) || 0;
     groups.set(key, g);
   }

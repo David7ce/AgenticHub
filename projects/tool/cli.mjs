@@ -12,6 +12,7 @@ import { PROJECTS_DIR, TOOL_DIR, resolveRoot, toDisplayPath, toWindowsPath } fro
 import { DEFAULT_DEPTH, scanRepos } from './lib/scan.mjs';
 import { applyStars, fetchStars, readStarsCache, writeStarsCache } from './lib/stars.mjs';
 import { syncRepos } from './lib/sync.mjs';
+import { readClaudeUsage, readCodexAccountStats, readGoModels, readGoUsage, readOpenAiConnection } from './lib/subscription-usage.mjs';
 import { COSTS_HTML, INDEX_HTML, NOTES_HTML, REPOS_JSON, writeSite } from './page/render.mjs';
 
 const USAGE = `projects — inventory of the git repos under the workspace root
@@ -130,7 +131,7 @@ async function commandSync(options) {
   return summary.failed ? 1 : 0;
 }
 
-function commandCosts(options) {
+async function commandCosts(options) {
   const previous = readCostLedger();
   const incoming = collectUsage({ workspaceRoot: options.root || resolveRoot() });
   const ledger = mergeCostLedger(previous, incoming);
@@ -141,11 +142,20 @@ function commandCosts(options) {
   }
   console.log(renderCostTotals(ledger));
   ledger.limits = limitsForRun({ rows: ledger.rows, write: options.write });
-  console.log(renderLimitsLine(ledger.limits));
   if (!options.write) {
+    console.log(renderLimitsLine(ledger.limits));
     console.log('dry-run; add --write to update working/costs.json and working/COSTS.md');
     return 0;
   }
+  const goModels = await readGoModels();
+  ledger.limits.subscription = {
+    goManual: readGoUsage(),
+    goModels: goModels.length ? goModels : previous?.limits?.subscription?.goModels ?? [],
+    claude: readClaudeUsage(),
+    codexAccount: readCodexAccountStats(),
+    openAiViaChatGpt: readOpenAiConnection(),
+  };
+  console.log(renderLimitsLine(ledger.limits));
   writeCostLedger(ledger);
   console.log(`wrote ${PROJECTS_DIR}/working/costs.json`);
   console.log(`wrote ${PROJECTS_DIR}/working/COSTS.md`);
@@ -156,7 +166,7 @@ function commandCosts(options) {
 export async function commandRefresh(options, steps = { costs: commandCosts, build: commandBuild }) {
   let failed = false;
   try {
-    if (steps.costs({ ...options, write: true }) !== 0) failed = true;
+    if ((await steps.costs({ ...options, write: true })) !== 0) failed = true;
   } catch (error) {
     console.error(`refresh: costs failed: ${error.message}`);
     failed = true;
@@ -167,10 +177,12 @@ export async function commandRefresh(options, steps = { costs: commandCosts, bui
 
 function renderLimitsLine(limits) {
   const codex = limits.codex?.windows?.map((w) => `${w.label} ${w.usedPercent}%`).join(', ');
-  const goMax = Math.max(0, ...(limits.go ?? []).map((m) => m.pct ?? 0));
+  const go = limits.subscription?.goManual?.windows
+    ?.filter((w) => Date.parse(w.resetsAt) > Date.parse(limits.measuredAt))
+    .map((w) => `${w.label} ${w.usedPercent}%`).join(', ');
   const c = limits.claude;
   const record = c.record5h.tokens ? `${Math.round((c.window5h.tokens / c.record5h.tokens) * 100)}% of record` : 'no record';
-  return `  limits: codex ${codex || '—'} · go max ${(goMax * 100).toFixed(1)}%`
+  return `  limits: codex ${codex || '—'} · go account ${go || '—'}`
     + ` · claude 5h ${c.window5h.tokens} work tokens (${record}${c.reference ? `, ref ${c.reference.source}` : ', no plan reference'})`
     + `${limits.error ? ` · ${limits.error}` : ''}`;
 }

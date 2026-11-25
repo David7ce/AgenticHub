@@ -6,6 +6,7 @@ import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import { PROJECTS_DIR, resolveRoot } from './paths.mjs';
+import { estimateGoLocal, GO_WINDOWS } from './subscription-usage.mjs';
 
 export const COST_LEDGER_VERSION = 2;
 export const COST_LEDGER_PATH = join(PROJECTS_DIR, 'working', 'costs.json');
@@ -305,28 +306,35 @@ export function collectOpenCodeUsage({
     const rowsInDb = db.prepare(`SELECT ${select.join(', ')} FROM session_v2 ORDER BY time_created`).all();
     const groups = new Map();
     const dates = [];
+    const sessions = new Map();
     for (const session of rowsInDb) {
       const { date, hour } = epochParts(session.time_created);
       if (!date) continue;
       dates.push(date);
-      addObservation(groups, {
+      const dimensions = {
         date,
         hour,
         source: 'opencode',
         agent: 'opencode',
         model: decodeModel(session.model),
         project: projectLabel(session.directory, workspaceRoot),
-      }, {
+      };
+      const tokens = {
         input_tokens: numeric(session.tokens_input),
         cache_write_tokens: numeric(session.tokens_cache_write),
         cache_read_tokens: numeric(session.tokens_cache_read),
         output_tokens: numeric(session.tokens_output),
         reasoning_tokens: numeric(session.tokens_reasoning),
         unknown_tokens: 0,
-      }, String(session.id));
+      };
+      addObservation(groups, dimensions, tokens, String(session.id));
+      sessions.set(String(session.id), { dimensions, tokens, measured: EMPTY_TOKENS() });
     }
+    const rows = finishGroups(groups);
+    const attribution = openCodeAttribution(db, sessions, dates);
     return {
-      rows: finishGroups(groups),
+      rows,
+      attribution: attribution && { ...attribution, covered: rows },
       status: sourceStatus({
         available: true,
         records: rowsInDb.length,
@@ -340,6 +348,76 @@ export function collectOpenCodeUsage({
   } finally {
     db?.close();
   }
+}
+
+/** Read response metadata only; don't assign a switched session's whole total to its final model. */
+function openCodeAttribution(db, sessions, dates) {
+  const columns = tableColumns(db, 'session_message');
+  if (!['session_id', 'type', 'time_created', 'data'].every((k) => columns.has(k)) || !dates.length) return null;
+  const messages = db.prepare(`
+    SELECT session_id, time_created,
+      json_extract(data, '$.model.id') model, json_extract(data, '$.model.providerID') provider,
+      json_extract(data, '$.tokens.input') input_tokens, json_extract(data, '$.tokens.output') output_tokens,
+      json_extract(data, '$.tokens.reasoning') reasoning_tokens, json_extract(data, '$.tokens.cache.read') cache_read_tokens,
+      json_extract(data, '$.tokens.cache.write') cache_write_tokens
+    FROM session_message WHERE type = 'assistant' AND json_valid(data) AND json_type(data, '$.tokens') = 'object'
+  `);
+  const groups = new Map();
+  for (const msg of messages.iterate()) {
+    const s = sessions.get(String(msg.session_id));
+    if (!s || !TOKEN_FIELDS.some((f) => numeric(msg[f]) > 0)) continue;
+    const model = msg.model && msg.provider ? `${msg.model} (${msg.provider})` : 'unknown-model';
+    for (const f of TOKEN_FIELDS) s.measured[f] += numeric(msg[f]);
+    const at = epochParts(msg.time_created);
+    addObservation(groups, { ...s.dimensions, ...(at.date ? at : {}), model }, msg, String(msg.session_id));
+  }
+  for (const [id, s] of sessions) {
+    const remainder = Object.fromEntries(TOKEN_FIELDS.map((f) => [f, Math.max(0, s.tokens[f] - s.measured[f])]));
+    if (!TOKEN_FIELDS.some((f) => remainder[f] > 0)) continue;
+    // Totals without response metadata cannot tell which model was billed.
+    addObservation(groups, { ...s.dimensions, model: 'unknown-model' }, remainder, id);
+  }
+  const first = dates.reduce((a, b) => a < b ? a : b);
+  return { first, rows: finishGroups(groups) };
+}
+
+/** Reconcile response-based history with the older aggregate, without adding both. */
+export function subscriptionHistory(ledger) {
+  const { rows = [], openCodeAttribution } = ledger ?? {};
+  if (!openCodeAttribution) return rows;
+  const legacy = rows.filter((r) => r.source !== 'opencode' || r.date < openCodeAttribution.first);
+  if (!openCodeAttribution.covered) return [...legacy, ...openCodeAttribution.rows];
+  const groupCoarse = (items) => {
+    const groups = new Map();
+    for (const row of items) {
+      const dimensions = { ...row, model: 'unknown-model' };
+      addObservation(groups, dimensions, row);
+      if (TOKEN_FIELDS.some((f) => numeric(row[f]) > 0)) {
+        const coarse = groups.get(rowKey(dimensions));
+        (coarse.models ??= new Set()).add(row.model);
+      }
+    }
+    return groups;
+  };
+  const covered = groupCoarse(openCodeAttribution.covered);
+  const previous = groupCoarse(rows.filter((r) => r.source === 'opencode' && r.date >= openCodeAttribution.first));
+  for (const [key, row] of previous) {
+    for (const f of TOKEN_FIELDS) row[f] = Math.max(0, row[f] - numeric(covered.get(key)?.[f]));
+    if (!TOKEN_FIELDS.some((f) => row[f] > 0)) {
+      previous.delete(key);
+      continue;
+    }
+    // A unanimous older session label is useful as an estimate, but mixed
+    // labels (including API/unknown) do not prove which subscription paid.
+    const models = new Set([...(row.models ?? []), ...(covered.get(key)?.models ?? [])]);
+    const [model] = models;
+    if (models.size === 1 && / \(opencode-go\)$/.test(model)) {
+      row.model = model;
+      row.inferred = true;
+    }
+    delete row.models;
+  }
+  return [...legacy, ...openCodeAttribution.rows, ...finishGroups(previous)];
 }
 
 function findCodexDatabases(codexDir) {
@@ -702,6 +780,7 @@ export function collectLimits({
     codex: usage ? (summary ? {
       plan: summary.plan ?? null,
       source: usage.codex.source ?? null,
+      measuredAt: summary.measuredAt ?? null,
       windows: (summary.windows ?? []).map((w) => ({
         label: w.label, usedPercent: w.usedPercent, resetsAt: w.resetsAt ?? null, windowMins: w.windowMins ?? null,
       })),
@@ -710,6 +789,7 @@ export function collectLimits({
       model: m.model, pct: Number.isFinite(m.pct) ? m.pct : null,
       cost: Number.isFinite(m.cost) ? m.cost : null, limit: m.limit ?? null,
     })) : null,
+    goPlan: config.opencode?.plan ?? null,
     claude: {
       plan: config.claude?.plan ?? null,
       ...claudeWindows(rows, now, cacheWeight(config)),
@@ -772,17 +852,37 @@ function roomState(pct, resetsAt, now) {
 function roomRows(limits, now) {
   if (!limits) return [];
   const rows = [];
-  for (const w of limits.codex?.windows ?? []) {
-    const reset = w.resetsAt && Date.parse(w.resetsAt) <= now.getTime();
-    const pct = reset ? 0 : (Number.isFinite(w.usedPercent) ? w.usedPercent / 100 : null);
-    rows.push({
-      id: `codex-${w.label}`, agent: 'codex', label: w.label, pct, recordPct: null,
-      used: null, limit: null, resetsAt: w.resetsAt ?? null, source: 'measured',
-      state: roomState(pct, w.resetsAt, now), detail: limits.codex.plan ?? '',
-    });
+  const missing = (agent, label) => ({
+    id: `${agent}-${label}`, agent, label, pct: null, source: 'unavailable', state: 'none',
+  });
+  const accounted = (agent, label, w, measuredAt, source = 'measured') => {
+    if (!Number.isFinite(w?.usedPercent)) return missing(agent, label);
+    const pct = w.usedPercent / 100;
+    const resetsAt = w.resetsAt ?? null;
+    const state = roomState(pct, resetsAt, now);
+    return {
+      id: `${agent}-${label}`, agent, label, pct: state === 'reset' ? null : pct,
+      resetsAt, measuredAt, source, state,
+    };
+  };
+  const codexWindows = limits.codex?.windows ?? [];
+  const codexLabel = (w) => w.windowMins === 10080 || /^(weekly|semanal)$/i.test(w.label) ? 'week'
+    : (w.windowMins >= 28 * 1440 && w.windowMins <= 31 * 1440) || /^(monthly|mensual)$/i.test(w.label) ? 'month' : w.label;
+  for (const w of codexWindows) {
+    rows.push(accounted('codex', codexLabel(w), w, limits.codex.measuredAt ?? limits.measuredAt));
+  }
+  if (limits.subscription) {
+    for (const label of ['week', 'month']) {
+      if (!rows.some((r) => r.agent === 'codex' && r.label === label)) rows.push(missing('codex', label));
+    }
+    for (const [, label] of GO_WINDOWS) {
+      const manual = limits.subscription.goManual;
+      const w = manual?.windows?.find((window) => window.label === label);
+      rows.push(accounted('opencode', label, w, manual?.measuredAt, 'manual'));
+    }
   }
   const go = new Map();
-  for (const m of limits.go ?? []) {
+  for (const m of (limits.subscription ? [] : limits.go ?? [])) {
     const merged = go.get(m.model) ?? { model: m.model, pct: null, cost: 0, limit: m.limit };
     if (Number.isFinite(m.pct)) merged.pct = (merged.pct ?? 0) + m.pct;
     merged.cost += Number.isFinite(m.cost) ? m.cost : 0;
@@ -803,6 +903,12 @@ function roomRows(limits, now) {
       ['claude-5h', '5h', c.window5h, c.record5h, ref?.window5h, c.window5h?.end],
       ['claude-week', '7d', c.week, c.recordWeek, ref?.week, c.week?.end],
     ]) {
+      const account = limits.subscription?.claude;
+      const snapshot = account?.windows?.find((w) => w.label === (label === '7d' ? 'week' : label));
+      if (snapshot) {
+        rows.push(accounted('claude', label, snapshot, account.measuredAt));
+        continue;
+      }
       // A plan window rations cache reads too, so the percentage is against
       // quota tokens; the work-only figure stays visible for comparison.
       const quota = used.quota ?? used.tokens;
@@ -816,6 +922,7 @@ function roomRows(limits, now) {
         state: pct === null ? (recordPct === null ? 'none' : 'ok') : roomState(pct, null, now), detail: '',
       });
     }
+    if (limits.subscription) rows.push(missing('claude', 'month'));
   }
   return rows;
 }
@@ -824,6 +931,11 @@ function roomRows(limits, now) {
 export function buildCostsView(ledger, now = new Date()) {
   const generated = Date.parse(ledger?.generatedAt ?? '');
   const room = roomRows(ledger?.limits, now);
+  const goModels = ledger?.limits?.subscription?.goModels ?? [];
+  const codexRows = (ledger?.rows ?? []).filter((r) => r.agent === 'codex' && r.source === 'codex');
+  const codexDays = codexRows.map((r) => r.date).filter(Boolean).sort();
+  const codexModels = new Map();
+  for (const row of codexRows) codexModels.set(row.model, (codexModels.get(row.model) ?? 0) + workTokens(row));
   return {
     now: now.toISOString(),
     dataAt: ledger?.generatedAt ?? null,
@@ -831,6 +943,23 @@ export function buildCostsView(ledger, now = new Date()) {
     stale: !Number.isFinite(generated) || now.getTime() - generated > STALE_MS,
     noLimits: !ledger?.limits,
     limitsError: ledger?.limits?.error ?? null,
+    goModels,
+    goLocal: estimateGoLocal(subscriptionHistory(ledger), goModels, now),
+    openAiViaChatGpt: ledger?.limits?.subscription?.openAiViaChatGpt === true,
+    codexAccount: ledger?.limits?.subscription?.codexAccount ?? null,
+    codexLocal: codexDays.length ? {
+      tokens: codexRows.reduce((sum, row) => sum + workTokens(row), 0),
+      first: codexDays[0], last: codexDays.at(-1), sessions: ledger?.sources?.codex?.records ?? null,
+      models: [...codexModels].sort((a, b) => b[1] - a[1]),
+    } : null,
+    hasSubscriptions: Boolean(ledger?.limits?.subscription),
+    detectedPlans: {
+      codex: ledger?.limits?.codex?.plan ?? null,
+    },
+    configuredPlans: {
+      opencode: ledger?.limits?.goPlan ?? null,
+      claude: ledger?.limits?.claude?.plan ?? null,
+    },
     room,
     agents: AGENTS,
   };
@@ -855,6 +984,7 @@ export function collectUsage(options = {}) {
       codex: codex.status,
       agentHub: hub.status,
     },
+    openCodeAttribution: opencode.attribution ?? null,
   };
 }
 
@@ -964,6 +1094,7 @@ export function mergeCostLedger(previous, incoming, generatedAt = new Date().toI
     schemaVersion: COST_LEDGER_VERSION,
     generatedAt,
     sources: { ...previous.sources, ...incoming.sources },
+    openCodeAttribution: incoming.openCodeAttribution ?? previous.openCodeAttribution ?? null,
     rows: [...rows.values()].sort((a, b) => a.date.localeCompare(b.date)
       || ((a.hour ?? -1) - (b.hour ?? -1))
       || a.source.localeCompare(b.source)
@@ -1062,8 +1193,8 @@ Lectura de ${limits.measuredAt}${limits.error ? ` (Codex/Go: ${limits.error})` :
 |---|---:|---|---|
 ${[
     ...(limits.codex?.windows ?? []).map((w) => `| Codex · ${w.label} | ${w.usedPercent}% | medido | reinicia ${w.resetsAt ?? '—'} |`),
-    ...roomRows(limits, new Date(limits.measuredAt)).filter((r) => r.agent === 'opencode')
-      .map((r) => `| OpenCode Go · ${r.label} | ${r.limit === null ? 'gratis' : percent(r.pct)} | estimado | ${r.limit === null ? '' : `$${(r.used ?? 0).toFixed(2)} de $${r.limit}`} |`),
+    ...roomRows(limits, new Date(limits.measuredAt)).filter((r) => r.agent === 'opencode' || (r.agent === 'claude' && r.source === 'measured'))
+      .map((r) => `| ${r.agent === 'opencode' ? 'OpenCode Go' : 'Claude'} · ${{ week: 'semanal', month: 'mensual', '7d': 'semanal' }[r.label] ?? r.label} | ${r.source === 'free' ? 'gratis' : percent(r.pct)} | ${{ measured: 'medido', manual: 'copiado de consola', unavailable: 'sin lectura' }[r.source] ?? 'estimado'} | ${r.resetsAt ? `reinicia ${r.resetsAt}` : r.limit ? `$${(r.used ?? 0).toFixed(2)} de $${r.limit}` : ''} |`),
     ...[['5 h', limits.claude.window5h, limits.claude.record5h, limits.claude.reference?.window5h],
       ['7 días', limits.claude.week, limits.claude.recordWeek, limits.claude.reference?.week]].map(([label, used, record, ref]) =>
       `| Claude · ${label} | ${ref ? percent(used.quota / ref) : '—'} | ${ref ? 'estimado' : 'récord'} | ${number(used.tokens)} de trabajo + caché a peso ${limits.claude.quota?.weight ?? DEFAULT_CACHE_WEIGHT} = ${number(used.quota)} de cuota; ${record.tokens ? `${percent(used.tokens / record.tokens)} del récord` : 'sin récord'} |`),

@@ -79,6 +79,15 @@ test('the calendar is only served to pages that show it', () => {
   assert.match(repos, /shared\/calendar\.js\?v=[0-9a-f]{10}/);
 });
 
+test('the annual heatmap uses a native switch for Monday first', () => {
+  for (const name of ['repos', 'ia']) {
+    const html = pages()[name];
+    assert.match(html, /<input type="checkbox" role="switch" data-cal="weekStart">/);
+    assert.ok(!html.includes('data-cal="view"'));
+    assert.match(html, /<option value="day"><\/option><option value="week"><\/option><option value="month"><\/option>/);
+  }
+});
+
 test('the shared assets are written once, with a hash that follows their content', () => {
   const dir = mkdtempSync(join(tmpdir(), 'projects-shared-'));
   try {
@@ -147,6 +156,37 @@ test('exactly_one_aria_current_per_page', () => {
     const tabs = html.slice(html.indexOf('id="shellTabs"'), html.indexOf('</nav>', html.indexOf('id="shellTabs"')));
     assert.equal((tabs.match(/aria-current="page"/g) || []).length, 1, name);
   }
+});
+
+test('navigation transfers focus to the current tab without affecting modified clicks or section links', () => {
+  const c = loadShell({});
+  c.URL = URL;
+  const handlers = new Map();
+  const focuses = [];
+  const tab = (id, href, current) => ({
+    href, addEventListener: (_, fn) => handlers.set(id, fn),
+    getAttribute: (name) => name === 'aria-current' && current ? 'page' : null,
+    focus: ({ preventScroll }) => focuses.push([id, preventScroll]),
+  });
+  const root = 'file:///D:/Workspaces/AgenticHub/projects/dist/';
+  const urls = [];
+  const go = { href: `${root}index.html`, hash: '', assign: (href) => urls.push(href) };
+  const projects = tab('projects', `${root}index.html`, true);
+  const usage = tab('ia', `${root}ai-usage.html`, false);
+  c.initTabFocus([projects, usage], go, {});
+  const click = { button: 0, preventDefault() { this.defaultPrevented = true; } };
+  handlers.get('ia')({ ...click, ctrlKey: true });
+  assert.equal(urls.length, 0);
+  handlers.get('ia')(click);
+  assert.equal(click.defaultPrevented, true);
+  assert.equal(urls[0], `${root}ai-usage.html#ws-tab-focus`);
+  const arrives = { href: urls[0], hash: '#ws-tab-focus' };
+  const history = { replaceState: (_, __, href) => urls.push(href) };
+  c.initTabFocus([tab('ia', `${root}ai-usage.html`, true)], arrives, history);
+  assert.deepEqual(focuses, [['ia', true]]);
+  assert.equal(urls.at(-1), `${root}ai-usage.html`);
+  c.initTabFocus([tab('notes', `${root}notes.html`, true)], { href: `${root}notes.html#roadmap`, hash: '#roadmap' }, history);
+  assert.equal(focuses.length, 1);
 });
 
 test('skip_link_targets_content_anchor', () => {

@@ -36,17 +36,25 @@ disk (`file:///D:/Workspaces/AgenticHub/projects/index.html`).
 
 `build` is offline and read-only. `sync` never merges, resets or forces: a repo
 with uncommitted work, unpushed commits, no remote or no upstream is reported
-and skipped (dirty/ahead are re-read live). `stars` is the only network call;
+and skipped (dirty/ahead are re-read live). For `stars`,
 `GITHUB_TOKEN` raises GitHub's limit from 60 to 5,000 requests an hour.
 `costs` reads local token metadata only, stores no prompts or
 responses, and is a dry-run unless `--write` is explicit. The personal ledger
 lives in `working/`; see [working/COSTS.md](working/COSTS.md) for coverage and
 known gaps. It preserves prior buckets if a provider rotates or purges history.
-It also takes a **limits reading** (`ledger.limits`):
-- Codex plan windows (measured by the account) and Go % per model (estimated) come from
-  `node agent-hub/hubctl/hubctl.mjs usage --json`, its one process call. If it fails,
-  those two are left empty with the reason.
-- Claude's rolling 5 h / 7 day work tokens and its heaviest windows on record.
+With `--write`, it also stores a **limits reading** (`ledger.limits`):
+- Codex detects the plan and reads the available account windows through `hubctl usage --json`.
+- OpenCode Go accepts manually copied shared 5 h, weekly and monthly readings from
+  the signed-in Console; the panel doesn't access the account or use API keys.
+  The public model catalog is used independently
+  to show USD allowances and input-only/output-only token equivalents at base rates.
+  Go models show reference allowances on their toggles and estimated USD at base
+  token rates in the chart tooltip (lowest listed cache-write tariff when TTL is unknown).
+  These are not the subscription price or independent budgets per model.
+- Claude Code can supply measured 5 h / weekly limits through its status line
+  (see [local setup](local/README.md#subscription-limits)). No subscription
+  monthly limit is assumed for Claude or Codex when the provider doesn't report one.
+- Without a Claude measurement, rolling 5 h / 7 day work tokens and records are available locally.
 - Claude's plan reference, empty until the first usage-limit hit in a transcript fills it,
   or until it is set in `local/limits.json` (git-ignored):
 
@@ -61,7 +69,15 @@ The pages are one panel, **Workspaces**, with the same header: the brand (icon +
 to Inicio (`projects/index.html`); the tabs are **Projects** (`dist/index.html`), **AI Usage**
 (`ai-usage.html`) and **Roadmap** (`notes.html`, which also holds Handoff and Journal), ES/EN
 (Spanish by default) and light/dark. The choice is stored under `lang` / `theme`
-and carries across tabs. The Projects page has the year calendar (`tool/page/shared/calendar.js`).
+and carries across tabs. Projects and AI Usage share the annual activity
+heatmap (`tool/page/shared/calendar.js`), with day/week/month blocks. Choose a
+calendar system (Gregorian, Islamic civil, Hebrew, Persian, Buddhist or Chinese)
+and toggle **Monday first** (off = Sunday). The defaults are Gregorian and Monday.
+The system determines actual year and month
+boundaries; selecting a block still filters by its corresponding UTC dates.
+Changing settings keeps the selected date as the anchor for the new block.
+Use arrow keys to move through the grid, Enter or Space to select, and Escape
+to clear. Preferences are remembered when browser storage is available.
 
 The palette, the page frame, the header, the number format, the calendar and their
 scripts are written **once** to `dist/shared/` (`tokens.css`, `base.css`,
@@ -82,7 +98,8 @@ one file.
   committed to then and turns Commits into your commits in that period. The
   branch shows next to the name only when it is not main/master. An AI card shows
   work tokens per agent (the same numbers as the IA tab) and links to it;
-  `?year=2026&granularity=week` works.
+  `?year=2026&granularity=week` still works; `?calendar=islamic-civil&year=1448&granularity=month&weekStart=monday`
+  opens the annual heatmap with those preferences.
 - `dist/repos.json` — one object per repo. Other tools read it (the toolbox's
   git-meta-backup `scan.py --expected-json`), so its fields are a contract:
 
@@ -100,11 +117,26 @@ one file.
 | `created`, `lastCommit`, `commits` | Root commit date, HEAD date, commits on the current branch.                                                                                                 |
 | `stars`                            | From the `stars` cache, or `null`.                                                                                                                          |
 - `dist/ai-usage.html` (IA) — offline page, same shared assets:
-  - **Room left**: one bar per plan window. Each is labelled *measured*, *estimated*, *own record* or *free*, and goes red at ≥ 80% of a real limit only. It is about now, not the selection.
+  - **Account limits**: one compact row per active subscription, week and month only.
+    Missing or expired readings show `—`, not 0%; old readings are marked. The
+    multi-select subscription and model toggles filter the history, including the
+    calendar, but not the provider's account-wide percentages. Choose
+    **Not subscribed** in Settings to hide a provider without deleting history.
+    The visible page re-reads locally published figures once a minute: Claude from
+    the status line and other providers when the regular refresh publishes new data.
+    This does not query providers from the browser or start a service.
   - **Calendar** of work tokens (day/week/month). The selection drives everything below; no selection = all history.
   - Agent cards for the selection.
-  - A week, a month or nothing selected: daily bars per agent (work tokens by default). One day: a Claude-only hourly breakdown (OpenCode and Codex only record session/thread start times).
-  - **Who spends most**: agents, projects and models for the selection, by work tokens, cache reads apart.
+  - Codex account statistics, if supplied, are kept separate from local counters.
+  - Daily bars split by the subscription that served the model, not the harness.
+    OpenCode's response metadata supplies the provider and model where available;
+    retained aggregates with a unanimous Go model label are marked as provisional;
+    mixed or unknown aggregates stay separate. Its single OpenAI OAuth connection can infer
+    ChatGPT billing but does not prove which account historical requests used.
+    A single day with only Claude visible shows hourly bars.
+    Hover or focus a bar for model details; there are no duplicate chart tables.
+  - **Who spends most**: subscriptions, projects and models ranked by work tokens,
+    cache reads apart, plus a model recommendation based on the local benchmark.
   - The data time in the header, which turns amber after 6 h.
 - `dist/notes.html` (Roadmap tab) — `working/ROADMAP.md` (editable in the browser, in Markdown), `HANDOFF.md` and `JOURNAL.md`
   rendered once per build with the panel's design, one section each (`#roadmap`,
