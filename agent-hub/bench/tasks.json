@@ -1,0 +1,150 @@
+[
+  {
+    "id": "paths-to-wsl",
+    "tier": "easy",
+    "symbols": [
+      "toWsl"
+    ],
+    "file": "agent-hub/acp/paths.mjs",
+    "test": "agent-hub/acp/tests/paths.test.mjs",
+    "prompt": "The drive-letter, WSL-share and /mnt forms of the same path have to map onto each other."
+  },
+  {
+    "id": "paths-to-windows",
+    "tier": "easy",
+    "symbols": [
+      "toWindows"
+    ],
+    "file": "agent-hub/acp/paths.mjs",
+    "test": "agent-hub/acp/tests/paths.test.mjs",
+    "prompt": "Paths inside the Linux filesystem have no drive letter, so they have to go through the WSL share."
+  },
+  {
+    "id": "router-decide",
+    "tier": "easy",
+    "symbols": [
+      "decideAgent"
+    ],
+    "file": "agent-hub/acp/router-decide.mjs",
+    "test": "agent-hub/acp/tests/router.test.mjs",
+    "prompt": "The router picks between the cheap and the strong worker from the prompt shape and the recent audit log."
+  },
+  {
+    "id": "mcp-render-fanout",
+    "tier": "easy",
+    "symbols": [
+      "renderFanout"
+    ],
+    "file": "agent-hub/mcp/render.mjs",
+    "test": "agent-hub/mcp/tests/core.test.mjs",
+    "prompt": "A fan-out answer is rendered as one section per agent with the synthesis first."
+  },
+  {
+    "id": "fanout-synthesis-prompt",
+    "tier": "easy",
+    "symbols": [
+      "buildSynthesisPrompt"
+    ],
+    "file": "agent-hub/acp/fanout-render.mjs",
+    "test": "agent-hub/acp/tests/fanout.test.mjs",
+    "prompt": "The synthesis call has to carry every answer without blowing the prompt ceiling."
+  },
+  {
+    "id": "fanout-render-markdown",
+    "tier": "easy",
+    "symbols": [
+      "renderMarkdown"
+    ],
+    "file": "agent-hub/acp/fanout-render.mjs",
+    "test": "agent-hub/acp/tests/fanout.test.mjs",
+    "prompt": "The merged fan-out result is Markdown: a status table, then one section per agent, then the synthesis."
+  },
+  {
+    "id": "paths-module",
+    "tier": "hard",
+    "symbols": [
+      "styleOf",
+      "toWsl",
+      "toWindows",
+      "translate",
+      "describe"
+    ],
+    "file": "agent-hub/acp/paths.mjs",
+    "test": "agent-hub/acp/tests/paths.test.mjs",
+    "prompt": "Rebuild the path policy: detection, both translation directions, the target selector, and the CLI summary. The tests pin the contract, including the round trips."
+  },
+  {
+    "id": "router-module",
+    "tier": "hard",
+    "symbols": [
+      "readRunStats",
+      "describeStats"
+    ],
+    "file": "agent-hub/acp/router-stats.mjs",
+    "test": "agent-hub/acp/tests/router.test.mjs",
+    "prompt": "Rebuild the audit-log half of the router: reading the 24 h window per routing target, and describing the stats."
+  },
+  {
+    "id": "core-render-module",
+    "tier": "hard",
+    "symbols": [
+      "renderAsk",
+      "renderFanout",
+      "renderAgents",
+      "renderRoute"
+    ],
+    "file": "agent-hub/mcp/render.mjs",
+    "test": "agent-hub/mcp/tests/core.test.mjs",
+    "prompt": "Rebuild every renderer the MCP tools answer with, in the exact shape the tests assert."
+  },
+  {
+    "id": "fanout-output-module",
+    "tier": "hard",
+    "symbols": [
+      "buildSynthesisPrompt",
+      "renderMarkdown"
+    ],
+    "file": "agent-hub/acp/fanout-render.mjs",
+    "test": "agent-hub/acp/tests/fanout.test.mjs",
+    "prompt": "Rebuild both halves of the fan-out output: the synthesis prompt and the merged Markdown report."
+  },
+  {
+    "id": "spec-paths-relative",
+    "tier": "ambiguous",
+    "file": "agent-hub/acp/paths.mjs",
+    "test": "agent-hub/acp/tests/spec-relative.test.mjs",
+    "fixture": "fixtures/spec-paths-relative.test.mjs",
+    "prompt": "Add a new export `toRelative(target, base)`. Both arguments may use either spelling of the same file, so compare them in a common form. Return the target expressed relative to the base, always with `/` separators and never with a trailing separator; return `.` when they are the same directory. When the two paths are not on the same volume or root, no relative form exists, so return the target in its WSL spelling instead. The cases in the new test file are the contract; nothing else in the module may change.",
+    "hidden": true
+  },
+  {
+    "id": "spec-paths-same",
+    "tier": "ambiguous",
+    "file": "agent-hub/acp/paths.mjs",
+    "test": "agent-hub/acp/tests/spec-same.test.mjs",
+    "fixture": "fixtures/spec-paths-same.test.mjs",
+    "prompt": "Add a new export `samePath(a, b)` that answers whether two spellings name the same file. It has to work across the drive, /mnt and WSL-share forms, ignore a trailing separator, and ignore drive-letter case. Different drives or roots are different files. The cases in the new test file are the contract; nothing else in the module may change.",
+    "hidden": true
+  },
+  {
+    "id": "spec-router-explain",
+    "tier": "ambiguous",
+    "file": "agent-hub/acp/router.mjs",
+    "test": "agent-hub/acp/tests/spec-explain.test.mjs",
+    "fixture": "fixtures/spec-router-explain.test.mjs",
+    "prompt": "Add a new export `explainDecision(decision, stats)` returning one readable line about a routing decision: the agent that was chosen, the reason it was chosen, and what the 24 h window saw for the two routing targets. When no stats are available it must say so rather than invent numbers, and a partially populated stats object must not throw. The cases in the new test file are the contract; nothing else in the module may change.",
+    "hidden": true
+  },
+  {
+    "id": "construct-relative-cli",
+    "tier": "construct",
+    "files": [
+      "agent-hub/acp/paths.mjs",
+      "agent-hub/hubctl/hubctl.mjs"
+    ],
+    "test": "agent-hub/acp/tests/spec-relative-cli.test.mjs",
+    "fixture": "fixtures/spec-relative-cli.test.mjs",
+    "hidden": true,
+    "prompt": "Two changes, one feature. First, add `toRelative(target, base)` to paths.mjs: both arguments may use either spelling of the same file, so compare them in a common form; return the target relative to the base with `/` separators and no trailing separator, `.` when they are the same directory, and the target in its WSL spelling when the two are not on the same volume or root. Second, give `hubctl path` a `--base <path>` flag: when it is present, print one more line labelled `relative` with that value, and leave the output unchanged when it is absent. The hidden test judges both halves; nothing else may change."
+  }
+]

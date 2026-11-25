@@ -1,0 +1,48 @@
+{
+  "stamp": "2026-11-08",
+  "real": true,
+  "results": [
+    {
+      "id": "fanout-merge",
+      "ok": true,
+      "ms": 1745,
+      "detail": "3/3 answered, 4 tokens in the merge"
+    },
+    {
+      "id": "handoff",
+      "ok": true,
+      "ms": 3278,
+      "detail": "A -> B kept the payload"
+    },
+    {
+      "id": "partial-failure",
+      "ok": true,
+      "ms": 1722,
+      "detail": "1 ok, 1 failed, fan-out survived"
+    },
+    {
+      "id": "conflict",
+      "ok": true,
+      "ms": 5631,
+      "detail": "second writer rejected while the first held the tree"
+    },
+    {
+      "id": "live",
+      "ok": true,
+      "ms": 4830,
+      "detail": "run visible while active, cleared after"
+    },
+    {
+      "id": "stalled",
+      "ok": true,
+      "ms": 16122,
+      "detail": "stalled=true, final=timeout"
+    },
+    {
+      "id": "real-handoff",
+      "ok": true,
+      "ms": 65460,
+      "detail": "opencode -> claude kept the token"
+    }
+  ]
+}
