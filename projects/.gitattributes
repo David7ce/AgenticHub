@@ -1,0 +1,5 @@
+# Everything here is cross-platform Node tooling, meant to run unmodified
+# under WSL. CRLF in a shebang line is a real correctness issue there, not
+# just a warning -- force LF regardless of the checkout platform's default
+# instead of letting git guess per-file.
+* text=auto eol=lf
