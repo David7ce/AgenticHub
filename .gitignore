@@ -1,0 +1,13 @@
+# Root of the public AgenticHub repo. Sub-folders keep their own .gitignore.
+
+# Machine-specific launcher config (anchored: the templates under agent-hub/ are tracked).
+# Copy opencode.example.json to opencode.json.
+/opencode.json
+/.claude/settings.local.json
+
+# Local shortcuts and OS files
+*.lnk
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/

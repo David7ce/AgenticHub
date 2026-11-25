@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agent-hub": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["agent-hub/mcp/server.mjs"]
+    }
+  }
+}
