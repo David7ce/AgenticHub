@@ -393,7 +393,57 @@ function findCodexDatabases(codexDir) {
     .sort();
 }
 
-/** Codex currently exposes only a per-thread total in its local state database. */
+const CODEX_FIELDS = ['input_tokens', 'cached_input_tokens', 'cache_write_input_tokens', 'output_tokens', 'reasoning_output_tokens'];
+
+/**
+ * Reads only the metadata lines of one Codex rollout: the thread id, cwd and
+ * provider, the model in use, and the cumulative token counter. Each change of
+ * the counter is one model call, attributed to its own timestamp. Message
+ * lines are never parsed, so no prompt or answer is held in memory as data.
+ */
+function parseCodexRollout(text) {
+  let threadId = null;
+  let cwd = '';
+  let provider = 'unknown-provider';
+  let model = null;
+  let previous = null;
+  const calls = [];
+  for (const line of text.split('\n')) {
+    if (!line.includes('"session_meta"') && !line.includes('"turn_context"') && !line.includes('"token_count"')) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const payload = event.payload ?? {};
+    if (event.type === 'session_meta') {
+      threadId = payload.id ?? threadId;
+      cwd = payload.cwd ?? cwd;
+      provider = payload.model_provider || provider;
+    } else if (event.type === 'turn_context') {
+      model = payload.model ?? model;
+    } else if (payload.type === 'token_count' && payload.info?.total_token_usage) {
+      const total = payload.info.total_token_usage;
+      const dropped = previous && CODEX_FIELDS.some((field) => numeric(total[field]) < numeric(previous[field]));
+      // The counter is cumulative; if it ever goes back, trust this call's own usage.
+      const base = dropped ? null : previous;
+      const source = dropped ? payload.info.last_token_usage ?? {} : total;
+      const delta = Object.fromEntries(CODEX_FIELDS.map((field) => [
+        field, Math.max(0, numeric(source[field]) - numeric(base?.[field])),
+      ]));
+      previous = total;
+      if (CODEX_FIELDS.every((field) => delta[field] === 0)) continue;
+      calls.push({ at: Date.parse(event.timestamp ?? ''), model, delta });
+    }
+  }
+  return { threadId, cwd, provider, calls };
+}
+
+/**
+ * Codex: rollouts give the per-call breakdown and hour; the state database's
+ * per-thread total is only the fallback for threads whose rollout is gone.
+ */
 export function collectCodexUsage({
   codexDir = join(homedir(), '.codex'),
   workspaceRoot = resolveRoot(),
@@ -403,14 +453,47 @@ export function collectCodexUsage({
   const dates = [];
   let records = 0;
   let files = 0;
-  const Database = sqliteDatabaseClass();
-  if (!Database) {
-    return {
-      rows: [],
-      status: sourceStatus({ note: 'Este Node no ofrece node:sqlite; no se leyeron hilos Codex.' }),
-    };
+  const rollouts = [
+    join(codexDir, 'sessions'),
+    join(codexDir, 'archived_sessions'),
+  ].flatMap((dir) => collectFiles(dir));
+  const covered = new Set();
+  let calls = 0;
+  for (const path of rollouts) {
+    let parsed;
+    try {
+      parsed = parseCodexRollout(readFileSync(path, 'utf8'));
+    } catch {
+      continue;
+    }
+    if (parsed.calls.length === 0) continue;
+    if (parsed.threadId) covered.add(String(parsed.threadId));
+    for (const call of parsed.calls) {
+      const { date, hour } = epochParts(call.at);
+      if (!date) continue;
+      calls += 1;
+      dates.push(date);
+      addObservation(groups, {
+        date,
+        hour,
+        source: 'codex',
+        agent: 'codex',
+        model: call.model ? `${call.model} (${parsed.provider})` : 'unknown-model',
+        project: projectLabel(parsed.cwd, workspaceRoot),
+      }, {
+        ...EMPTY_TOKENS(),
+        // input_tokens includes the cached reads; keep those in their own column.
+        input_tokens: Math.max(0, call.delta.input_tokens - call.delta.cached_input_tokens),
+        cache_read_tokens: call.delta.cached_input_tokens,
+        cache_write_tokens: call.delta.cache_write_input_tokens,
+        output_tokens: call.delta.output_tokens,
+        reasoning_tokens: call.delta.reasoning_output_tokens,
+      }, parsed.threadId ? String(parsed.threadId) : path);
+    }
   }
-  for (const dbPath of databases) {
+  records += calls;
+  const Database = sqliteDatabaseClass();
+  for (const dbPath of Database ? databases : []) {
     let db;
     try {
       db = new Database(dbPath, { readOnly: true });
@@ -421,6 +504,7 @@ export function collectCodexUsage({
       const threads = db.prepare(`SELECT ${select.join(', ')} FROM threads`).all();
       files += 1;
       for (const thread of threads) {
+        if (covered.has(String(thread.id))) continue;
         const { date, hour } = epochParts(thread.created_at_ms ?? thread.created_at);
         if (!date) continue;
         records += 1;
@@ -440,10 +524,7 @@ export function collectCodexUsage({
       db?.close();
     }
   }
-  const rollouts = [
-    join(codexDir, 'sessions'),
-    join(codexDir, 'archived_sessions'),
-  ].flatMap((dir) => collectFiles(dir));
+  const fallback = records - calls;
   return {
     rows: finishGroups(groups),
     status: sourceStatus({
@@ -451,11 +532,14 @@ export function collectCodexUsage({
       records,
       files: files + rollouts.length,
       ...dateRange(dates),
-      note: rollouts.length
-        ? `${rollouts.length} transcripciones encontradas; se leen los totales por thread de SQLite, no el desglose de los rollouts.`
+      note: calls
+        ? `${covered.size} hilos con desglose por llamada (${calls} llamadas, hora UTC de cada una) desde los rollouts`
+          + (fallback ? `; ${fallback} hilos sin rollout, solo con su total en la hora de inicio.` : '.')
         : records
           ? 'Total de tokens por thread, asignado a su hora UTC de inicio; input/output no recuperables por separado.'
-          : 'Base local disponible, pero no hay threads guardados para recuperar tokens.',
+          : !Database && databases.length
+            ? 'Este Node no ofrece node:sqlite y no hay rollouts con contadores.'
+            : 'Base local disponible, pero no hay threads guardados para recuperar tokens.',
     }),
   };
 }
@@ -616,6 +700,21 @@ export function mergeCostLedger(previous, incoming, generatedAt = new Date().toI
     for (const field of TOKEN_FIELDS) existing[field] = numeric(existing[field]) + numeric(row[field]);
     existing.observations = numeric(existing.observations) + numeric(row.observations);
     existing.sessions = numeric(existing.sessions) + numeric(row.sessions);
+  }
+
+  // Codex used to be stored as one total per thread at its start hour. Once a
+  // scan brings the per-call breakdown, those totals describe the same tokens:
+  // drop the total-only Codex buckets from the first day the breakdown covers.
+  const known = TOKEN_FIELDS.filter((field) => field !== 'unknown_tokens');
+  const breakdownDates = incoming.rows
+    .filter((row) => row.source === 'codex' && known.some((field) => numeric(row[field]) > 0))
+    .map((row) => row.date)
+    .sort();
+  if (breakdownDates.length) {
+    for (const [key, row] of [...rows.entries()]) {
+      if (row.source !== 'codex' || row.date < breakdownDates[0]) continue;
+      if (known.every((field) => numeric(row[field]) === 0)) rows.delete(key);
+    }
   }
 
   // v1 stored only daily aggregates. When a current scan can reconstruct

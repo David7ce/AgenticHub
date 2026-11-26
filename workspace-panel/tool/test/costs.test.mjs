@@ -145,6 +145,84 @@ test('Codex records only its recoverable per-thread total, not guessed categorie
   }
 });
 
+const rolloutLine = (timestamp, type, payload) => JSON.stringify({ timestamp, type, payload });
+const tokenCount = (timestamp, total) => rolloutLine(timestamp, 'event_msg', {
+  type: 'token_count',
+  info: { total_token_usage: total, last_token_usage: total },
+});
+
+test('Codex rollouts give each call its own hour and breakdown, without double counting the thread total', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'projects-costs-codex-rollout-'));
+  const workspace = join(dir, 'workspace');
+  const repo = join(workspace, 'Owner', 'Repo');
+  mkdirSync(join(repo, '.git'), { recursive: true });
+  const sessions = join(dir, 'sessions', '2026', '11', '25');
+  mkdirSync(sessions, { recursive: true });
+  writeFileSync(join(sessions, 'rollout-t1.jsonl'), [
+    rolloutLine('2026-11-25T23:58:00.000Z', 'session_meta', { id: 't1', cwd: repo, model_provider: 'openai' }),
+    rolloutLine('2026-11-25T23:58:01.000Z', 'turn_context', { model: 'gpt-test' }),
+    rolloutLine('2026-11-25T23:58:02.000Z', 'response_item', { type: 'message', content: 'token_count in text must be ignored' }),
+    tokenCount('2026-11-25T23:59:00.000Z', {
+      input_tokens: 1000, cached_input_tokens: 800, output_tokens: 50, reasoning_output_tokens: 5, total_tokens: 1050,
+    }),
+    // Codex repeats the same cumulative reading; it must not count twice.
+    tokenCount('2026-11-25T23:59:01.000Z', {
+      input_tokens: 1000, cached_input_tokens: 800, output_tokens: 50, reasoning_output_tokens: 5, total_tokens: 1050,
+    }),
+    tokenCount('2026-11-26T00:10:00.000Z', {
+      input_tokens: 1600, cached_input_tokens: 1300, output_tokens: 90, reasoning_output_tokens: 9, total_tokens: 1690,
+    }),
+  ].join('\n'));
+  const db = new DatabaseSync(join(dir, 'state_1.sqlite'));
+  db.exec('CREATE TABLE threads (id TEXT, cwd TEXT, model TEXT, model_provider TEXT, created_at INTEGER, tokens_used INTEGER)');
+  const insert = db.prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?)');
+  insert.run('t1', repo, 'gpt-test', 'openai', Date.parse('2026-11-25T23:58:00Z') / 1000, 1690);
+  insert.run('t2', repo, 'gpt-test', 'openai', Date.parse('2026-11-24T10:00:00Z') / 1000, 40);
+  db.close();
+  try {
+    const result = collectCodexUsage({ codexDir: dir, workspaceRoot: workspace });
+    const pick = (row) => [row.date, row.hour, row.model, row.input_tokens, row.cache_read_tokens,
+      row.output_tokens, row.reasoning_tokens, row.unknown_tokens];
+    assert.deepEqual(result.rows.map(pick), [
+      ['2026-11-24', 10, 'gpt-test (openai)', 0, 0, 0, 0, 40],
+      ['2026-11-25', 23, 'gpt-test (openai)', 200, 800, 50, 5, 0],
+      ['2026-11-26', 0, 'gpt-test (openai)', 100, 500, 40, 4, 0],
+    ]);
+    assert.ok(result.rows.every((row) => row.project === 'Owner/Repo'));
+    assert.match(result.status.note, /desglose/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a Codex breakdown replaces the old per-thread totals in the ledger', () => {
+  const now = '2026-11-27T00:00:00.000Z';
+  const base = {
+    source: 'codex', agent: 'codex', model: 'gpt-test (openai)', project: 'Owner/Repo',
+    input_tokens: 0, cache_write_tokens: 0, cache_read_tokens: 0, output_tokens: 0, reasoning_tokens: 0,
+    unknown_tokens: 0, observations: 1, sessions: 1,
+  };
+  const previous = {
+    schemaVersion: 2, generatedAt: null, sources: {}, rows: [
+      { ...base, date: '2026-11-20', hour: 9, unknown_tokens: 77 },
+      { ...base, date: '2026-11-25', hour: 23, unknown_tokens: 1690 },
+    ],
+  };
+  const incoming = {
+    sources: { codex: { available: true, records: 2 } },
+    rows: [
+      { ...base, date: '2026-11-25', hour: 23, input_tokens: 200, cache_read_tokens: 800, output_tokens: 50 },
+      { ...base, date: '2026-11-26', hour: 0, input_tokens: 100, cache_read_tokens: 500, output_tokens: 40 },
+    ],
+  };
+  const merged = mergeCostLedger(previous, incoming, now);
+  assert.deepEqual(merged.rows.map((row) => [row.date, row.hour, row.unknown_tokens, row.cache_read_tokens]), [
+    ['2026-11-20', 9, 77, 0],
+    ['2026-11-25', 23, 0, 800],
+    ['2026-11-26', 0, 0, 500],
+  ]);
+});
+
 test('only an unambiguous Go label can provisionally attribute retained aggregates', () => {
   const base = { date: '2026-11-02', source: 'opencode', agent: 'opencode', project: 'p' };
   const go = { ...base, hour: 12, model: 'deepseek (opencode-go)', output_tokens: 20 };
