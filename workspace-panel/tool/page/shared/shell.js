@@ -4,14 +4,14 @@
 
 const SHELL_COPY = {
   es: {
-    title: 'Workspaces', homeLabel: 'Workspaces, inicio', tabRepos: 'Proyectos', tabIa: 'Uso de IA', tabNotes: 'Roadmap', skip: 'Saltar al contenido',
+    title: 'Panel Workspaces', homeLabel: 'Panel Workspaces, inicio', tabRepos: 'Repositorios', tabIa: 'Uso de IA', tabNotes: 'Roadmap', skip: 'Saltar al contenido',
     toLight: 'Cambiar a tema claro', toDark: 'Cambiar a tema oscuro', iconLight: '☀', iconDark: '☽',
-    pageHome: 'Workspaces · Inicio', pageRepos: 'Workspaces · Proyectos', pageIa: 'Workspaces · Uso de IA', pageNotes: 'Workspaces · Roadmap',
+    pageHome: 'Panel Workspaces · Inicio', pageRepos: 'Panel Workspaces · Repositorios', pageIa: 'Panel Workspaces · Uso de IA', pageNotes: 'Panel Workspaces · Roadmap',
   },
   en: {
-    title: 'Workspaces', homeLabel: 'Workspaces, home', tabRepos: 'Projects', tabIa: 'AI Usage', tabNotes: 'Roadmap', skip: 'Skip to content',
+    title: 'Workspaces Panel', homeLabel: 'Workspaces Panel, home', tabRepos: 'Repositories', tabIa: 'AI Usage', tabNotes: 'Roadmap', skip: 'Skip to content',
     toLight: 'Switch to light theme', toDark: 'Switch to dark theme', iconLight: '☀', iconDark: '☽',
-    pageHome: 'Workspaces · Home', pageRepos: 'Workspaces · Projects', pageIa: 'Workspaces · AI Usage', pageNotes: 'Workspaces · Roadmap',
+    pageHome: 'Workspaces Panel · Home', pageRepos: 'Workspaces Panel · Repositories', pageIa: 'Workspaces Panel · AI Usage', pageNotes: 'Workspaces Panel · Roadmap',
   },
 };
 

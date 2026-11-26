@@ -4,7 +4,7 @@
 
 const HOME_COPY = {
   es: {
-    repos: 'Proyectos', dirty: 'con cambios sin commit', ahead: 'con commits por subir', noRemote: 'sin remoto',
+    repos: 'Repositorios', dirty: 'con cambios sin commit', ahead: 'con commits por subir', noRemote: 'sin remoto',
     ia: 'Uso de IA', roadmap: 'Roadmap', roadmapOpen: 'proyectos abiertos',
     roadmapOwner: 'pasos que esperan al dueño',
     refresh: 'Actualizar el panel', copy: 'Copiar', copied: 'Copiado', copyFailed: 'No se pudo copiar',
@@ -14,7 +14,7 @@ const HOME_COPY = {
     agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'Codex' },
   },
   en: {
-    repos: 'Projects', dirty: 'with uncommitted changes', ahead: 'with commits to push', noRemote: 'without a remote',
+    repos: 'Repositories', dirty: 'with uncommitted changes', ahead: 'with commits to push', noRemote: 'without a remote',
     ia: 'AI Usage', roadmap: 'Roadmap', roadmapOpen: 'open projects',
     roadmapOwner: 'steps waiting on the owner',
     refresh: 'Update the panel', copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy',

@@ -198,8 +198,8 @@ test('skip_link_targets_content_anchor', () => {
 
 test('shell_copy_names_the_three_tabs_and_the_skip_link', () => {
   const c = loadShell({ getItem: () => null, setItem: () => {} });
-  assert.deepEqual([c.SHELL_COPY.en.tabRepos, c.SHELL_COPY.en.tabIa, c.SHELL_COPY.en.tabNotes], ['Projects', 'AI Usage', 'Roadmap']);
-  assert.deepEqual([c.SHELL_COPY.es.tabRepos, c.SHELL_COPY.es.tabIa, c.SHELL_COPY.es.tabNotes], ['Proyectos', 'Uso de IA', 'Roadmap']);
+  assert.deepEqual([c.SHELL_COPY.en.tabRepos, c.SHELL_COPY.en.tabIa, c.SHELL_COPY.en.tabNotes], ['Repositories', 'AI Usage', 'Roadmap']);
+  assert.deepEqual([c.SHELL_COPY.es.tabRepos, c.SHELL_COPY.es.tabIa, c.SHELL_COPY.es.tabNotes], ['Repositorios', 'Uso de IA', 'Roadmap']);
   assert.ok(c.SHELL_COPY.es.homeLabel && c.SHELL_COPY.en.homeLabel);
   assert.equal(c.SHELL_COPY.es.skip, 'Saltar al contenido');
   assert.equal(c.SHELL_COPY.en.skip, 'Skip to content');
@@ -232,6 +232,6 @@ test('page_without_selector_follows_the_stored_language_but_stays_a_spanish_docu
   vm.runInNewContext(`${shellSource}\nthis.initShell = initShell;`, context);
   context.initShell({ tab: 'notes' });
   assert.equal(nodes.tabNotes.textContent, 'Roadmap');
-  assert.equal(nodes.tabRepos.textContent, 'Projects', 'tabs follow the stored English');
+  assert.equal(nodes.tabRepos.textContent, 'Repositories', 'tabs follow the stored English');
   assert.equal(root.lang, 'es', 'the document language stays Spanish');
 });

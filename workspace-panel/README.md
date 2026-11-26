@@ -65,8 +65,8 @@ shown apart because they barely cost allowance.
 
 ## Output
 
-The pages are one panel, **Workspaces**, with the same header: the brand (icon + name) links
-to Inicio (`workspace-panel/index.html`); the tabs are **Projects** (`dist/index.html`), **AI Usage**
+The pages are one panel, **Panel Workspaces** (English: **Workspaces Panel**), with the same header: the brand (icon + name) links
+to Inicio (`workspace-panel/index.html`); the tabs are **Repositories** (`dist/index.html`), **AI Usage**
 (`ai-usage.html`) and **Roadmap** (`notes.html`, which also holds Handoff and Journal), ES/EN
 (Spanish by default) and light/dark. The choice is stored under `lang` / `theme`
 and carries across tabs. Projects and AI Usage share the annual activity
@@ -174,6 +174,6 @@ one file.
 All four pages use `renderDocument` in `shared.mjs`. Their templates share title,
 data and shell placeholders; the page functions prepare their own data and content.
 Page CSS and classic scripts are copied to `dist/shared/` and linked with a content
-hash. Proyectos keeps its script order in `CLIENT_SCRIPTS`; data loads first, then
+hash. Repositories keeps its script order in `CLIENT_SCRIPTS`; data loads first, then
 shared helpers, then page scripts. The build validates page data and scripts together
 before publishing. No module loader or server is required.

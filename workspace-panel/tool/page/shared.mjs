@@ -111,7 +111,7 @@ export function applyShell(html, tab, { stamp = '', hideLang = false, base = '',
 
 /** One assembly path for all offline pages: shell, data, assets and content slots. */
 export function renderDocument(template, tab, { data = {}, slots = {}, ...options } = {}) {
-  const titles = { home: 'Inicio', repos: 'Proyectos', ia: 'Uso de IA', notes: 'Roadmap' };
+  const titles = { home: 'Inicio', repos: 'Repositorios', ia: 'Uso de IA', notes: 'Roadmap' };
   const script = Object.entries(data).map(([name, value]) => {
     if (!/^[A-Z][A-Z0-9_]*$/.test(name)) throw new Error(`Invalid page data name: ${name}`);
     return `const ${name} = ${JSON.stringify(value).replace(/</g, '\\u003c')};`;
@@ -122,7 +122,7 @@ export function renderDocument(template, tab, { data = {}, slots = {}, ...option
   try { new Function([script, ...sources].join('\n')); }
   catch (error) { throw new Error(`${tab} page script does not parse: ${error.message}`); }
   let html = template.replace('<!--PAGE_DATA-->', () => script ? `<script>\n${script}\n</script>` : '')
-    .replace('{{PAGE_TITLE}}', () => `Workspaces · ${titles[tab]}`);
+    .replace('{{PAGE_TITLE}}', () => `Panel Workspaces · ${titles[tab]}`);
   for (const [marker, content] of Object.entries(slots)) html = html.replace(marker, () => content);
   return applyShell(html, tab, options);
 }
