@@ -950,7 +950,7 @@ async function main() {
     // Tokens the turn consumed, from the agent's local store; `cost` above is
     // only what the provider chose to report over ACP. Attribution (task,
     // label, cwd, session) lives here; volume stays in the provider scan in
-    // projects/tool/lib/costs.mjs. They join by sessionId, they never add up.
+    // workspace-panel/tool/lib/costs.mjs. They join by sessionId, they never add up.
     usage,
     sessionId,
     label: opts.label ?? null,

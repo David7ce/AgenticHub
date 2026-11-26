@@ -29,7 +29,7 @@ currently satisfy it. Do not widen a grant to clear the diagnostic.
   against the exact request. No grant, no run — including `--probe`. It is local and
   ignored: copy `consent.example.json` and edit it. Never widen a grant to make
   something work. Ask.
-- Every attempt, denied or not, appends one JSON line to `projects/logs/runs.jsonl`. Past
+- Every attempt, denied or not, appends one JSON line to `workspace-panel/logs/runs.jsonl`. Past
   10 MB it rotates to `runs-<timestamp>.jsonl`; nothing is deleted.
 - An `allow-all` run checks `acp/tree-lock.mjs` for another live write run on the
   same cwd. Conflicts reject unless the caller passes `--allow-concurrent-write`;

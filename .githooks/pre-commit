@@ -14,4 +14,4 @@ node agent-hub/tools/secret-scan.mjs || exit 1
 (cd agent-hub && node tools/check.mjs --no-bench) || exit 1
 
 # Panel tests.
-exec node --test projects/tool/test/*.test.mjs
+exec node --test workspace-panel/tool/test/*.test.mjs

@@ -56,7 +56,7 @@ Two caveats matter more than the table:
 
 ## Adopted now
 
-`hub-acp.mjs` now records the run's tool activity in `projects/logs/runs.jsonl`
+`hub-acp.mjs` now records the run's tool activity in `workspace-panel/logs/runs.jsonl`
 alongside the existing permission decisions:
 
 - `toolCount` — total distinct tool calls seen.
@@ -128,4 +128,3 @@ Ranked by value for this workstation, not by how closely it resembles the demo:
 - [`../docs/reference/acp.md`](reference/acp.md) — the hub's permission, consent,
   audit and "not a sandbox" sections.
 - [`../README.md`](../README.md) — the fan-out shared-working-tree gotcha.
-

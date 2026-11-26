@@ -44,7 +44,7 @@ other MCP clients can register the same stdio server.
 | `route` | Which agent should take this prompt (cost/health aware, reads the audit log). `run: true` also executes it; `run` + `background` executes it as a job. | only with `run` |
 | `agents` | Registry, availability, consent state, default model. | no |
 | `brief` | The workspace in at most 40 lines — same text as `hubctl brief`: doctor, repos with uncommitted changes, last runs, today's spend, the handoff's pending list. `json: true` returns the object. Call it first in a new session. | no |
-| `search` | Full-text search over the audit log, the working notes and git commit messages (`hubctl search`). `query` plus optional `since`, `source` (`runs`/`notes`/`git`), `limit`. Read-only; it refreshes only its own derived `projects/logs/index.db`. | no |
+| `search` | Full-text search over the audit log, the working notes and git commit messages (`hubctl search`). `query` plus optional `since`, `source` (`runs`/`notes`/`git`), `limit`. Read-only; it refreshes only its own derived `workspace-panel/logs/index.db`. | no |
 | `status` | The hub's own health — same snapshot as `hubctl status` (consent/expiry, worktrees, bench vs. baseline, egress, recent runs), plus the background jobs living in this server process. | no |
 
 Restricted dispatches currently fail closed. `fanout` with `allow-all` requires
@@ -64,7 +64,7 @@ that every process stopped or that earlier actions were undone.
 
 Every call goes through `../consent.json` (copy `consent.example.json` and
 edit) and writes one
-line to `projects/logs/runs.jsonl`, exactly like
+line to `workspace-panel/logs/runs.jsonl`, exactly like
 `hub-acp.mjs`. There is no second, unaudited path.
 
 ## Sessions

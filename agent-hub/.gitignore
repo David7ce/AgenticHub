@@ -1,7 +1,7 @@
 # Everything tracked here is generic: a fork gets a working, impersonal repo.
 # Machine-specific config stays next to the code that reads it, with a tracked
 # *.example or README to copy from. Personal notes and run logs live in the
-# sibling projects/ repo (working/, logs/), never here.
+# sibling workspace-panel/ directory (working/, logs/), never here.
 
 # Local machine configuration
 /consent.json

@@ -3,9 +3,9 @@
 STATUS: active
 
 No web UI, no daemon. It reads the state that already exists —
-`consent.json`, `projects/logs/runs.jsonl`, `results/inflight/`, git worktrees and the
+`consent.json`, `workspace-panel/logs/runs.jsonl`, `results/inflight/`, git worktrees and the
 two loopback services — and renders it. The one exception is the task queue:
-one small SQLite file (`projects/logs/hub.db`) that holds what is queued and who owns it.
+one small SQLite file (`workspace-panel/logs/hub.db`) that holds what is queued and who owns it.
 
 ```
 AGENTHUB 2026-11-08 19:10                    local · loopback
@@ -111,7 +111,7 @@ node hubctl/hubctl.mjs tasks done t-20261109-040605-5a5b9c1d --evidence path\to\
   `--evidence` (a diff, a test run, or the review that accepted it).
 - Every audit line from a queued run carries `taskId`, so `runs.jsonl` can be
   grouped per task. The full result and the agent's stderr are kept under
-  `projects/logs/tasks/<id>.json`.
+  `workspace-panel/logs/tasks/<id>.json`.
 - `AGENT_HUB_TASKS_DB` overrides the database path (tests and scratch queues).
 - A worktree with changes is kept and named in `tasks list`; a clean one is
   removed.
@@ -150,7 +150,7 @@ node hubctl/hubctl.mjs spend --days 30 --json
 - **OpenCode**: exact, from `opencode.db` (`session_message` joined to
   `session_v2` and `project`). Each assistant message carries its own tokens,
   model and timestamp.
-- **Claude**: cost-only from `projects/logs/runs.jsonl`. Records since 2026-11-08 carry
+- **Claude**: cost-only from `workspace-panel/logs/runs.jsonl`. Records since 2026-11-08 carry
   `cwd`, so they get a project (fanout worktrees count as their repo); older
   ones stay `unknown`.
 - **Codex**: tokens from its rollouts (`~/.codex/sessions`). Dollars appear as `~$x` only for models whose `costPerMillion` (`{input, output, cacheRead}`) is filled in `models.json`; no price is ever invented. `doctor` warns while a dollar cap has no price behind it.
@@ -212,14 +212,14 @@ locks.
   `.git/agent-worktrees/`.
 - **egress** — `tools/egress-posture.mjs` rules; warnings only.
 - **running** — inflight rows, with age, model, job id and the last tool.
-- **last** — the newest entries in `projects/logs/runs.jsonl`.
+- **last** — the newest entries in `workspace-panel/logs/runs.jsonl`.
 
 ## Environment
 
 | Variable | Default |
 |---|---|
 | `AGENT_HUB_STALL_MS` | `900000` (15 min) |
-| `AGENT_HUB_LOG` | `projects/logs/runs.jsonl` |
+| `AGENT_HUB_LOG` | `workspace-panel/logs/runs.jsonl` |
 | `AGENT_HUB_INFLIGHT` | `results/inflight` |
 | `AGENT_HUB_LOCKS` | `results/locks` |
 

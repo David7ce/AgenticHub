@@ -14,17 +14,17 @@ project state lives in each project repository, and scripts live in a toolbox.
 | Path                                 | What it is                                                                                                                          |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | [`agent-hub/`](agent-hub/)           | Swarm dispatcher, consent gate, MCP server, ACP adapters, routing and audit log                                                     |
-| [`projects/`](projects/)             | Repository inventory and its generated page (commit calendar + repo table)                                                          |
+| [`workspace-panel/`](workspace-panel/) | The workspace dashboard: repositories, AI usage and roadmap                                                                        |
 | [`agent-hub/docs/`](agent-hub/docs/) | Hub docs; `docs/reference/` has the agent references and the session-continuity convention                                          |
-| [`projects/logs/`](projects/logs/)   | Agent audit log and final task evidence (local, ignored)                                                                            |
-| `projects/working/`                  | The owner's roadmap and `HANDOFF`/`JOURNAL` notes: a **separate private repo**, ignored by this public one                         |
-| `projects/local/`, `opencode.json`   | Machine-specific config (accounts, paths, MCP servers): ignored, with a README or `*.example` to copy from                          |
+| [`workspace-panel/logs/`](workspace-panel/logs/) | Agent audit log and final task evidence (local, ignored)                                                                  |
+| `workspace-panel/working/`           | The owner's roadmap and `HANDOFF`/`JOURNAL` notes: a **separate private repo**, ignored by this public one                         |
+| `workspace-panel/local/`, `opencode.json` | Machine-specific config (accounts, paths, MCP servers): ignored, with a README or `*.example` to copy from                      |
 
 General documentation, AI working habits and research notes live outside this
 repo, in the author's knowledge vault; scripts and installers live in a separate
 toolbox repo. Neither is required to run the hub. Design notes for the hub live in
 [`agent-hub/docs/`](agent-hub/docs/README.md); the panel is documented in
-[`projects/README.md`](projects/README.md).
+[`workspace-panel/README.md`](workspace-panel/README.md).
 
 ## Public code, private data
 
@@ -33,11 +33,11 @@ personal or machine-specific is ignored and never reaches it:
 
 | Private                                                     | Where                          | Why it stays out                                  |
 |-------------------------------------------------------------|--------------------------------|---------------------------------------------------|
-| Roadmap, `HANDOFF`, `JOURNAL`, AI costs (`COSTS.md`, `costs.json`) | `projects/working/`            | A separate repo with a private remote             |
-| Accounts, workspace paths, overrides, tokens                | `projects/local/`              | Per-machine config, read by the panel             |
+| Roadmap, `HANDOFF`, `JOURNAL`, AI costs (`COSTS.md`, `costs.json`) | `workspace-panel/working/`     | A separate repo with a private remote             |
+| Accounts, workspace paths, overrides, tokens                | `workspace-panel/local/`      | Per-machine config, read by the panel             |
 | Consent grants and agent executables                        | `agent-hub/consent.json`, `agent-hub/acp/agents.json` | Per-machine; `*.example.json` to copy from |
 | MCP servers of this machine                                 | `opencode.json`                | Per-machine; `opencode.example.json` to copy from |
-| Audit log and the generated panel                           | `projects/logs/`, `projects/dist/` | Generated from this machine                   |
+| Audit log and the generated panel                           | `workspace-panel/logs/`, `workspace-panel/dist/` | Generated from this machine              |
 
 The pre-commit hook and CI scan every tracked file for credentials
 (`agent-hub/tools/secret-scan.mjs`); tests that need the private notes are skipped
@@ -45,14 +45,14 @@ in a public clone.
 
 ## The generated page
 
-`projects/dist/index.html` is one self-contained HTML file — no server, no ports —
+`workspace-panel/dist/index.html` opens offline — no server, no ports —
 generated from *this* machine's repositories: a calendar of your commits above
 one table with the state of every repo (pending work, VS Code links, your
 commits); picking a period on the calendar narrows the table to it. It is
 machine-specific and reproducible, so git ignores it; `agent-hub/` never sees it.
 
-Regenerate with `node projects/tool/cli.mjs build`. The machine-readable list is
-`projects/dist/repos.json`. Avatars fall back to a generic mark offline.
+Regenerate with `node workspace-panel/tool/cli.mjs build`. The machine-readable list is
+`workspace-panel/dist/repos.json`. Avatars fall back to a generic mark offline.
 
 ## Getting started
 
@@ -84,7 +84,7 @@ current, and when to stop and ask.
 - [`agent-hub/`](agent-hub/) — a working swarm: one prompt fanned out to Claude
   Code, OpenCode and Codex over ACP, with routing, quota failover, a consent
   gate with enforced limits, an MCP server and an audit log.
-- `projects/` — a live inventory of every repository under `D:\Workspaces`,
+- `workspace-panel/` — a live inventory of every repository under `D:\Workspaces`,
   regenerated from the filesystem rather than hand-maintained.
 - Toolbox examples (a separate repo): desktop setup,
   RGB/cooler troubleshooting, OMR and other machine-level work; their

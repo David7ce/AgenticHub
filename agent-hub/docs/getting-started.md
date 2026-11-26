@@ -72,7 +72,7 @@ Without `npm link`, use `node hub.mjs` instead of `hub`.
 ## Where local state lives
 
 Configuration stays in this clone. By default, runtime logs and personal state
-use a sibling `projects/` directory; it does not need to be a separate Git repository.
+use a sibling `workspace-panel/` directory; it does not need to be a separate Git repository.
 Answers and inflight records use this clone's ignored `results/` directory.
 See [workspace configuration](reference/workspace-configuration.md) for overrides.
 

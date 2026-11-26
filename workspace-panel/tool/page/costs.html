@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{PAGE_TITLE}}</title>
+  <!--SHARED_CSS-->
+  </head>
+<body>
+  <main class="wrap">
+    <!--SHELL-->
+
+    <section class="card" id="room">
+      <div class="section-head">
+        <div><h2 id="roomTitle"></h2><p class="note" id="roomHint"></p></div>
+      </div>
+      <fieldset class="scope-field"><legend id="scopeLabel"></legend><div class="scope-toggles" id="scope"></div></fieldset>
+      <details class="model-scope" id="modelScope"><summary id="modelScopeTitle"></summary><div id="modelToggles"></div></details>
+      <div id="roomList"></div>
+      <details class="usage-settings">
+        <summary id="usageSettingsTitle"></summary>
+        <p class="note" id="usageSettingsHint"></p>
+        <div class="usage-options" id="planOptions"></div>
+        <p class="note" id="roomNote" hidden></p>
+      </details>
+    </section>
+
+    <details class="card usage-breakdown" id="codexStatsCard" hidden>
+      <summary id="codexStatsTitle"></summary>
+      <div id="codexStats"></div>
+    </details>
+
+    <details class="card cal" id="usageCalendar" open>
+<!--CALENDAR-->
+    </details>
+
+    <section class="agent-grid" id="agents" aria-label="Agent token usage"></section>
+
+    <section class="card" id="dailyCard">
+      <div class="section-head">
+        <div><h2 id="dailyTitle"></h2><p class="note" id="dailyHint"></p></div>
+        <label class="filter"><span id="metricLabel"></span><select id="metric"></select></label>
+      </div>
+      <div class="chart-wrap"><svg id="dailyChart" role="img"></svg></div>
+      <div class="legend" id="dailyLegend"></div>
+    </section>
+
+    <section class="card" id="hourlyCard" hidden>
+      <div class="section-head">
+        <div><h2 id="hourlyTitle"></h2><p class="note" id="hourlyHint"></p></div>
+      </div>
+      <div class="chart-wrap"><svg id="hourlyChart" role="img"></svg></div>
+      <div class="legend" id="hourlyLegend"></div>
+      <p class="unknown" id="unknownHour" hidden></p>
+    </section>
+
+    <section class="card" id="spenders">
+      <div class="section-head">
+        <div><h2 id="spendTitle"></h2><p class="note" id="spendHint"></p></div>
+      </div>
+      <div class="table-wrap" id="spendAgents"></div>
+      <div class="spend-split">
+        <div class="table-wrap" id="spendProjects"></div>
+        <div class="table-wrap" id="spendModels"></div>
+      </div>
+      <p class="note recommendation" id="modelRecommendation"></p>
+    </section>
+
+    <footer id="footer"></footer>
+  </main>
+  <!--PAGE_DATA-->
+<!--SHARED_JS-->
+  </body>
+</html>

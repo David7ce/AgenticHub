@@ -11,3 +11,6 @@
 Thumbs.db
 desktop.ini
 node_modules/
+
+# Optional local compatibility junction after moving the panel. Never tracked.
+/projects

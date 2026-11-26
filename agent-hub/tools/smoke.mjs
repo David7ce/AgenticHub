@@ -213,7 +213,7 @@ async function main() {
     process.stdout.write('ok  both generated launchers complete MCP delegation and graceful EOF\n');
 
     stage = 'audit and cleanup';
-    const records = readFileSync(join(workspace, 'projects', 'logs', 'runs.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    const records = readFileSync(join(workspace, 'workspace-panel', 'logs', 'runs.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
     assert.deepEqual(records.map((record) => record.status), ['denied', 'denied', 'rejected', 'ok', 'ok', 'ok']);
     assert.ok(records.every((record) => record.agent === 'smoke'));
     assert.deepEqual(records.slice(3).map((record) => record.prompt), ['SMOKE_CLI', 'SMOKE_CLAUDE_MCP', 'SMOKE_OPENCODE_MCP']);

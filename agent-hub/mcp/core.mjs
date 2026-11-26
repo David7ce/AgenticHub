@@ -48,7 +48,7 @@ export const INSTRUCTIONS = [
     'you choose the tool.',
   '',
   '- Start of a session, or "where are we", "the roadmap", "what is next": call `brief`. The roadmap itself is ' +
-    'projects/working/ROADMAP.md in the workspace folder; read it yourself.',
+    'workspace-panel/working/ROADMAP.md in the workspace folder; read it yourself.',
   '- "Ask", "consult", "get a second opinion from" Claude or Codex: `ask_agent`. The callee sees nothing of this ' +
     'conversation, so the prompt must carry the task, the paths that matter and what you want back.',
   '- The same question to several agents (for example Claude and Codex on a plan): `fanout`, with `synthesize` ' +

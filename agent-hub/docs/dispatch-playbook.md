@@ -36,7 +36,7 @@ Gradle at 23:37.
 
 **3. A running turn is visible while it runs.**
 
-`projects/logs/runs.jsonl` only gets its line when the turn ends. In the meantime each
+`workspace-panel/logs/runs.jsonl` only gets its line when the turn ends. In the meantime each
 run writes `results/inflight/<pid>.json`, and `hubctl status` (and the MCP
 `status` tool) shows it on the `running` line: agent, repo, age, last tool.
 That line is the answer to "what is happening right now".
@@ -73,7 +73,7 @@ That line is the answer to "what is happening right now".
    ```
 4. **After a timeout, read `cancelAck` before touching the tree.** `false`
    means the callee never confirmed it stopped. Check `git -C <repo> status
-   --short`, `git log -3`, and the tail of `projects/logs/runs.jsonl`.
+   --short`, `git log -3`, and the tail of `workspace-panel/logs/runs.jsonl`.
 5. **One orchestrator per tree.** Not just a hub rule: a `running` line or a
    dirty tree from a previous attempt means the tree is already somebody's.
 6. **Let the chain pick the model; name one only to pin it.** The paid Go
@@ -166,4 +166,3 @@ The async job API landed on 2026-11-04 (`ask_agent({background:true})` plus the
 three `job_*` tools), which is what makes rule 3 practical rather than
 aspirational. Jobs live in the MCP server process on purpose: its death ends
 them, while `hubctl status` keeps showing the run through the inflight file.
-

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{PAGE_TITLE}}</title>
+<!--SHARED_CSS-->
+</head>
+<body>
+<main class="wrap">
+  <!--SHELL-->
+
+  <section class="glance" aria-labelledby="glanceTitle">
+    <h2 id="glanceTitle" class="sr-only">Vistazo</h2>
+    <div class="tiles">
+      <a class="card tile" href="dist/index.html" id="tileRepos">
+        <h3 data-k="repos">Proyectos</h3>
+        <p class="big" data-v="reposTotal"></p>
+        <ul class="facts">
+          <li><b data-v="reposDirty"></b> <span data-k="dirty">con cambios sin commit</span></li>
+          <li><b data-v="reposAhead"></b> <span data-k="ahead">con commits por subir</span></li>
+          <li><b data-v="reposNoRemote"></b> <span data-k="noRemote">sin remoto</span></li>
+        </ul>
+      </a>
+      <a class="card tile" href="dist/ai-usage.html" id="tileIa">
+        <h3 data-k="ia">Uso de IA</h3>
+        <ul class="facts" id="iaFacts"></ul>
+      </a>
+      <a class="card tile" href="dist/notes.html#roadmap" id="tileRoadmap">
+        <h3 data-k="roadmap">Roadmap</h3>
+        <p class="big" data-v="roadmapOpen"></p>
+        <ul class="facts">
+          <li data-k="roadmapOpen">proyectos abiertos</li>
+          <li><b data-v="roadmapOwner"></b> <span data-k="roadmapOwner">pasos que esperan al dueño</span></li>
+        </ul>
+      </a>
+    </div>
+  </section>
+
+  <section class="card refresh" aria-labelledby="refreshTitle">
+    <h2 id="refreshTitle" data-k="refresh">Actualizar el panel</h2>
+    <div class="cmd">
+      <code id="cmd">node workspace-panel/tool/cli.mjs refresh</code>
+      <button type="button" id="copyBtn" class="shell-tool" data-k="copy">Copiar</button>
+    </div>
+    <p class="note" data-k="refreshNote">Desde D:\Workspaces. Gasto, páginas y notas; la tarea Workspaces-Refresh lo hace cada hora.</p>
+    <p class="note" id="copyStatus" role="status" aria-live="polite"></p>
+  </section>
+</main>
+<!--PAGE_DATA-->
+<!--SHARED_JS-->
+</body>
+</html>
