@@ -15,7 +15,7 @@ import { AUTHOR, authorPattern, readExclusions, readLocalJson } from '../lib/loc
 import { resolveRoot, toLocalPath, toWindowsPath } from '../lib/paths.mjs';
 import { mapPool } from '../lib/pool.mjs';
 import { resolveRemote, sanitizeRemote } from '../lib/remote.mjs';
-import { filterExcludedRepos } from '../lib/scan.mjs';
+import { filterExcludedRepos, folderLabels } from '../lib/scan.mjs';
 import { applyStars, repoKeyFromWebUrl } from '../lib/stars.mjs';
 import { CLIENT_SCRIPTS, renderPage } from '../page/render.mjs';
 
@@ -289,4 +289,17 @@ test('authorPattern: an email matches git log --author literally', () => {
   const re = new RegExp(authorPattern('a.b@c.com'));
   assert.ok(re.test('A <a.b@c.com>'));
   assert.ok(!re.test('A <aXb@c.com>'));
+});
+
+test('folder labels: owner and project are the folder names on disk, not re-cased', () => {
+  assert.deepEqual(folderLabels(['Pkg-lab', 'GymLab-Cloud']), { owner: 'Pkg-lab', project: '' });
+  assert.deepEqual(folderLabels(['David7ce-user', 'Pkg-lab', 'GymLab-Cloud']), { owner: 'David7ce', project: 'Pkg-lab' });
+  assert.deepEqual(
+    folderLabels(['David7ce-user', 'David7ce-code', 'web-app', 'charstudio']),
+    { owner: 'David7ce', project: 'David7ce-code/web-app' },
+  );
+  assert.deepEqual(folderLabels(['Curiosity432-user', 'curiosity432-blog']), { owner: 'Curiosity432', project: '' });
+  assert.deepEqual(folderLabels(['AgenticHub', 'workspace-panel', 'working']), { owner: 'AgenticHub', project: 'workspace-panel' });
+  assert.deepEqual(folderLabels(['MediaHub-Org', 'rss-reader']), { owner: 'MediaHub-Org', project: '' });
+  assert.deepEqual(folderLabels(['solo']), { owner: 'solo', project: '' });
 });

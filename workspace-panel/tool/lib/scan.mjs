@@ -145,12 +145,20 @@ async function commitActivity(repo) {
   return { days, accounts, ai, accountAi };
 }
 
-const prettify = (value) => String(value ?? '')
-  .replace(/[-_]+/g, ' ')
-  .split(/\s+/)
-  .filter(Boolean)
-  .map((word) => word[0].toUpperCase() + word.slice(1))
-  .join(' ');
+/**
+ * Owner and project come straight from the folders, exactly as spelled on disk:
+ * the page is searched by literal name, and re-casing them ("Pkg Lab",
+ * "Arksys Os") made labels that match nothing you would type. Only the
+ * account suffix `-user` is dropped. The project is every folder between the
+ * owner and the repository, so `David7ce-code/web-app` keeps its type.
+ */
+export function folderLabels(parts) {
+  const first = parts[0] ?? '';
+  return {
+    owner: first.replace(/[-_]user$/i, '') || first,
+    project: parts.length >= 3 ? parts.slice(1, -1).join('/') : '',
+  };
+}
 
 const normalizeName = (value) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -180,8 +188,7 @@ async function describe(repo, root) {
   const { webUrl, remoteHost } = resolveRemote(remote);
   const parts = relative(root, repo).split(/[\\/]/);
   const first = parts[0] ?? '';
-  let owner = prettify(first.replace(/[-_]user$/i, '')) || prettify(first);
-  let project = parts.length >= 3 ? prettify(parts[1]) : '';
+  let { owner, project } = folderLabels(parts);
 
   // Git-clones/ holds clones worked by the local user: a fork when it has own
   // commits, a reference clone otherwise. adoptForkProjects may rename it later.
