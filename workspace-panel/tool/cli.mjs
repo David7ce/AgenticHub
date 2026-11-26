@@ -6,8 +6,9 @@ import { pathToFileURL } from 'node:url';
 
 import { AUTHOR } from './lib/local.mjs';
 import {
-  collectUsage, limitsForRun, mergeCostLedger, readCostLedger, writeCostLedger,
+  collectUsage, mergeCostLedger, readCostLedger, writeCostLedger,
 } from './lib/costs.mjs';
+import { limitsForRun } from './lib/usage-limits.mjs';
 import { PROJECTS_DIR, TOOL_DIR, resolveRoot, toDisplayPath, toWindowsPath } from './lib/paths.mjs';
 import { DEFAULT_DEPTH, scanRepos } from './lib/scan.mjs';
 import { applyStars, fetchStars, readStarsCache, writeStarsCache } from './lib/stars.mjs';
@@ -15,7 +16,7 @@ import { syncRepos } from './lib/sync.mjs';
 import { readClaudeUsage, readCodexAccountStats, readGoModels, readGoUsage, readOpenAiConnection } from './lib/subscription-usage.mjs';
 import { COSTS_HTML, INDEX_HTML, NOTES_HTML, REPOS_JSON, writeSite } from './page/render.mjs';
 
-const USAGE = `projects — inventory of the git repos under the workspace root
+const USAGE = `workspace-panel — inventory of the git repos under the workspace root
 
   node workspace-panel/tool/cli.mjs [build] [--root DIR] [--depth N] [--jobs N]
       Scan every repo (state + your commits) and rewrite dist/repos.json and

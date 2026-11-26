@@ -153,7 +153,8 @@ one file.
 ## Code layout
 
     tool/cli.mjs          build | sync | stars | costs | refresh
-    tool/lib/             git.mjs (runs git) · pool.mjs (bounded concurrency) · paths.mjs · costs.mjs ·
+    tool/lib/             git.mjs (runs git) · pool.mjs (bounded concurrency) · paths.mjs · costs.mjs (history/reconciliation/report) ·
+                          usage-limits.mjs (account windows/quotas) · usage-records.mjs (record readers/tokens) ·
                           local.mjs (everything in local/) · remote.mjs · scan.mjs · sync.mjs · stars.mjs
     tool/page/render.mjs  writes repos.json + index.html + ai-usage.html + notes.html
                           and dist/shared/; delegates page assembly to renderDocument
