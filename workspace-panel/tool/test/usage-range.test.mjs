@@ -103,3 +103,18 @@ test('only rows timed per step go into the hourly chart', () => {
   assert.equal(c.hasStepHour(r({ source: 'opencode', hour: 10 })), false);
   assert.equal(c.hasStepHour(r({ source: 'claude-code', hour: null })), false);
 });
+
+test('Go share adds each model against its own allowance; the week is half the month', () => {
+  const c = load();
+  const models = [
+    { id: 'flash', monthly: { go: 100, 'go-plus': 200 } },
+    { id: 'pro', monthly: { go: 20 } },
+  ];
+  const local = { flash: { weekUsd: 5, recentUsd: 10 }, pro: { weekUsd: 1, recentUsd: 2 }, stray: { weekUsd: 9, recentUsd: 9 } };
+  const share = c.goShare(local, models, 'go');
+  assert.ok(Math.abs(share.week - (5 / 50 + 1 / 10)) < 1e-9);
+  assert.ok(Math.abs(share.month - (10 / 100 + 2 / 20)) < 1e-9);
+  assert.ok(Math.abs(c.goShare(local, models, 'go-plus').week - 5 / 100) < 1e-9);
+  assert.equal(c.goShare({}, models, 'go'), null);
+  assert.equal(c.goShare(local, [], 'go'), null);
+});

@@ -24,6 +24,26 @@ function hasStepHour(row) {
   return row.stepHours === true;
 }
 
+/**
+ * Share of the Go allowance that known local usage represents, at base rates.
+ * Each model has its own monthly allowance for the plan (the week is half of
+ * it); a model without one is left out. An estimate, not an account reading.
+ */
+function goShare(local, models, plan) {
+  let week = 0;
+  let month = 0;
+  let used = false;
+  for (const model of models ?? []) {
+    const limit = Number(model?.monthly?.[plan]);
+    const spent = local?.[model.id];
+    if (!(limit > 0) || !spent) continue;
+    week += (Number(spent.weekUsd) || 0) / (limit / 2);
+    month += (Number(spent.recentUsd) || 0) / limit;
+    used = used || spent.weekUsd > 0 || spent.recentUsd > 0;
+  }
+  return used ? { week, month } : null;
+}
+
 function billedRows(rows, openAiViaChatGpt) {
   return rows.map((row) => ({
     ...row, client: row.agent, agent: billingOf(row, openAiViaChatGpt),

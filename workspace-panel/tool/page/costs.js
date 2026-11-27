@@ -36,7 +36,8 @@
       benchmark: 'Local benchmark',
       go_usd: '≈ {amount} at base rates',
       inferred_use: '{amount} tentatively attributed from session metadata',
-      quota_missing: 'No reading', quota_old: 'Old reading', quota_not_reported: 'Not reported',
+      quota_missing: 'No reading', quota_old: 'Old reading', quota_not_reported: 'Not reported', quota_na: 'Not part of the plan',
+      est_record: 'of your own record · estimate', est_go: 'local usage at base rates · estimate',
       no_limits: 'No limits reading yet. Run: node workspace-panel/tool/cli.mjs costs --write',
       limits_error: 'Codex/Go reading failed: {error}',
       src_measured: 'measured', src_estimated: 'estimated', src_record: 'own record', src_free: 'free',
@@ -52,7 +53,7 @@
       src_manual: 'copied from console',
       go_manual: 'OpenCode Go: copy the current percentages and resets from your Console to workspace-panel/local/go-usage.json. No credentials needed.',
       month_unavailable: 'No monthly subscription meter reported.',
-      claude_setup: 'For measured Claude limits, connect the Claude Code status line and use your subscription in the client.',
+      claude_setup: 'Claude figures are estimates against your own record. For a measured reading, open claude in a terminal and send one message: the VS Code extension does not run the status line.',
       reading: 'Reading: {date}',
       go_model: 'OpenCode · allowance by model',
       go_week_capacity: 'Weekly reference', go_month_capacity: 'Monthly reference',
@@ -108,7 +109,8 @@
       benchmark: 'Benchmark local',
       go_usd: '≈ {amount} a tarifa base',
       inferred_use: '{amount} atribuidos provisionalmente según la sesión',
-      quota_missing: 'Sin lectura', quota_old: 'Lectura antigua', quota_not_reported: 'No informado',
+      quota_missing: 'Sin lectura', quota_old: 'Lectura antigua', quota_not_reported: 'No informado', quota_na: 'No aplica',
+      est_record: 'de tu récord · estimado', est_go: 'uso local a precio base · estimado',
       no_limits: 'Aún no hay lectura de límites. Ejecuta: node workspace-panel/tool/cli.mjs costs --write',
       limits_error: 'Falló la lectura de Codex/Go: {error}',
       src_measured: 'medido', src_estimated: 'estimado', src_record: 'tu récord', src_free: 'gratis',
@@ -124,7 +126,7 @@
       src_manual: 'copiado de consola',
       go_manual: 'OpenCode Go: copia los porcentajes y reinicios vigentes de tu consola a workspace-panel/local/go-usage.json. No hacen falta credenciales.',
       month_unavailable: 'La lectura de la suscripción no incluye un límite mensual.',
-      claude_setup: 'Para ver los límites medidos de Claude, conecta la barra de estado de Claude Code y usa tu suscripción en el cliente.',
+      claude_setup: 'Las cifras de Claude son estimaciones frente a tu propio récord. Para una lectura medida, abre claude en un terminal y envía un mensaje: la extensión de VS Code no ejecuta la barra de estado.',
       reading: 'Lectura: {date}',
       go_model: 'OpenCode · cuota por modelo',
       go_week_capacity: 'Referencia semanal', go_month_capacity: 'Referencia mensual',
@@ -515,24 +517,43 @@
     }
     const table = make('table', { class: 'quota-table' });
     const thead = make('thead');
-    const head = make('tr'); head.append(...['scope', 'week', 'month'].map((k) => make('th', { scope: 'col' }, t(k))));
+    const PERIODS = ['5h', 'week', 'month'];
+    // Windows a plan does not have: Claude has 5 h and 7 days; Codex reports only its week.
+    const notInPlan = { claude: ['month'], codex: ['month'] };
+    const goPlan = selectedPlan('opencode') || configuredPlan('opencode') || 'go';
+    const go = goShare(VIEW.goLocal, VIEW.goModels, goPlan);
+    // Without a measurement, show what the panel can estimate, never as a reading.
+    const estimateOf = (agent, period) => {
+      if (agent === 'claude') {
+        const record = (VIEW.room || []).find((r) => r.agent === 'claude' && r.source === 'record'
+          && (r.label === period || (period === 'week' && r.label === '7d')));
+        return Number.isFinite(record?.recordPct) ? { pct: record.recordPct, note: t('est_record') } : null;
+      }
+      if (agent === 'opencode' && go && period !== '5h') return { pct: go[period], note: t('est_go') };
+      return null;
+    };
+    const head = make('tr'); head.append(...['scope', ...PERIODS].map((k) => make('th', { scope: 'col' }, t(k))));
     thead.append(head);
     const body = make('tbody');
     for (const agent of agents) {
       const row = make('tr', { 'data-agent': agent });
       row.append(make('th', { scope: 'row', class: 'quota-name', style: `--agent-color:${COLORS[agent]}` }, scopeName(agent)));
-      for (const period of ['week', 'month']) {
+      for (const period of PERIODS) {
         const r = windowOf(agent, period);
         const expired = Date.parse(r?.resetsAt) <= now;
         const old = now - Date.parse(r?.measuredAt) > 6 * 3600_000;
-        const shown = expired ? null : r?.pct;
-        const valueClass = old ? ' quota-old' : shown >= .8 ? ' quota-high' : '';
+        const measured = expired ? null : r?.pct;
+        const estimate = measured == null && !expired ? estimateOf(agent, period) : null;
+        const shown = measured ?? estimate?.pct;
+        const valueClass = old || estimate ? ' quota-old' : shown >= .8 ? ' quota-high' : '';
         const reset = r?.resetsAt && fill(t('resets'), { date: stamp(r.resetsAt) });
         const date = r?.measuredAt && fill(t('reading'), { date: stamp(r.measuredAt) });
-        const note = expired ? t('reset_done') : old ? t('quota_old') : shown != null ? reset
-          : period === 'month' && agent !== 'opencode' ? t('quota_not_reported') : t('quota_missing');
+        const note = expired ? t('reset_done') : old ? t('quota_old') : measured != null ? reset
+          : estimate ? estimate.note
+          : notInPlan[agent]?.includes(period) ? t('quota_na')
+          : agent === 'codex' ? t('quota_not_reported') : t('quota_missing');
         const cell = make('td', { title: [r && t(`src_${r.source}`), date, reset].filter(Boolean).join(' · ') });
-        cell.append(make('strong', { class: `quota-value${valueClass}` }, pctText(shown)));
+        cell.append(make('strong', { class: `quota-value${valueClass}` }, estimate ? `≈ ${pctText(shown)}` : pctText(shown)));
         if (note) cell.append(make('span', { class: 'quota-note' }, note));
         row.append(cell);
       }
