@@ -72,7 +72,7 @@
       cal_title: 'Local usage history', cal_year: '{total} recorded work tokens in {year}', cal_hint: '— charts use only the local records for this period.',
       agent: 'Subscription', cache_read: 'Cache read',
       projects: 'Projects', models: 'Models',
-      hourly_claude_note: 'Only Claude is shown: OpenCode and Codex record a session/thread start, not the hour of each step.',
+      hourly_claude_note: 'Claude messages, Codex calls and OpenCode replies at their own hour; OpenCode session totals only have a start time and are left out.',
     },
     es: {
       latest: 'Snapshot',
@@ -144,7 +144,7 @@
       cal_title: 'Historial local de uso', cal_year: '{total} tokens de trabajo registrados en {year}', cal_hint: '— las gráficas solo usan los registros locales de este periodo.',
       agent: 'Suscripción', cache_read: 'Lectura de caché',
       projects: 'Proyectos', models: 'Modelos',
-      hourly_claude_note: 'Solo se muestra Claude: OpenCode y Codex registran el inicio de sesión/hilo, no la hora de cada paso.',
+      hourly_claude_note: 'Mensajes de Claude, llamadas de Codex y respuestas de OpenCode a su hora; los totales de sesión de OpenCode solo tienen el inicio y quedan fuera.',
     },
   };
 
@@ -640,20 +640,22 @@
 
   function paintHourly() {
     const day = state.range ? state.range[0] : '';
-    // Only Claude has a real hour per message; the others would pile a day into one hour.
-    const selected = visibleRows().filter((row) => row.date === day && row.agent === 'claude');
-    const byHour = group(selected.filter((row) => Number.isInteger(row.hour)), (row) => row.hour);
+    // Only rows timed per step; session totals at their start would pile a day into one hour.
+    const dayRows = visibleRows().filter((row) => row.date === day);
+    const selected = dayRows.filter(hasStepHour);
+    const byHour = group(selected, (row) => row.hour);
     const hours = Array.from({ length: 24 }, (_, hour) => hour);
     const values = hours.map((hour) => byHour.get(hour) || {});
     drawChart($('hourlyChart'), hours, values, { daily: false });
 
-    const unknown = group(selected.filter((row) => !Number.isInteger(row.hour)), (row) => row.date);
-    const unknownValues = unknown.get(day) || { claude: 0, opencode: 0, codex: 0 };
-    const hasUnknown = unknownValues.claude > 0;
+    const unknown = group(dayRows.filter((row) => row.source === 'claude-code' && !Number.isInteger(row.hour)), (row) => row.date);
+    const unknownValues = unknown.get(day) || {};
+    const unknownTotal = Object.values(unknownValues).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const hasUnknown = unknownTotal > 0;
     const unknownLine = $('unknownHour');
     unknownLine.hidden = !hasUnknown;
     unknownLine.textContent = hasUnknown
-      ? `${t('unknown_hour')}: ${format(unknownValues.claude)}. ${t('unknown_note')}`
+      ? `${t('unknown_hour')}: ${format(unknownTotal)}. ${t('unknown_note')}`
       : '';
   }
 
@@ -688,7 +690,8 @@
   function paintRange() {
     const agents = visibleAgents();
     const empty = !agents.length;
-    const hourly = agents.length === 1 && agents[0] === 'claude' && state.range && state.range[0] === state.range[1];
+    // A single day reads better by hour; every source with per-step times is drawn.
+    const hourly = !empty && Boolean(state.range) && state.range[0] === state.range[1];
     $('usageCalendar').hidden = empty;
     $('dailyCard').hidden = empty || hourly;
     $('hourlyCard').hidden = !hourly;

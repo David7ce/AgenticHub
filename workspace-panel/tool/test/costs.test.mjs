@@ -538,3 +538,9 @@ test('summary_work_tokens_match_page', () => {
   const agents = Object.fromEntries(summarizeUsage(ledger).agents.map((row) => [row.agent, row.work_tokens]));
   assert.deepEqual(agents, { claude: 10, opencode: 5, codex: 0 });
 });
+
+test('reply-based OpenCode history is marked as timed per step', () => {
+  const row = { date: '2026-11-20', hour: 4, source: 'opencode', agent: 'opencode', project: 'p', model: 'm (opencode-go)', output_tokens: 1 };
+  const result = subscriptionHistory({ rows: [], openCodeAttribution: { first: '2026-11-20', rows: [row], covered: [] } });
+  assert.deepEqual(result.map((r) => r.stepHours), [true]);
+});

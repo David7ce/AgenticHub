@@ -420,7 +420,7 @@ export function subscriptionHistory(ledger) {
   const { rows = [], openCodeAttribution } = ledger ?? {};
   if (!openCodeAttribution) return rows;
   const legacy = rows.filter((r) => r.source !== 'opencode' || r.date < openCodeAttribution.first);
-  if (!openCodeAttribution.covered) return [...legacy, ...openCodeAttribution.rows];
+  if (!openCodeAttribution.covered) return [...legacy, ...openCodeAttribution.rows.map((row) => ({ ...row, stepHours: true }))];
   const groupCoarse = (items) => {
     const groups = new Map();
     for (const row of items) {
@@ -465,7 +465,9 @@ export function subscriptionHistory(ledger) {
     }
     delete row.models;
   }
-  return [...legacy, ...retained, ...openCodeAttribution.rows, ...finishGroups(previous)];
+  // Reply-based rows carry each reply's own time; session totals only their start.
+  const replies = openCodeAttribution.rows.map((row) => ({ ...row, stepHours: true }));
+  return [...legacy, ...retained, ...replies, ...finishGroups(previous)];
 }
 
 function findCodexDatabases(codexDir) {
@@ -999,11 +1001,11 @@ Buckets horarios: ${number(ledger.rows.filter((row) => Number.isInteger(row.hour
 ## Límites del histórico
 
 - Claude Code: solo los transcripts que aún existen en \`~/.claude/projects\`; el más antiguo recuperable se indica arriba. Los archivos ya purgados no se pueden reconstruir.
-- OpenCode: totales por sesión del SQLite local; se asignan a la hora de inicio y se ignora la columna monetaria.
-- Codex: si existe, el estado local solo expone un total por hilo; no se atribuye a entrada/salida sin desglose.
-- Agent Hub: \`logs/runs.jsonl\` registra ejecuciones y a veces coste, pero actualmente no tokens; se cuenta la cobertura, no se mezcla con los proveedores.
+- OpenCode: cada respuesta del SQLite local con su modelo y hora; lo que el total de la sesión no explica con respuestas (títulos, compactación) se estima para el modelo de la sesión o se reparte por modelos, marcado como provisional. La columna monetaria se ignora.
+- Codex: cada llamada de los rollouts con su hora y desglose; el total por hilo del estado local solo cubre hilos sin rollout.
+- Agent Hub: \`logs/runs.jsonl\` trae tokens por turno solo en algunas ejecuciones; es atribución, no se suma a los proveedores.
 - Los proyectos fuera del workspace se etiquetan como \`temporary\` o \`external/<carpeta>\`; no se persisten rutas absolutas, prompts ni respuestas.
-- \`costs --write\` reconcilia cada día/hora/fuente/agente/modelo/proyecto tomando el máximo observado por categoría, no sumando cada escaneo. Conserva buckets anteriores aunque el proveedor rote o purgue transcripts; los registros heredados sin hora permanecen aparte.
+- \`costs --write\` reconcilia cada día/hora/fuente/agente/modelo/proyecto tomando el máximo observado por categoría, no sumando cada escaneo. Conserva buckets anteriores aunque el proveedor rote o purgue transcripts; los registros heredados sin hora permanecen aparte. Las franjas de OpenCode que el escaneo aún ve se sustituyen, porque una sesión cambia de etiqueta al cambiar de modelo.
 `;
 }
 

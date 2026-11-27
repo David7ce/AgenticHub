@@ -91,3 +91,15 @@ test('ia_page_renders_with_empty_ledger', () => {
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   assert.doesNotThrow(() => new Function(script));
 });
+
+test('only rows timed per step go into the hourly chart', () => {
+  const c = load();
+  assert.equal(c.hasStepHour(r({ source: 'claude-code', hour: 10 })), true);
+  assert.equal(c.hasStepHour(r({ source: 'codex', hour: 10, input_tokens: 5 })), true);
+  // A Codex thread total sits at the thread's start hour.
+  assert.equal(c.hasStepHour(r({ source: 'codex', hour: 10, unknown_tokens: 5 })), false);
+  // OpenCode replies carry their own time; session totals only their start.
+  assert.equal(c.hasStepHour(r({ source: 'opencode', hour: 10, stepHours: true })), true);
+  assert.equal(c.hasStepHour(r({ source: 'opencode', hour: 10 })), false);
+  assert.equal(c.hasStepHour(r({ source: 'claude-code', hour: null })), false);
+});

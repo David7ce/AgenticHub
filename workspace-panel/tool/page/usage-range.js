@@ -16,6 +16,14 @@ function billingOf(row, openAiViaChatGpt) {
   return 'other';
 }
 
+/** Rows timed per step (message, call or reply); totals at a session start would pile a day into one hour. */
+function hasStepHour(row) {
+  if (!Number.isInteger(row.hour)) return false;
+  if (row.source === 'claude-code') return true;
+  if (row.source === 'codex') return !(Number(row.unknown_tokens) > 0);
+  return row.stepHours === true;
+}
+
 function billedRows(rows, openAiViaChatGpt) {
   return rows.map((row) => ({
     ...row, client: row.agent, agent: billingOf(row, openAiViaChatGpt),

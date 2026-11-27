@@ -130,10 +130,14 @@ one file.
   - Codex account statistics, if supplied, are kept separate from local counters.
   - Daily bars split by the subscription that served the model, not the harness.
     OpenCode's response metadata supplies the provider and model where available;
-    retained aggregates with a unanimous Go model label are marked as provisional;
-    mixed or unknown aggregates stay separate. Its single OpenAI OAuth connection can infer
+    tokens no reply explains go to the session's model, or are split by each model's
+    share, marked as provisional; retained aggregates of a single provider keep their
+    labels, and mixed providers stay separate. OpenCode Zen (free or pay-as-you-go)
+    has its own group, outside the Go allowance. Its single OpenAI OAuth connection can infer
     ChatGPT billing but does not prove which account historical requests used.
-    A single day with only Claude visible shows hourly bars.
+    Codex is read per call from its rollouts, each with its own hour and breakdown.
+    A single selected day shows hourly bars for every source timed per step (Claude
+    messages, Codex calls, OpenCode replies).
     Hover or focus a bar for model details; there are no duplicate chart tables.
   - **Who spends most**: subscriptions, projects and models ranked by work tokens,
     cache reads apart, plus a model recommendation based on the local benchmark.
