@@ -118,3 +118,23 @@ test('Go share adds each model against its own allowance; the week is half the m
   assert.equal(c.goShare({}, models, 'go'), null);
   assert.equal(c.goShare(local, [], 'go'), null);
 });
+
+test('activity stats: peak day and streaks of days with work, the same for every subscription', () => {
+  const c = load();
+  const rows = [
+    r({ date: '2026-11-20', output_tokens: 5 }),
+    r({ date: '2026-11-21', output_tokens: 50 }),
+    r({ date: '2026-11-21', input_tokens: 10 }),
+    r({ date: '2026-11-22', output_tokens: 1 }),
+    // Cache reads alone are not work: the 23rd breaks the streak.
+    r({ date: '2026-11-23', cache_read_tokens: 999 }),
+    r({ date: '2026-11-25', output_tokens: 2 }),
+    r({ date: '2026-11-26', output_tokens: 3 }),
+  ];
+  const stats = c.activityStats(rows, '2026-11-26');
+  assert.deepEqual(JSON.parse(JSON.stringify(stats)), { peakDay: '2026-11-21', peakWork: 60, currentStreak: 2, longestStreak: 3, activeDays: 5 });
+  // A streak still counts when today has no use yet.
+  assert.equal(c.activityStats(rows, '2026-11-27').currentStreak, 2);
+  assert.equal(c.activityStats(rows, '2026-11-28').currentStreak, 0);
+  assert.equal(c.activityStats([], '2026-11-26'), null);
+});

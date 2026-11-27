@@ -28,6 +28,10 @@
       data_at: 'Data at {date}',
       stale: 'over 6 h old — run: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Account limits',
+      add_subscription: '+ Add subscription', remove_subscription: 'Remove {name}', plan_of: '{name} plan',
+      show_subscription: 'Show or hide {name}', zen_quota: 'No allowance · free or pay-as-you-go',
+      peak_day: 'Peak day: {day} · {amount}', streak: 'Streak: {current} · best {longest}',
+      account_line: 'Account ({date}): {lifetime} lifetime · peak {peak}', detected: 'detected',
       room_hint: 'Provider figures, separate from local usage.',
       scope: 'Subscriptions', plan_off: 'Not subscribed', no_subscriptions: 'No subscriptions selected.',
       model_filters: 'Filter by model',
@@ -101,6 +105,10 @@
       data_at: 'Datos de {date}',
       stale: 'más de 6 h de antigüedad — ejecuta: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Cuota de la cuenta',
+      add_subscription: '+ Añadir suscripción', remove_subscription: 'Quitar {name}', plan_of: 'Plan de {name}',
+      show_subscription: 'Mostrar u ocultar {name}', zen_quota: 'Sin cuota · gratis o pago por uso',
+      peak_day: 'Día pico: {day} · {amount}', streak: 'Racha: {current} · máx. {longest}',
+      account_line: 'Cuenta ({date}): {lifetime} acumulados · pico {peak}', detected: 'detectado',
       room_hint: 'Datos del proveedor, separados del uso local.',
       scope: 'Suscripciones', plan_off: 'No tengo suscripción', no_subscriptions: 'No hay suscripciones seleccionadas.',
       model_filters: 'Filtrar por modelo',
@@ -151,7 +159,8 @@
   };
 
   const COLORS = { claude: 'var(--claude)', opencode: 'var(--opencode)', codex: 'var(--codex)', zen: 'var(--zen)', other: 'var(--muted)' };
-  const SUBSCRIPTIONS = ['claude', 'opencode', 'codex'];
+  // Alphabetical by the name shown: ChatGPT / Codex, Claude, OpenCode.
+  const SUBSCRIPTIONS = ['codex', 'claude', 'opencode'];
   // Groups with no plan or allowance: shown only when they have rows.
   const UNPLANNED = ['zen', 'other'];
   const AGENTS = [...SUBSCRIPTIONS, ...UNPLANNED];
@@ -165,8 +174,14 @@
   const configuredPlan = (agent) => VIEW.configuredPlans?.[agent];
   const selectedPlan = (agent) => PLANS[agent]?.[planChoice[agent]] ? planChoice[agent] : null;
   const planName = (agent, plan) => PLANS[agent]?.[plan] ?? plan;
-  const enabledAgents = () => AGENTS.filter((agent) => UNPLANNED.includes(agent) ? rows.some((r) => r.agent === agent) : planChoice[agent] !== 'off');
-  const visibleAgents = () => enabledAgents().filter((agent) => !hiddenSubscriptions.has(agent));
+  const currentPlan = (agent) => selectedPlan(agent) || configuredPlan(agent) || detectedPlan(agent) || null;
+  // A subscription is listed when its plan is known or it has usage, unless it was removed.
+  const hasSubscription = (agent) => planChoice[agent] !== 'off'
+    && Boolean(currentPlan(agent) || rows.some((r) => r.agent === agent));
+  const enabledAgents = () => AGENTS.filter((agent) => UNPLANNED.includes(agent) ? rows.some((r) => r.agent === agent) : hasSubscription(agent));
+  // Zen is shown and hidden together with OpenCode: same client, its own billing.
+  const scopeKey = (agent) => (agent === 'zen' ? 'opencode' : agent);
+  const visibleAgents = () => enabledAgents().filter((agent) => !hiddenSubscriptions.has(scopeKey(agent)));
   const visibleRows = () => {
     const active = new Set(visibleAgents());
     return rows.filter((row) => active.has(row.agent) && !hiddenModels.has(modelScopeKey(row)));
@@ -345,14 +360,42 @@
 
   function paintCards(selected) {
     const totals = totalsByAgent(selected);
-    $('agents').replaceChildren(...visibleAgents().map((agent) => {
+    const visible = visibleAgents();
+    const today = new Date().toISOString().slice(0, 10);
+    const days = (n) => new Intl.NumberFormat(state.lang, { style: 'unit', unit: 'day', unitDisplay: 'long' }).format(n);
+    // OpenCode's card holds Go and Zen; the charts keep them apart because only Go spends the allowance.
+    const cards = visible.filter((agent) => agent !== 'zen' || !visible.includes('opencode'));
+    $('agents').replaceChildren(...cards.map((agent) => {
+      const members = agent === 'opencode' ? ['opencode', 'zen'].filter((a) => visible.includes(a)) : [agent];
       const card = make('article', { class: 'agent-card', style: `--agent-color:${COLORS[agent]}` });
-      card.append(make('div', { class: 'agent-name' }, scopeName(agent)));
+      card.append(make('div', { class: 'agent-name' }, agent === 'opencode' ? agentName('opencode') : scopeName(agent)));
       const value = make('div', { class: 'agent-value' });
-      value.append(num(work(totals[agent])));
+      value.append(num(members.reduce((sum, a) => sum + work(totals[a]), 0)));
       card.append(value);
       card.append(make('div', { class: 'agent-metric', title: t('work_hint') }, t('work_tokens')));
-      const inferred = selected.filter((r) => r.agent === agent && r.inferred).reduce((sum, r) => sum + work(r), 0);
+      if (members.length > 1) {
+        const split = make('div', { class: 'agent-split' });
+        for (const member of members) {
+          const part = make('span', { class: 'legend-item' });
+          const label = member === 'zen' ? 'Zen' : planName('opencode', currentPlan('opencode')) || 'Go';
+          part.append(make('i', { class: 'swatch', style: `--swatch:${COLORS[member]}` }),
+            document.createTextNode(`${label} `), num(work(totals[member])));
+          split.append(part);
+        }
+        card.append(split);
+      }
+      const history = activityStats(visibleRows().filter((r) => members.includes(r.agent)), today);
+      if (history) {
+        card.append(make('p', { class: 'agent-stat' }, fill(t('peak_day'), { day: dateLabel(history.peakDay), amount: short(history.peakWork) })));
+        card.append(make('p', { class: 'agent-stat' }, fill(t('streak'), { current: days(history.currentStreak), longest: days(history.longestStreak) })));
+      }
+      const account = agent === 'codex' ? VIEW.codexAccount : null;
+      if (account && (Number.isFinite(account.lifetimeTokens) || Number.isFinite(account.peakTokens))) {
+        card.append(make('p', { class: 'agent-stat' }, fill(t('account_line'), {
+          date: dateLabel(account.measuredOn), lifetime: short(account.lifetimeTokens ?? 0), peak: short(account.peakTokens ?? 0),
+        })));
+      }
+      const inferred = selected.filter((r) => members.includes(r.agent) && r.inferred).reduce((sum, r) => sum + work(r), 0);
       if (inferred) card.append(make('p', { class: 'note' }, fill(t('inferred_use'), { amount: short(inferred) })));
       return card;
     }));
@@ -375,10 +418,53 @@
 
   function paintScope() {
     $('scopeLabel').textContent = t('scope');
-    $('scope').replaceChildren(...enabledAgents().map((agent) => toggle(scopeName(agent), agent, hiddenSubscriptions, 'usage.hiddenSubscriptions', () => {
-      paintModelScope();
-      applyScope();
-    })));
+    const present = SUBSCRIPTIONS.filter((agent) => hasSubscription(agent)
+      || (agent === 'opencode' && enabledAgents().includes('zen')));
+    const changed = () => { paintScope(); applyScope(); };
+    const chips = present.map((agent) => {
+      const name = agentName(agent);
+      const chip = toggle(name, agent, hiddenSubscriptions, 'usage.hiddenSubscriptions', () => { paintModelScope(); applyScope(); });
+      chip.classList.add('sub-chip');
+      chip.style.setProperty('--agent-color', COLORS[agent]);
+      chip.querySelector('input').setAttribute('aria-label', fill(t('show_subscription'), { name }));
+      if (hasSubscription(agent)) {
+        const plan = make('select', { class: 'chip-plan', 'aria-label': fill(t('plan_of'), { name }) });
+        const current = currentPlan(agent);
+        if (!current) plan.append(make('option', { value: '' }, t('unknown_plan')));
+        for (const [id, label] of Object.entries(PLANS[agent])) {
+          const auto = !selectedPlan(agent) && id === detectedPlan(agent);
+          plan.append(make('option', { value: id }, auto ? `${label} · ${t('detected')}` : label));
+        }
+        plan.value = current || '';
+        plan.onchange = () => { planChoice[agent] = plan.value; writeStored(`usage.plan.${agent}`, plan.value); changed(); };
+        const removeLabel = fill(t('remove_subscription'), { name });
+        const remove = make('button', { type: 'button', class: 'chip-remove', 'aria-label': removeLabel, title: removeLabel }, '×');
+        remove.onclick = (event) => { event.preventDefault(); planChoice[agent] = 'off'; writeStored(`usage.plan.${agent}`, 'off'); changed(); };
+        chip.append(plan, remove);
+      }
+      return chip;
+    });
+    const missing = SUBSCRIPTIONS.filter((agent) => !hasSubscription(agent));
+    if (missing.length) {
+      const add = make('select', { class: 'add-subscription', 'aria-label': t('add_subscription') });
+      add.append(make('option', { value: '' }, t('add_subscription')));
+      for (const agent of missing) {
+        const options = make('optgroup', { label: agentName(agent) });
+        for (const [id, label] of Object.entries(PLANS[agent])) options.append(make('option', { value: `${agent}:${id}` }, `${agentName(agent)} · ${label}`));
+        add.append(options);
+      }
+      add.onchange = () => {
+        const [agent, plan] = add.value.split(':');
+        if (!agent) return;
+        planChoice[agent] = plan;
+        writeStored(`usage.plan.${agent}`, plan);
+        hiddenSubscriptions.delete(agent);
+        writeStored('usage.hiddenSubscriptions', JSON.stringify([...hiddenSubscriptions]));
+        changed();
+      };
+      chips.push(add);
+    }
+    $('scope').replaceChildren(...chips);
     paintModelScope();
   }
 
@@ -407,7 +493,7 @@
       group.append(...[...models.entries()].sort((a, b) => a[1].localeCompare(b[1], state.lang))
         .map(([id, name]) => {
           const chip = toggle(name, id, hiddenModels, 'usage.hiddenModels', applyScope);
-          const plan = selectedPlan('opencode') || configuredPlan('opencode') || 'go';
+          const plan = currentPlan('opencode') || 'go';
           const rate = agent === 'opencode' && goPrices.get(name);
           const month = rate && rate.monthly[plan];
           if (month) chip.title = [[t('week'), month / 2], [t('month'), month]].map(([period, limit]) =>
@@ -425,76 +511,21 @@
 
   function applyScope() {
     paintRoom();
-    paintCodexStats();
     paintLegend($('dailyLegend'), visibleAgents());
+    paintLegend($('hourlyLegend'), visibleAgents());
     calendar.setDays(dailyWork(visibleRows()));
-  }
-
-  function paintSettings() {
-    $('usageSettingsTitle').textContent = t('settings');
-    $('usageSettingsHint').textContent = t('settings_hint');
-    $('planOptions').replaceChildren(...SUBSCRIPTIONS.map((agent) => {
-      const label = make('label', { class: 'filter' }, `${agentName(agent)} `);
-      const select = make('select');
-      const config = configuredPlan(agent);
-      select.append(make('option', { value: '' }, config
-        ? `${t('configured')} · ${planName(agent, config)}`
-        : `${t('automatic')} · ${planName(agent, detectedPlan(agent)) || t('unknown_plan')}`));
-      for (const [id, name] of Object.entries(PLANS[agent])) select.append(make('option', { value: id }, name));
-      select.append(make('option', { value: 'off' }, t('plan_off')));
-      select.value = planChoice[agent] === 'off' ? 'off' : selectedPlan(agent) || '';
-      select.onchange = () => {
-        planChoice[agent] = select.value;
-        writeStored(`usage.plan.${agent}`, select.value);
-        paintScope();
-        applyScope();
-      };
-      label.append(select);
-      return label;
-    }));
-  }
-
-  function paintCodexStats() {
-    const active = visibleAgents().includes('codex');
-    const account = active ? VIEW.codexAccount : null;
-    const local = active ? VIEW.codexLocal : null;
-    $('codexStatsCard').hidden = !account && !local;
-    $('codexStatsTitle').textContent = t('codex_stats');
-    const target = $('codexStats');
-    target.replaceChildren();
-    const millions = (value) => `${new Intl.NumberFormat(state.lang, { maximumFractionDigits: 1 }).format(value / 1e6)} M`;
-    const unit = (value, unit) => new Intl.NumberFormat(state.lang, { style: 'unit', unit }).format(value);
-    const formats = {
-      lifetimeTokens: millions, peakTokens: millions,
-      longestChatMinutes: (n) => n >= 60 && n % 60 === 0 ? unit(n / 60, 'hour') : unit(n, 'minute'),
-      currentStreakDays: (n) => unit(n, 'day'), longestStreakDays: (n) => unit(n, 'day'),
-    };
-    if (account) {
-      target.append(make('p', { class: 'note' }, fill(t('codex_snapshot'), { date: dateLabel(account.measuredOn) })));
-      const stats = make('div', { class: 'usage-options' });
-      for (const field of Object.keys(formats)) {
-        if (!Number.isFinite(account[field])) continue;
-        const item = make('div', { class: 'room-row', style: `--agent-color:${COLORS.codex}` });
-        item.append(make('strong', {}, formats[field](account[field])), make('div', { class: 'room-detail' }, t(field)));
-        stats.append(item);
-      }
-      target.append(stats);
-    }
-    if (local) {
-      const coverage = fill(t('codex_local'), { total: format(local.tokens), first: dateLabel(local.first), last: dateLabel(local.last) });
-      const sessions = Number.isFinite(local.sessions) ? ` ${fill(t('codex_sessions'), { sessions: format(local.sessions) })}` : '';
-      target.append(make('p', { class: 'note' }, coverage + sessions));
-    }
   }
 
   function paintRoom() {
     const list = $('roomList');
     const note = $('roomNote');
     const notes = [];
-    const agents = visibleAgents().filter((agent) => !UNPLANNED.includes(agent));
+    const visible = visibleAgents();
+    const agents = visible.filter((agent) => !UNPLANNED.includes(agent));
     const now = Date.now();
     if (VIEW.noLimits) notes.push(t('no_limits'));
-    if (VIEW.limitsError && agents.includes('codex')) notes.push(fill(t('limits_error'), { error: VIEW.limitsError }));
+    note.textContent = notes.join(' ');
+    note.hidden = !notes.length;
     const embedded = (VIEW.room || []).filter((r) => ['measured', 'manual'].includes(r.source));
     const account = publishedAccount
       ? [...embedded.filter((r) => r.agent === 'claude'), ...publishedAccount.rows]
@@ -506,22 +537,14 @@
       return live && (!saved?.measuredAt || Date.parse(live.measuredAt) >= Date.parse(saved.measuredAt)) ? live : saved;
     };
     const hasCurrent = (agent) => ['week', 'month'].some((period) => Date.parse(windowOf(agent, period)?.resetsAt) > now);
-    if (agents.includes('opencode') && !hasCurrent('opencode')) notes.push(t('go_manual'));
-    if (agents.includes('claude') && !hasCurrent('claude')) notes.push(t('claude_setup'));
-    if (VIEW.openAiViaChatGpt && agents.includes('codex')) notes.push(t('billing_hint'));
-    note.textContent = notes.join(' ');
-    note.hidden = !notes.length;
-    if (!agents.length) {
+    if (!agents.length && !visible.includes('zen')) {
       list.replaceChildren(make('p', { class: 'note' }, t('no_subscriptions')));
       return;
     }
-    const table = make('table', { class: 'quota-table' });
-    const thead = make('thead');
-    const PERIODS = ['5h', 'week', 'month'];
+    const PERIODS = ['week', 'month'];
     // Windows a plan does not have: Claude has 5 h and 7 days; Codex reports only its week.
     const notInPlan = { claude: ['month'], codex: ['month'] };
-    const goPlan = selectedPlan('opencode') || configuredPlan('opencode') || 'go';
-    const go = goShare(VIEW.goLocal, VIEW.goModels, goPlan);
+    const go = goShare(VIEW.goLocal, VIEW.goModels, currentPlan('opencode') || 'go');
     // Without a measurement, show what the panel can estimate, never as a reading.
     const estimateOf = (agent, period) => {
       if (agent === 'claude') {
@@ -529,15 +552,29 @@
           && (r.label === period || (period === 'week' && r.label === '7d')));
         return Number.isFinite(record?.recordPct) ? { pct: record.recordPct, note: t('est_record') } : null;
       }
-      if (agent === 'opencode' && go && period !== '5h') return { pct: go[period], note: t('est_go') };
+      if (agent === 'opencode' && go) return { pct: go[period], note: t('est_go') };
       return null;
     };
-    const head = make('tr'); head.append(...['scope', ...PERIODS].map((k) => make('th', { scope: 'col' }, t(k))));
+    // One short hint under the row it belongs to, instead of a paragraph under the table.
+    const hintOf = (agent) => {
+      if (agent === 'claude' && !hasCurrent('claude')) return t('claude_setup');
+      if (agent === 'opencode' && !hasCurrent('opencode')) return t('go_manual');
+      if (agent === 'codex') {
+        return [VIEW.limitsError && fill(t('limits_error'), { error: VIEW.limitsError }),
+          VIEW.openAiViaChatGpt && t('billing_hint')].filter(Boolean).join(' ');
+      }
+      return '';
+    };
+    const table = make('table', { class: 'quota-table' });
+    const thead = make('thead');
+    const head = make('tr');
+    head.append(...['scope', ...PERIODS].map((k) => make('th', { scope: 'col' }, t(k))));
     thead.append(head);
     const body = make('tbody');
+    const nameCell = (agent, text) => make('th', { scope: 'row', class: 'quota-name', style: `--agent-color:${COLORS[agent]}` }, text);
     for (const agent of agents) {
       const row = make('tr', { 'data-agent': agent });
-      row.append(make('th', { scope: 'row', class: 'quota-name', style: `--agent-color:${COLORS[agent]}` }, scopeName(agent)));
+      row.append(nameCell(agent, scopeName(agent)));
       for (const period of PERIODS) {
         const r = windowOf(agent, period);
         const expired = Date.parse(r?.resetsAt) <= now;
@@ -548,16 +585,31 @@
         const valueClass = old || estimate ? ' quota-old' : shown >= .8 ? ' quota-high' : '';
         const reset = r?.resetsAt && fill(t('resets'), { date: stamp(r.resetsAt) });
         const date = r?.measuredAt && fill(t('reading'), { date: stamp(r.measuredAt) });
-        const note = expired ? t('reset_done') : old ? t('quota_old') : measured != null ? reset
+        const cellNote = expired ? t('reset_done') : old ? t('quota_old') : measured != null ? reset
           : estimate ? estimate.note
           : notInPlan[agent]?.includes(period) ? t('quota_na')
           : agent === 'codex' ? t('quota_not_reported') : t('quota_missing');
         const cell = make('td', { title: [r && t(`src_${r.source}`), date, reset].filter(Boolean).join(' · ') });
         cell.append(make('strong', { class: `quota-value${valueClass}` }, estimate ? `≈ ${pctText(shown)}` : pctText(shown)));
-        if (note) cell.append(make('span', { class: 'quota-note' }, note));
+        if (cellNote) cell.append(make('span', { class: 'quota-note' }, cellNote));
         row.append(cell);
       }
       body.append(row);
+      // Zen belongs to OpenCode but has no allowance: a row of its own under Go.
+      if (agent === 'opencode' && visible.includes('zen')) {
+        const zen = make('tr', { 'data-agent': 'zen', class: 'quota-sub' });
+        zen.append(nameCell('zen', agentName('zen')));
+        const cell = make('td', { colspan: String(PERIODS.length) });
+        cell.append(make('strong', { class: 'quota-value quota-old' }, '—'), make('span', { class: 'quota-note' }, t('zen_quota')));
+        zen.append(cell);
+        body.append(zen);
+      }
+      const hint = hintOf(agent);
+      if (hint) {
+        const tip = make('tr', { class: 'quota-hint' });
+        tip.append(make('td', { colspan: String(PERIODS.length + 1) }, hint));
+        body.append(tip);
+      }
     }
     table.append(thead, body);
     list.replaceChildren(table);
@@ -694,7 +746,6 @@
     $('modelRecommendation').replaceChildren(document.createTextNode(`${copy.model_recommendation} `),
       make('a', { href: '../../agent-hub/docs/benchmarks/README.md#results-so-far-2026-10-30' }, copy.benchmark));
     paintStamp();
-    paintSettings();
     paintScope();
     $('dailyChart').setAttribute('aria-label', copy.daily_title);
     $('hourlyChart').setAttribute('aria-label', copy.hourly_title);
@@ -702,7 +753,6 @@
     const currentMetric = state.metric;
     metricSelect.replaceChildren(...METRICS.map((metric) => make('option', { value: metric }, copy[metric])));
     metricSelect.value = currentMetric;
-    paintLegend($('hourlyLegend'), ['claude']);
     applyScope();
     $('footer').textContent = `${copy.generated.replace('{date}', LEDGER.generatedAt || '—')} ${copy.source}`;
   }

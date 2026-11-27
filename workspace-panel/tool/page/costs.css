@@ -91,3 +91,15 @@ td.rank-name { white-space: normal; min-width: 0; word-break: break-word; }
   .filter select { width: 100%; }
   .card { padding: 14px; }
 }
+
+/* Subscriptions: one chip each, with its plan and a remove button; '+ Add' lists the rest. */
+.sub-chip { border-left: 3px solid var(--agent-color) !important; }
+.chip-plan, .add-subscription { font: inherit; font-size: 12px; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0 2px; }
+.chip-remove { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+.chip-remove:hover, .chip-remove:focus-visible { color: #dc2626; }
+.add-subscription { border: 1px dashed var(--line); border-radius: 999px; padding: 4px 9px; color: var(--accent); }
+.quota-sub th { padding-left: 22px; font-weight: 600; }
+.quota-hint td { font-size: 11px; color: var(--muted); padding-top: 2px; padding-bottom: 8px; border-top: 0; }
+.agent-split { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.agent-stat { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+.agent-stat:first-of-type { margin-top: 10px; }

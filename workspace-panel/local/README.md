@@ -63,7 +63,7 @@ Related settings live in the environment, not here:
 
 ## Subscription limits
 
-Use **AI Usage → Settings** to select a plan in the browser, or set local defaults
+Use the **AI Usage** subscription chips to change a plan, remove one (×) or add one (**+ Add subscription**) in the browser, or set local defaults
 in `limits.json`, e.g. `{"opencode":{"plan":"go"},"claude":{"plan":"pro"}}`.
 Codex reports its plan automatically. Settings don't change the account measured.
 

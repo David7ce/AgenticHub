@@ -44,6 +44,35 @@ function goShare(local, models, plan) {
   return used ? { week, month } : null;
 }
 
+/**
+ * History of one subscription measured the same way for all: the day with
+ * most work and runs of consecutive days with any work. A streak is current
+ * while it reaches today or yesterday (today may not have started yet).
+ */
+function activityStats(rows, today) {
+  const byDay = new Map();
+  for (const row of rows) {
+    const value = workOf(row);
+    if (value > 0) byDay.set(row.date, (byDay.get(row.date) ?? 0) + value);
+  }
+  if (!byDay.size) return null;
+  const days = [...byDay.keys()].sort();
+  const next = (day) => new Date(Date.parse(`${day}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  let peakDay = days[0];
+  let longestStreak = 0;
+  let run = 0;
+  let previous = null;
+  for (const day of days) {
+    if (byDay.get(day) > byDay.get(peakDay)) peakDay = day;
+    run = previous && next(previous) === day ? run + 1 : 1;
+    longestStreak = Math.max(longestStreak, run);
+    previous = day;
+  }
+  const last = days[days.length - 1];
+  const current = last === today || next(last) === today ? run : 0;
+  return { peakDay, peakWork: byDay.get(peakDay), currentStreak: current, longestStreak, activeDays: days.length };
+}
+
 function billedRows(rows, openAiViaChatGpt) {
   return rows.map((row) => ({
     ...row, client: row.agent, agent: billingOf(row, openAiViaChatGpt),
