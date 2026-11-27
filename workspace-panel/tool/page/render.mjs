@@ -5,7 +5,7 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { buildCostsView, summarizeUsage } from '../lib/costs.mjs';
+import { buildCostsView, subscriptionHistory, summarizeUsage } from '../lib/costs.mjs';
 import { DIST_DIR } from '../lib/paths.mjs';
 import { CLAUDE_LIVE_PATH, claudeLiveScript, readClaudeUsage } from '../lib/subscription-usage.mjs';
 import { OWNER_ICONS, PROJECT_ICONS } from './icons.mjs';
@@ -57,6 +57,7 @@ export function writeSite(rows, days, meta, ledger = null, activity = null) {
   const notesHtml = renderNotesPage({ notes, generatedAt: meta.generatedAt });
   const homeHtml = renderHomePage(summarizeHome({
     rows,
+    usageRows: subscriptionHistory(data),
     usageSummary: summarizeUsage(data),
     limits: data.limits ?? null,
     notes,

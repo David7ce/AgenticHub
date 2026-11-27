@@ -56,14 +56,8 @@ footer { padding: 0 4px; color: var(--faint); font-size: 11px; }
 .usage-settings { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 .usage-settings summary { cursor: pointer; font-weight: 700; }
 .scope-field { border: 0; padding: 0; margin: 10px 0 0; }
-.scope-field legend, .model-scope summary { font-size: 12px; font-weight: 700; color: var(--muted); }
+.scope-field legend { font-size: 12px; font-weight: 700; color: var(--muted); }
 .scope-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
-.scope-toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
-.scope-toggles label:has(:checked) { color: var(--ink); border-color: var(--accent); background: var(--panel); }
-.scope-toggles input { margin: 0; accent-color: var(--accent); }
-.model-scope { margin-top: 7px; }
-.model-scope summary { cursor: pointer; }
-.model-scope .scope-field { margin-top: 6px; }
 .recommendation { margin-top: 12px; }
 .usage-options { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; align-items: center; }
 .usage-breakdown summary { cursor: pointer; font-weight: 800; }

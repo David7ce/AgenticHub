@@ -2,6 +2,12 @@
 // refresh command. `HOME` is the inline data block; `initShell` and `formatNumber`
 // come from the shared scripts.
 
+// Product names, not translated.
+const PLAN_NAMES = {
+  go: 'Go', 'go-plus': 'Go Plus', 'go-teams': 'Go Teams', plus: 'Plus', pro: 'Pro', max: 'Max',
+  ultra: 'Ultra', team: 'Team', enterprise: 'Enterprise', edu: 'Edu', zen: 'Zen',
+};
+
 const HOME_COPY = {
   es: {
     repos: 'Repositorios', dirty: 'con cambios sin commit', ahead: 'con commits por subir', noRemote: 'sin remoto',
@@ -10,8 +16,13 @@ const HOME_COPY = {
     refresh: 'Actualizar el panel', copy: 'Copiar', copied: 'Copiado', copyFailed: 'No se pudo copiar',
     refreshNote: 'Desde D:\\Workspaces. Gasto, páginas y notas; la tarea Workspaces-Refresh lo hace cada hora.',
     noData: 'sin datos', codexWeek: 'Codex, semana', claudeWeek: 'Claude, 7 días', tokens: 'tokens de trabajo',
+    weekly: 'Uso semanal por suscripción',
+    weeklyNote: 'Tokens locales de los últimos 7 días y el porcentaje que cada plan reporta de su ventana semanal.',
+    weeklyDetails: 'Ver en Uso de IA',
+    measured: 'medido', estimated: 'estimado', record: 'tu récord', manual: 'copiado de la consola',
+    free: 'gratis', noReading: 'sin lectura',
     stale: 'más de 6 h de antigüedad — ejecuta el comando de abajo', built: 'Generado',
-    agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'Codex' },
+    agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', zen: 'OpenCode Zen' },
   },
   en: {
     repos: 'Repositories', dirty: 'with uncommitted changes', ahead: 'with commits to push', noRemote: 'without a remote',
@@ -20,8 +31,13 @@ const HOME_COPY = {
     refresh: 'Update the panel', copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy',
     refreshNote: 'From D:\\Workspaces. Spend, pages and notes; the Workspaces-Refresh task does it every hour.',
     noData: 'no data', codexWeek: 'Codex, week', claudeWeek: 'Claude, 7 days', tokens: 'work tokens',
+    weekly: 'Weekly use per subscription',
+    weeklyNote: 'Local work tokens for the last 7 days and the percentage each plan reports for its weekly window.',
+    weeklyDetails: 'Open AI Usage',
+    measured: 'measured', estimated: 'estimated', record: 'your record', manual: 'copied from the console',
+    free: 'free', noReading: 'no reading',
     stale: 'over 6 h old — run the command below', built: 'Built',
-    agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'Codex' },
+    agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', zen: 'OpenCode Zen' },
   },
 };
 
@@ -31,6 +47,45 @@ const HOME_COPY = {
     const built = Date.parse(HOME.generatedAtIso || '');
     return Number.isFinite(built) && Date.now() - built > 6 * 3600 * 1000;
   };
+
+  /** Seven daily points, drawn inline: no canvas and no extra request on file://. */
+  function sparkline(item, label) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const short = (n) => (typeof shortTokens === 'function' ? shortTokens(n) : String(n));
+    const width = 132;
+    const height = 34;
+    const pad = 3;
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('class', 'spark');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', label);
+    const max = Math.max(1, ...item.days);
+    const step = item.days.length > 1 ? (width - pad * 2) / (item.days.length - 1) : 0;
+    const points = item.days.map((value, i) => [pad + i * step, height - pad - (value / max) * (height - pad * 2)]);
+    const line = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+    const area = document.createElementNS(ns, 'polygon');
+    area.setAttribute('class', 'spark-area');
+    area.setAttribute('points', `${pad},${height - pad} ${line} ${width - pad},${height - pad}`);
+    const poly = document.createElementNS(ns, 'polyline');
+    poly.setAttribute('class', 'spark-line');
+    poly.setAttribute('points', line);
+    svg.append(area, poly);
+    const dates = HOME.weekly?.dates ?? [];
+    points.forEach(([x, y], i) => {
+      const dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      dot.setAttribute('r', '1.8');
+      const tip = document.createElementNS(ns, 'title');
+      const day = dates[i] ? new Intl.DateTimeFormat(lang, { day: '2-digit', month: 'short', timeZone: 'UTC' })
+        .format(new Date(`${dates[i]}T12:00:00Z`)) : '';
+      tip.textContent = `${day}: ${short(item.days[i])}`;
+      dot.append(tip);
+      svg.append(dot);
+    });
+    return svg;
+  }
 
   function paint(lang) {
     const t = HOME_COPY[lang] || HOME_COPY.es;
@@ -55,6 +110,58 @@ const HOME_COPY = {
     }
     if (HOME.ia.claudeWeek !== null) add(`${t.claudeWeek}: <b>${short(HOME.ia.claudeWeek)}</b>`);
     if (!list.children.length) add(t.noData);
+
+    // One line per subscription: weekly work tokens, its plan reading and seven days.
+    const weeklyItems = HOME.weekly?.items ?? [];
+    $('weekly').hidden = !weeklyItems.length;
+    const pctLabel = (item) => {
+      if (item.pct == null) return '—';
+      const value = new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 1 }).format(item.pct);
+      return `${item.pctKind === 'measured' ? '' : '≈ '}${value}`;
+    };
+    $('weeklyList').replaceChildren(...weeklyItems.map((item) => {
+      const name = t.agents[item.agent] || item.agent;
+      const plan = item.agent === 'zen' ? '' : (PLAN_NAMES[item.plan] || item.plan || '');
+      const row = document.createElement('li');
+      row.className = 'weekly-row';
+      row.style.setProperty('--agent-color', `var(--${item.agent})`);
+
+      const head = document.createElement('div');
+      head.className = 'weekly-name';
+      const title = document.createElement('b');
+      title.textContent = plan ? `${name} · ${plan}` : name;
+      const source = document.createElement('span');
+      source.className = 'weekly-src';
+      source.textContent = item.pctKind === 'free' ? t.free : (t[item.pctKind] || t.noReading);
+      head.append(title, source);
+
+      const tokens = document.createElement('div');
+      tokens.className = 'weekly-tokens';
+      const amount = document.createElement('b');
+      amount.textContent = short(item.tokens);
+      amount.title = num(item.tokens);
+      const unit = document.createElement('small');
+      unit.textContent = t.tokens;
+      tokens.append(amount, unit);
+
+      const pct = document.createElement('div');
+      pct.className = 'weekly-pct';
+      const value = document.createElement('b');
+      value.textContent = pctLabel(item);
+      pct.append(value);
+      if (item.pct != null) {
+        const meter = document.createElement('span');
+        meter.className = 'meter';
+        meter.setAttribute('aria-hidden', 'true');
+        const filled = document.createElement('span');
+        filled.style.width = `${Math.max(0, Math.min(100, item.pct * 100)).toFixed(1)}%`;
+        meter.append(filled);
+        pct.append(meter);
+      }
+
+      row.append(head, tokens, pct, sparkline(item, `${title.textContent}: ${t.tokens} ${short(item.tokens)} · ${pctLabel(item)}`));
+      return row;
+    }));
 
     $('copyBtn').textContent = t.copy;
     return t;

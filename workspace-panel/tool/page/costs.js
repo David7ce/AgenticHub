@@ -29,13 +29,12 @@
       stale: 'over 6 h old — run: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Account limits',
       add_subscription: '+ Add subscription', remove_subscription: 'Remove {name}', plan_of: '{name} plan',
-      plan_menu: 'Plan', zen_plan: 'Zen only (free)',
+      plan_menu: 'Plan', zen_plan: 'OpenCode Zen (free)',
       show_subscription: 'Show or hide {name}', zen_quota: 'No allowance · free or pay-as-you-go',
       peak_day: 'Peak day: {day} · {amount}', streak: 'Streak: {current} · best {longest}',
       account_line: 'Account ({date}): {lifetime} lifetime · peak {peak}', detected: 'detected',
-      room_hint: 'Provider figures, separate from local usage.',
+      room_hint: 'Provider figures, separate from local usage. Reading them does not spend quota.',
       scope: 'Subscriptions', plan_off: 'Not subscribed', no_subscriptions: 'No subscriptions selected.',
-      model_filters: 'Filter by model',
       billing_hint: 'OpenCode’s current ChatGPT OAuth connection is used to infer attribution for OpenAI history when billing metadata is missing.',
       model_recommendation: 'Quality for cost: start with DeepSeek V4.1 Flash on Go for routine coding (15/15 in the local benchmark). Try Sonnet on Claude or a Codex model you already pay for if the first pass fails. Pick by results per task, not token volume.',
       benchmark: 'Local benchmark',
@@ -107,13 +106,12 @@
       stale: 'más de 6 h de antigüedad — ejecuta: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Cuota de la cuenta',
       add_subscription: '+ Añadir suscripción', remove_subscription: 'Quitar {name}', plan_of: 'Plan de {name}',
-      plan_menu: 'Plan', zen_plan: 'Solo Zen (gratis)',
+      plan_menu: 'Plan', zen_plan: 'OpenCode Zen (gratis)',
       show_subscription: 'Mostrar u ocultar {name}', zen_quota: 'Sin cuota · gratis o pago por uso',
       peak_day: 'Día pico: {day} · {amount}', streak: 'Racha: {current} · máx. {longest}',
       account_line: 'Cuenta ({date}): {lifetime} acumulados · pico {peak}', detected: 'detectado',
-      room_hint: 'Datos del proveedor, separados del uso local.',
+      room_hint: 'Datos del proveedor, separados del uso local. Consultarlos no consume cuota.',
       scope: 'Suscripciones', plan_off: 'No tengo suscripción', no_subscriptions: 'No hay suscripciones seleccionadas.',
-      model_filters: 'Filtrar por modelo',
       billing_hint: 'La conexión actual de OpenCode por OAuth de ChatGPT se usa para inferir a qué plan pertenece el historial OpenAI cuando el registro no indica quién lo cubrió.',
       model_recommendation: 'Calidad-precio: empieza con DeepSeek V4.1 Flash en Go para código habitual (15/15 en el benchmark local). Si no resuelve la tarea, prueba Sonnet en Claude o un modelo de Codex que ya pagues. Compara resultados por tarea, no volumen de tokens.',
       benchmark: 'Benchmark local',
@@ -168,7 +166,7 @@
   const AGENTS = [...SUBSCRIPTIONS, ...UNPLANNED];
   const PLANS = {
     opencode: { go: 'Go', 'go-plus': 'Go Plus', 'go-teams': 'Go Teams', zen: 'Zen' },
-    codex: { free: 'Free', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', enterprise: 'Enterprise', edu: 'Edu' },
+    codex: { go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', enterprise: 'Enterprise', edu: 'Edu' },
     claude: { pro: 'Pro', max: 'Max', ultra: 'Ultra', team: 'Team', enterprise: 'Enterprise' },
   };
   const planChoice = Object.fromEntries(SUBSCRIPTIONS.map((agent) => [agent, readStored(`usage.plan.${agent}`)]));
@@ -181,11 +179,14 @@
   const removed = (agent) => planChoice[agent] === 'off';
   // OpenCode is one subscription: 'zen' keeps only the free Zen group and drops Go.
   const zenOnly = () => planChoice.opencode === 'zen';
-  // A subscription is listed when its plan is known or it has usage, unless it was removed.
+  // Current subscriptions come from the plan the panel can detect; without one, recent
+  // usage is the evidence (last 7 days, the same window the plans report).
+  const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
+  const recentlyUsed = (agent) => rows.some((r) => r.agent === agent && r.date >= weekAgo);
   const hasSubscription = (agent) => !removed(agent)
-    && Boolean(currentPlan(agent) || rows.some((r) => r.agent === agent));
+    && Boolean(currentPlan(agent) || recentlyUsed(agent));
   const enabledAgents = () => AGENTS.filter((agent) => {
-    if (agent === 'zen') return !removed('opencode') && (zenOnly() || rows.some((r) => r.agent === 'zen'));
+    if (agent === 'zen') return !removed('opencode') && (zenOnly() || recentlyUsed('zen'));
     if (agent === 'opencode') return !zenOnly() && hasSubscription(agent);
     return hasSubscription(agent);
   });
@@ -194,7 +195,7 @@
   const visibleAgents = () => enabledAgents().filter((agent) => !hiddenSubscriptions.has(scopeKey(agent)));
   const visibleRows = () => {
     const active = new Set(visibleAgents());
-    return rows.filter((row) => active.has(row.agent) && !hiddenModels.has(modelScopeKey(row)));
+    return rows.filter((row) => active.has(row.agent));
   };
   const METRICS = ['work_tokens', 'cache_read_tokens', 'cache_write_tokens', 'input_tokens', 'output_tokens', 'reasoning_tokens', 'unknown_tokens'];
   const state = { lang: shellLang(), metric: 'work_tokens', range: null };
@@ -205,7 +206,6 @@
     catch { return new Set(); }
   };
   const hiddenSubscriptions = storedSet('usage.hiddenSubscriptions');
-  const hiddenModels = storedSet('usage.hiddenModels');
   const $ = (id) => document.getElementById(id);
   const t = (key) => COPY[state.lang][key];
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
@@ -507,8 +507,9 @@
     }
     const chosen = selectedPlan(agent);
     for (const id of Object.keys(PLANS[agent])) {
-      const auto = !chosen && id === detected;
-      menu.append(menuItem(auto ? `${planLabel(agent, id)} · ${t('detected')}` : planLabel(agent, id), {
+      const suffix = !chosen && id === detectedPlan(agent) ? ` · ${t('detected')}`
+        : !chosen && id === configuredPlan(agent) ? ` · ${t('configured')}` : '';
+      menu.append(menuItem(`${planLabel(agent, id)}${suffix}`, {
         checked: id === chosen, onSelect: () => choosePlan(agent, id),
       }));
     }
@@ -575,48 +576,6 @@
       chips.push(slot);
     }
     $('scope').replaceChildren(...chips);
-    paintModelScope();
-  }
-
-  function toggle(text, id, hidden, storage, change) {
-    const label = make('label');
-    const input = make('input', { type: 'checkbox', value: id });
-    input.checked = !hidden.has(id);
-    input.onchange = () => {
-      if (input.checked) hidden.delete(id);
-      else hidden.add(id);
-      writeStored(storage, JSON.stringify([...hidden]));
-      change();
-    };
-    label.append(input, document.createTextNode(text));
-    return label;
-  }
-
-  function paintModelScope() {
-    $('modelScopeTitle').textContent = t('model_filters');
-    const lists = [];
-    for (const agent of visibleAgents()) {
-      const models = new Map(rows.filter((r) => r.agent === agent).map((r) => [modelScopeKey(r), r.model]));
-      if (!models.size) continue;
-      const field = make('fieldset', { class: 'scope-field' });
-      const group = make('div', { class: 'scope-toggles' });
-      group.append(...[...models.entries()].sort((a, b) => a[1].localeCompare(b[1], state.lang))
-        .map(([id, name]) => {
-          const chip = toggle(name, id, hiddenModels, 'usage.hiddenModels', applyScope);
-          const plan = currentPlan('opencode') || 'go';
-          const rate = agent === 'opencode' && goPrices.get(name);
-          const month = rate && rate.monthly[plan];
-          if (month) chip.title = [[t('week'), month / 2], [t('month'), month]].map(([period, limit]) =>
-            `${period}: ${usd(limit)} · ${fill(t('go_equivalent'), {
-              input: short(limit * 1e6 / rate.input), output: short(limit * 1e6 / rate.output),
-            })}`).join('\n');
-          return chip;
-        }));
-      field.append(make('legend', {}, scopeName(agent)), group);
-      lists.push(field);
-    }
-    $('modelScope').hidden = !lists.length;
-    $('modelToggles').replaceChildren(...lists);
   }
 
   function applyScope() {
