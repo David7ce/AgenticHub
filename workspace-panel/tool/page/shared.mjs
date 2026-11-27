@@ -122,7 +122,7 @@ export function renderDocument(template, tab, { data = {}, slots = {}, ...option
   try { new Function([script, ...sources].join('\n')); }
   catch (error) { throw new Error(`${tab} page script does not parse: ${error.message}`); }
   let html = template.replace('<!--PAGE_DATA-->', () => script ? `<script>\n${script}\n</script>` : '')
-    .replace('{{PAGE_TITLE}}', () => `Panel Workspaces · ${titles[tab]}`);
+    .replace('{{PAGE_TITLE}}', () => `Workspaces Panel · ${titles[tab]}`);
   for (const [marker, content] of Object.entries(slots)) html = html.replace(marker, () => content);
   return applyShell(html, tab, options);
 }

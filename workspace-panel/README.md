@@ -65,7 +65,7 @@ shown apart because they barely cost allowance.
 
 ## Output
 
-The pages are one panel, **Panel Workspaces** (English: **Workspaces Panel**), with the same header: the brand (icon + name) links
+The pages are one panel, **Workspaces Panel**, with the same header: the brand (icon + name) links
 to Inicio (`workspace-panel/index.html`); the tabs are **Repositories** (`dist/index.html`), **AI Usage**
 (`ai-usage.html`) and **Roadmap** (`notes.html`, which also holds Handoff and Journal), ES/EN
 (Spanish by default) and light/dark. The choice is stored under `lang` / `theme`

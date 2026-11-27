@@ -4,9 +4,9 @@
 
 const SHELL_COPY = {
   es: {
-    title: 'Panel Workspaces', homeLabel: 'Panel Workspaces, inicio', tabRepos: 'Repositorios', tabIa: 'Uso de IA', tabNotes: 'Roadmap', skip: 'Saltar al contenido',
+    title: 'Workspaces Panel', homeLabel: 'Workspaces Panel, inicio', tabRepos: 'Repositorios', tabIa: 'Uso de IA', tabNotes: 'Roadmap', skip: 'Saltar al contenido',
     toLight: 'Cambiar a tema claro', toDark: 'Cambiar a tema oscuro', iconLight: '☀', iconDark: '☽',
-    pageHome: 'Panel Workspaces · Inicio', pageRepos: 'Panel Workspaces · Repositorios', pageIa: 'Panel Workspaces · Uso de IA', pageNotes: 'Panel Workspaces · Roadmap',
+    pageHome: 'Workspaces Panel · Inicio', pageRepos: 'Workspaces Panel · Repositorios', pageIa: 'Workspaces Panel · Uso de IA', pageNotes: 'Workspaces Panel · Roadmap',
   },
   en: {
     title: 'Workspaces Panel', homeLabel: 'Workspaces Panel, home', tabRepos: 'Repositories', tabIa: 'AI Usage', tabNotes: 'Roadmap', skip: 'Skip to content',
