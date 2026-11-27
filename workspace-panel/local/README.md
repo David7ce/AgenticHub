@@ -105,7 +105,11 @@ Set its `statusLine` command to the absolute path to the included script, for ex
 ```
 
 If you already have a status line, integrate the helper into it rather than
-overwriting your settings. When Claude Code passes its rate-limit data to the
+overwriting your settings. **Only the terminal CLI runs it:** the VS Code extension
+does not execute `statusLine` (checked 2026-11-27 with 2.1.332, `entrypoint:
+claude-vscode`), and `claude -p` has no status line either. A reading therefore
+needs an interactive `claude` session in a terminal after at least one reply;
+the snapshot then stays valid until each window resets. When Claude Code passes its rate-limit data to the
 status line, the helper exports only the percentage used, observation time and
 reset time per window. The visible AI Usage page re-reads this local snapshot once
 a minute and when you return to the tab. No service, manual refresh or extra
