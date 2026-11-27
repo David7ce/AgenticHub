@@ -118,10 +118,14 @@ one file.
 | `stars`                            | From the `stars` cache, or `null`.                                                                                                                          |
 - `dist/ai-usage.html` (IA) — offline page, same shared assets:
   - **Account limits**: one compact row per active subscription, week and month only.
-    Missing or expired readings show `—`, not 0%; old readings are marked. The
-    multi-select subscription and model toggles filter the history, including the
-    calendar, but not the provider's account-wide percentages. Choose
-    **Not subscribed** in Settings to hide a provider without deleting history.
+    Missing or expired readings show `—`, not 0%; old readings are marked. Each
+    subscription is a chip: click it to show or hide it (struck through when hidden)
+    and use its caret menu for the plan and **Remove subscription**; the model
+    toggles below filter the history, including the calendar, but not the provider's
+    account-wide percentages. **+ Add subscription** re-adds a removed one, grouped
+    by provider, and **Auto** returns a plan to what the panel detects. OpenCode is
+    one subscription whose menu includes **Zen only (free)**. Removing a provider
+    hides it without deleting history.
     The visible page re-reads locally published figures once a minute: Claude from
     the status line and other providers when the regular refresh publishes new data.
     This does not query providers from the browser or start a service.

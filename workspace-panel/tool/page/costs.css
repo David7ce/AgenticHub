@@ -92,12 +92,44 @@ td.rank-name { white-space: normal; min-width: 0; word-break: break-word; }
   .card { padding: 14px; }
 }
 
-/* Subscriptions: one chip each, with its plan and a remove button; '+ Add' lists the rest. */
-.sub-chip { border-left: 3px solid var(--agent-color) !important; }
-.chip-plan, .add-subscription { font: inherit; font-size: 12px; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0 2px; }
-.chip-remove { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
-.chip-remove:hover, .chip-remove:focus-visible { color: #dc2626; }
-.add-subscription { border: 1px dashed var(--line); border-radius: 999px; padding: 4px 9px; color: var(--accent); }
+/* Subscriptions: a pill to show or hide one, a caret for its plans (custom menu, so it
+   follows the dark theme), and '+ Add' listing the subscriptions that are missing. */
+.scope-toggles { align-items: center; }
+.sub-chip, .sub-add { position: relative; display: inline-flex; align-items: stretch; }
+.sub-chip { border: 1px solid var(--line); border-left: 3px solid var(--agent-color); border-radius: 999px; background: var(--panel); }
+.chip-toggle, .chip-menu-btn {
+  font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--ink);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip-toggle { padding: 4px 2px 4px 9px; border-radius: 999px 0 0 999px; }
+.chip-plan-name { color: var(--muted); font-size: 11px; }
+.chip-menu-btn { padding: 4px 8px 4px 4px; border-radius: 0 999px 999px 0; color: var(--muted); }
+.chip-toggle:hover, .chip-menu-btn:hover, .chip-toggle:focus-visible, .chip-menu-btn:focus-visible { background: var(--hover); color: var(--ink); }
+.sub-chip.is-off .chip-toggle { color: var(--off); text-decoration: line-through; }
+.chip-menu {
+  position: absolute; top: calc(100% + 5px); left: 0; z-index: 30; min-width: 190px; max-height: 62vh;
+  overflow: auto; padding: 5px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); box-shadow: 0 10px 26px rgb(0 0 0 / .28);
+}
+.chip-menu[hidden] { display: none; }
+.chip-menu-head { padding: 5px 8px; color: var(--faint); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.chip-menu-group { padding: 6px 8px 2px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.chip-menu-item {
+  display: flex; width: 100%; align-items: center; gap: 6px; padding: 6px 8px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--ink);
+  font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+.chip-menu-item:hover, .chip-menu-item:focus-visible { background: var(--hover); }
+.chip-menu-check { width: 12px; color: var(--accent); font-size: 11px; }
+.chip-menu-sep { height: 1px; margin: 5px 4px; background: var(--line); }
+.chip-menu-item.danger { color: var(--danger); }
+.chip-menu-item.danger:hover, .chip-menu-item.danger:focus-visible { background: var(--danger-soft); }
+.chip-menu-add { min-width: 210px; }
+.add-subscription {
+  font: inherit; font-size: 12px; cursor: pointer; border: 1px dashed var(--line);
+  border-radius: 999px; padding: 4px 10px; background: transparent; color: var(--accent);
+}
+.add-subscription:hover, .add-subscription:focus-visible { background: var(--hover); }
 .quota-sub th { padding-left: 22px; font-weight: 600; }
 .quota-hint td { font-size: 11px; color: var(--muted); padding-top: 2px; padding-bottom: 8px; border-top: 0; }
 .agent-split { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11px; color: var(--muted); }

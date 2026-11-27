@@ -29,6 +29,7 @@
       stale: 'over 6 h old — run: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Account limits',
       add_subscription: '+ Add subscription', remove_subscription: 'Remove {name}', plan_of: '{name} plan',
+      plan_menu: 'Plan', zen_plan: 'Zen only (free)',
       show_subscription: 'Show or hide {name}', zen_quota: 'No allowance · free or pay-as-you-go',
       peak_day: 'Peak day: {day} · {amount}', streak: 'Streak: {current} · best {longest}',
       account_line: 'Account ({date}): {lifetime} lifetime · peak {peak}', detected: 'detected',
@@ -106,6 +107,7 @@
       stale: 'más de 6 h de antigüedad — ejecuta: node workspace-panel/tool/cli.mjs refresh',
       room_title: 'Cuota de la cuenta',
       add_subscription: '+ Añadir suscripción', remove_subscription: 'Quitar {name}', plan_of: 'Plan de {name}',
+      plan_menu: 'Plan', zen_plan: 'Solo Zen (gratis)',
       show_subscription: 'Mostrar u ocultar {name}', zen_quota: 'Sin cuota · gratis o pago por uso',
       peak_day: 'Día pico: {day} · {amount}', streak: 'Racha: {current} · máx. {longest}',
       account_line: 'Cuenta ({date}): {lifetime} acumulados · pico {peak}', detected: 'detectado',
@@ -165,7 +167,7 @@
   const UNPLANNED = ['zen', 'other'];
   const AGENTS = [...SUBSCRIPTIONS, ...UNPLANNED];
   const PLANS = {
-    opencode: { go: 'Go', 'go-plus': 'Go Plus', 'go-teams': 'Go Teams' },
+    opencode: { go: 'Go', 'go-plus': 'Go Plus', 'go-teams': 'Go Teams', zen: 'Zen' },
     codex: { free: 'Free', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', enterprise: 'Enterprise', edu: 'Edu' },
     claude: { pro: 'Pro', max: 'Max', ultra: 'Ultra', team: 'Team', enterprise: 'Enterprise' },
   };
@@ -173,12 +175,20 @@
   const detectedPlan = (agent) => VIEW.detectedPlans?.[agent];
   const configuredPlan = (agent) => VIEW.configuredPlans?.[agent];
   const selectedPlan = (agent) => PLANS[agent]?.[planChoice[agent]] ? planChoice[agent] : null;
-  const planName = (agent, plan) => PLANS[agent]?.[plan] ?? plan;
+  const planLabel = (agent, plan) => (agent === 'opencode' && plan === 'zen' ? t('zen_plan') : PLANS[agent]?.[plan] ?? plan);
+  const planName = (agent, plan) => (plan ? planLabel(agent, plan) : plan);
   const currentPlan = (agent) => selectedPlan(agent) || configuredPlan(agent) || detectedPlan(agent) || null;
+  const removed = (agent) => planChoice[agent] === 'off';
+  // OpenCode is one subscription: 'zen' keeps only the free Zen group and drops Go.
+  const zenOnly = () => planChoice.opencode === 'zen';
   // A subscription is listed when its plan is known or it has usage, unless it was removed.
-  const hasSubscription = (agent) => planChoice[agent] !== 'off'
+  const hasSubscription = (agent) => !removed(agent)
     && Boolean(currentPlan(agent) || rows.some((r) => r.agent === agent));
-  const enabledAgents = () => AGENTS.filter((agent) => UNPLANNED.includes(agent) ? rows.some((r) => r.agent === agent) : hasSubscription(agent));
+  const enabledAgents = () => AGENTS.filter((agent) => {
+    if (agent === 'zen') return !removed('opencode') && (zenOnly() || rows.some((r) => r.agent === 'zen'));
+    if (agent === 'opencode') return !zenOnly() && hasSubscription(agent);
+    return hasSubscription(agent);
+  });
   // Zen is shown and hidden together with OpenCode: same client, its own billing.
   const scopeKey = (agent) => (agent === 'zen' ? 'opencode' : agent);
   const visibleAgents = () => enabledAgents().filter((agent) => !hiddenSubscriptions.has(scopeKey(agent)));
@@ -416,53 +426,153 @@
     return [agentName(agent), planName(agent, plan)].filter(Boolean).join(' · ');
   }
 
+  // One menu at a time, closed by Escape or a click outside; it replaces native selects,
+  // which keep their light popup under a dark page.
+  let openMenu = null;
+  function closeMenus() {
+    if (!openMenu) return;
+    openMenu.menu.hidden = true;
+    openMenu.button.setAttribute('aria-expanded', 'false');
+    openMenu = null;
+  }
+  function bindMenu(button, menu) {
+    menu.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      const items = [...menu.querySelectorAll('.chip-menu-item')];
+      if (!items.length) return;
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus();
+    });
+    button.onclick = (event) => {
+      event.preventDefault();
+      const reopening = openMenu?.menu === menu;
+      closeMenus();
+      if (reopening) return;
+      menu.hidden = false;
+      menu.style.left = '';
+      menu.style.right = '';
+      // Near the right edge, open towards the left instead of running off the page.
+      if (menu.getBoundingClientRect().right > document.documentElement.clientWidth - 8) {
+        menu.style.left = 'auto';
+        menu.style.right = '0';
+      }
+      button.setAttribute('aria-expanded', 'true');
+      openMenu = { button, menu };
+      menu.querySelector('.chip-menu-item')?.focus();
+    };
+  }
+  function menuItem(label, { checked = false, danger = false, onSelect }) {
+    const item = make('button', {
+      type: 'button', class: `chip-menu-item${danger ? ' danger' : ''}`, role: danger ? 'menuitem' : 'menuitemradio',
+    });
+    if (danger) item.setAttribute('role', 'menuitem');
+    else {
+      item.setAttribute('aria-checked', String(checked));
+      item.append(make('span', { class: 'chip-menu-check', 'aria-hidden': 'true' }, checked ? '✓' : ''));
+    }
+    item.append(document.createTextNode(label));
+    item.onclick = (event) => { event.preventDefault(); onSelect(); };
+    return item;
+  }
+  function choosePlan(agent, plan) {
+    planChoice[agent] = plan;
+    writeStored(`usage.plan.${agent}`, plan);
+    hiddenSubscriptions.delete(agent);
+    writeStored('usage.hiddenSubscriptions', JSON.stringify([...hiddenSubscriptions]));
+    closeMenus();
+    paintScope();
+    applyScope();
+    document.querySelector(`.sub-chip[data-agent="${agent}"] .chip-toggle`)?.focus();
+  }
+  function removeAgent(agent) {
+    planChoice[agent] = 'off';
+    writeStored(`usage.plan.${agent}`, 'off');
+    hiddenSubscriptions.delete(agent);
+    writeStored('usage.hiddenSubscriptions', JSON.stringify([...hiddenSubscriptions]));
+    closeMenus();
+    paintScope();
+    applyScope();
+    document.querySelector('#scope .add-subscription')?.focus();
+  }
+  function planMenu(agent) {
+    const name = agentName(agent);
+    const menu = make('div', { class: 'chip-menu', role: 'menu', 'aria-label': fill(t('plan_of'), { name }), hidden: '' });
+    menu.append(make('div', { class: 'chip-menu-head' }, t('plan_menu')));
+    const detected = detectedPlan(agent) || configuredPlan(agent);
+    if (detected) {
+      menu.append(menuItem(`${t('automatic')} · ${planLabel(agent, detected)}`, {
+        checked: !selectedPlan(agent), onSelect: () => choosePlan(agent, ''),
+      }));
+    }
+    const chosen = selectedPlan(agent);
+    for (const id of Object.keys(PLANS[agent])) {
+      const auto = !chosen && id === detected;
+      menu.append(menuItem(auto ? `${planLabel(agent, id)} · ${t('detected')}` : planLabel(agent, id), {
+        checked: id === chosen, onSelect: () => choosePlan(agent, id),
+      }));
+    }
+    menu.append(make('div', { class: 'chip-menu-sep', role: 'separator' }));
+    menu.append(menuItem(fill(t('remove_subscription'), { name }), { danger: true, onSelect: () => removeAgent(agent) }));
+    return menu;
+  }
+  function addMenu(missing) {
+    const menu = make('div', { class: 'chip-menu chip-menu-add', role: 'menu', 'aria-label': t('add_subscription'), hidden: '' });
+    menu.append(make('div', { class: 'chip-menu-head' }, t('add_subscription')));
+    for (const agent of missing) {
+      menu.append(make('div', { class: 'chip-menu-group', role: 'presentation' }, agentName(agent)));
+      for (const id of Object.keys(PLANS[agent])) {
+        menu.append(menuItem(planLabel(agent, id), { onSelect: () => choosePlan(agent, id) }));
+      }
+    }
+    return menu;
+  }
+
   function paintScope() {
     $('scopeLabel').textContent = t('scope');
-    const present = SUBSCRIPTIONS.filter((agent) => hasSubscription(agent)
-      || (agent === 'opencode' && enabledAgents().includes('zen')));
-    const changed = () => { paintScope(); applyScope(); };
+    closeMenus();
+    const present = SUBSCRIPTIONS.filter((agent) => hasSubscription(agent));
     const chips = present.map((agent) => {
       const name = agentName(agent);
-      const chip = toggle(name, agent, hiddenSubscriptions, 'usage.hiddenSubscriptions', () => { paintModelScope(); applyScope(); });
-      chip.classList.add('sub-chip');
-      chip.style.setProperty('--agent-color', COLORS[agent]);
-      chip.querySelector('input').setAttribute('aria-label', fill(t('show_subscription'), { name }));
-      if (hasSubscription(agent)) {
-        const plan = make('select', { class: 'chip-plan', 'aria-label': fill(t('plan_of'), { name }) });
-        const current = currentPlan(agent);
-        if (!current) plan.append(make('option', { value: '' }, t('unknown_plan')));
-        for (const [id, label] of Object.entries(PLANS[agent])) {
-          const auto = !selectedPlan(agent) && id === detectedPlan(agent);
-          plan.append(make('option', { value: id }, auto ? `${label} · ${t('detected')}` : label));
-        }
-        plan.value = current || '';
-        plan.onchange = () => { planChoice[agent] = plan.value; writeStored(`usage.plan.${agent}`, plan.value); changed(); };
-        const removeLabel = fill(t('remove_subscription'), { name });
-        const remove = make('button', { type: 'button', class: 'chip-remove', 'aria-label': removeLabel, title: removeLabel }, '×');
-        remove.onclick = (event) => { event.preventDefault(); planChoice[agent] = 'off'; writeStored(`usage.plan.${agent}`, 'off'); changed(); };
-        chip.append(plan, remove);
-      }
+      const off = hiddenSubscriptions.has(agent);
+      const chip = make('div', {
+        class: `sub-chip${off ? ' is-off' : ''}`, 'data-agent': agent, style: `--agent-color:${COLORS[agent]}`,
+      });
+      const pill = make('button', {
+        type: 'button', class: 'chip-toggle', 'aria-pressed': String(!off),
+        title: fill(t('show_subscription'), { name }),
+      });
+      pill.append(make('span', { class: 'chip-name' }, name));
+      const plan = currentPlan(agent);
+      pill.append(make('span', { class: 'chip-plan-name' }, plan ? planLabel(agent, plan) : t('unknown_plan')));
+      pill.onclick = () => {
+        closeMenus();
+        if (hiddenSubscriptions.has(agent)) hiddenSubscriptions.delete(agent);
+        else hiddenSubscriptions.add(agent);
+        writeStored('usage.hiddenSubscriptions', JSON.stringify([...hiddenSubscriptions]));
+        paintScope();
+        applyScope();
+        document.querySelector(`.sub-chip[data-agent="${agent}"] .chip-toggle`)?.focus();
+      };
+      const more = make('button', {
+        type: 'button', class: 'chip-menu-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+        'aria-label': fill(t('plan_of'), { name }),
+      }, '▾');
+      const menu = planMenu(agent);
+      bindMenu(more, menu);
+      chip.append(pill, more, menu);
       return chip;
     });
     const missing = SUBSCRIPTIONS.filter((agent) => !hasSubscription(agent));
     if (missing.length) {
-      const add = make('select', { class: 'add-subscription', 'aria-label': t('add_subscription') });
-      add.append(make('option', { value: '' }, t('add_subscription')));
-      for (const agent of missing) {
-        const options = make('optgroup', { label: agentName(agent) });
-        for (const [id, label] of Object.entries(PLANS[agent])) options.append(make('option', { value: `${agent}:${id}` }, `${agentName(agent)} · ${label}`));
-        add.append(options);
-      }
-      add.onchange = () => {
-        const [agent, plan] = add.value.split(':');
-        if (!agent) return;
-        planChoice[agent] = plan;
-        writeStored(`usage.plan.${agent}`, plan);
-        hiddenSubscriptions.delete(agent);
-        writeStored('usage.hiddenSubscriptions', JSON.stringify([...hiddenSubscriptions]));
-        changed();
-      };
-      chips.push(add);
+      const slot = make('div', { class: 'sub-add' });
+      const add = make('button', {
+        type: 'button', class: 'add-subscription', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+      }, t('add_subscription'));
+      const menu = addMenu(missing);
+      bindMenu(add, menu);
+      slot.append(add, menu);
+      chips.push(slot);
     }
     $('scope').replaceChildren(...chips);
     paintModelScope();
@@ -572,6 +682,15 @@
     thead.append(head);
     const body = make('tbody');
     const nameCell = (agent, text) => make('th', { scope: 'row', class: 'quota-name', style: `--agent-color:${COLORS[agent]}` }, text);
+    // Zen belongs to OpenCode but has no allowance: a row of its own under Go.
+    const zenRow = () => {
+      const zen = make('tr', { 'data-agent': 'zen', class: 'quota-sub' });
+      zen.append(nameCell('zen', agentName('zen')));
+      const cell = make('td', { colspan: String(PERIODS.length) });
+      cell.append(make('strong', { class: 'quota-value quota-old' }, '—'), make('span', { class: 'quota-note' }, t('zen_quota')));
+      zen.append(cell);
+      return zen;
+    };
     for (const agent of agents) {
       const row = make('tr', { 'data-agent': agent });
       row.append(nameCell(agent, scopeName(agent)));
@@ -595,15 +714,7 @@
         row.append(cell);
       }
       body.append(row);
-      // Zen belongs to OpenCode but has no allowance: a row of its own under Go.
-      if (agent === 'opencode' && visible.includes('zen')) {
-        const zen = make('tr', { 'data-agent': 'zen', class: 'quota-sub' });
-        zen.append(nameCell('zen', agentName('zen')));
-        const cell = make('td', { colspan: String(PERIODS.length) });
-        cell.append(make('strong', { class: 'quota-value quota-old' }, '—'), make('span', { class: 'quota-note' }, t('zen_quota')));
-        zen.append(cell);
-        body.append(zen);
-      }
+      if (agent === 'opencode' && visible.includes('zen')) body.append(zenRow());
       const hint = hintOf(agent);
       if (hint) {
         const tip = make('tr', { class: 'quota-hint' });
@@ -611,6 +722,8 @@
         body.append(tip);
       }
     }
+    // Zen without Go (the 'zen' plan): OpenCode's only row, no Go meter above it.
+    if (!agents.includes('opencode') && visible.includes('zen')) body.append(zenRow());
     table.append(thead, body);
     list.replaceChildren(table);
   }
@@ -785,6 +898,16 @@
     storageKey: 'usageCalendar',
   });
   $('metric').addEventListener('change', () => { state.metric = $('metric').value; paintRange(); });
+  document.addEventListener('click', (event) => {
+    if (!openMenu || openMenu.menu.contains(event.target) || openMenu.button.contains(event.target)) return;
+    closeMenus();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !openMenu) return;
+    const button = openMenu.button;
+    closeMenus();
+    button.focus();
+  });
   translate();
   initShell({ tab: 'ia', stamp: stampText, onLang: (next) => { state.lang = next; translate(); } });
   document.addEventListener('visibilitychange', refreshVisibleLimits);
