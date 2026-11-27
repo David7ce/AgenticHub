@@ -1,13 +1,15 @@
 // usage-range.js — what the IA page shows for a calendar selection, from the
 // ledger rows alone. Pure functions; `range` is [startISO, endISO] or null (all).
 
-const RANGE_AGENTS = ['claude', 'opencode', 'codex', 'other'];
+const RANGE_AGENTS = ['claude', 'opencode', 'codex', 'zen', 'other'];
 const RANGE_FIELDS = ['input_tokens', 'cache_write_tokens', 'cache_read_tokens', 'output_tokens', 'reasoning_tokens', 'unknown_tokens'];
 
 /** Model family is not billing evidence: e.g. Haiku running on Go belongs to Go. */
 function billingOf(row, openAiViaChatGpt) {
   const provider = /\(([^()]+)\)$/.exec(row.model ?? '')?.[1];
   if (provider === 'opencode-go') return 'opencode';
+  // OpenCode Zen: free or pay-as-you-go models, outside the Go allowance.
+  if (provider === 'opencode') return 'zen';
   if (row.source === 'claude-code' && (!provider || provider === 'anthropic')) return 'claude';
   if ((row.source === 'codex' && (!provider || provider === 'openai'))
       || (row.source === 'opencode' && provider === 'openai' && openAiViaChatGpt)) return 'codex';
@@ -17,7 +19,7 @@ function billingOf(row, openAiViaChatGpt) {
 function billedRows(rows, openAiViaChatGpt) {
   return rows.map((row) => ({
     ...row, client: row.agent, agent: billingOf(row, openAiViaChatGpt),
-    model: row.model?.replace(/ \((opencode-go|openai|anthropic)\)$/, '') || 'unknown-model',
+    model: row.model?.replace(/ \((opencode-go|opencode|openai|anthropic)\)$/, '') || 'unknown-model',
   }));
 }
 

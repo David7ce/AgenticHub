@@ -48,9 +48,11 @@ test('bills by provider rather than client or model name, and merges the same mo
     r({ source: 'opencode', agent: 'opencode', model: 'claude-haiku (opencode)', output_tokens: 2 }),
   ];
   assert.equal(c.billingOf(source[0], false), 'other');
+  // OpenCode Zen (free or pay-as-you-go) is OpenCode, but not the Go allowance.
+  assert.equal(c.billingOf(source[3], false), 'zen');
   const models = c.breakdown(c.billedRows(source, true), null).models.map((entry) => [entry.key, entry.work]);
   assert.deepEqual(JSON.parse(JSON.stringify(models)), [
-    ['opencode · claude-haiku', 25], ['codex · gpt-sol', 15], ['other · claude-haiku (opencode)', 2],
+    ['opencode · claude-haiku', 25], ['codex · gpt-sol', 15], ['zen · claude-haiku', 2],
   ]);
 });
 

@@ -4,7 +4,7 @@
   const COPY = {
     en: {
       latest: 'Snapshot',
-      agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', other: 'Other / unassigned' },
+      agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', zen: 'OpenCode · Zen', other: 'Other / unassigned' },
       cache_read_tokens: 'Cache read',
       cache_write_tokens: 'Cache write',
       input_tokens: 'Input',
@@ -76,7 +76,7 @@
     },
     es: {
       latest: 'Snapshot',
-      agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', other: 'Otros / sin atribuir' },
+      agents: { claude: 'Claude', opencode: 'OpenCode', codex: 'ChatGPT / Codex', zen: 'OpenCode · Zen', other: 'Otros / sin atribuir' },
       cache_read_tokens: 'Lectura de caché',
       cache_write_tokens: 'Escritura de caché',
       input_tokens: 'Entrada',
@@ -148,9 +148,11 @@
     },
   };
 
-  const COLORS = { claude: 'var(--claude)', opencode: 'var(--opencode)', codex: 'var(--codex)', other: 'var(--muted)' };
+  const COLORS = { claude: 'var(--claude)', opencode: 'var(--opencode)', codex: 'var(--codex)', zen: 'var(--zen)', other: 'var(--muted)' };
   const SUBSCRIPTIONS = ['claude', 'opencode', 'codex'];
-  const AGENTS = [...SUBSCRIPTIONS, 'other'];
+  // Groups with no plan or allowance: shown only when they have rows.
+  const UNPLANNED = ['zen', 'other'];
+  const AGENTS = [...SUBSCRIPTIONS, ...UNPLANNED];
   const PLANS = {
     opencode: { go: 'Go', 'go-plus': 'Go Plus', 'go-teams': 'Go Teams' },
     codex: { free: 'Free', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', enterprise: 'Enterprise', edu: 'Edu' },
@@ -161,7 +163,7 @@
   const configuredPlan = (agent) => VIEW.configuredPlans?.[agent];
   const selectedPlan = (agent) => PLANS[agent]?.[planChoice[agent]] ? planChoice[agent] : null;
   const planName = (agent, plan) => PLANS[agent]?.[plan] ?? plan;
-  const enabledAgents = () => AGENTS.filter((agent) => agent === 'other' ? rows.some((r) => r.agent === 'other') : planChoice[agent] !== 'off');
+  const enabledAgents = () => AGENTS.filter((agent) => UNPLANNED.includes(agent) ? rows.some((r) => r.agent === agent) : planChoice[agent] !== 'off');
   const visibleAgents = () => enabledAgents().filter((agent) => !hiddenSubscriptions.has(agent));
   const visibleRows = () => {
     const active = new Set(visibleAgents());
@@ -487,7 +489,7 @@
     const list = $('roomList');
     const note = $('roomNote');
     const notes = [];
-    const agents = visibleAgents().filter((agent) => agent !== 'other');
+    const agents = visibleAgents().filter((agent) => !UNPLANNED.includes(agent));
     const now = Date.now();
     if (VIEW.noLimits) notes.push(t('no_limits'));
     if (VIEW.limitsError && agents.includes('codex')) notes.push(fill(t('limits_error'), { error: VIEW.limitsError }));

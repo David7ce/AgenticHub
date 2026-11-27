@@ -236,6 +236,40 @@ function decodeModel(value) {
   return value;
 }
 
+/**
+ * Some sessions (e.g. hub probes) store no model on session_v2, but every reply
+ * names the model that answered. Only the model fields are read, through
+ * json_extract, so message text never leaves SQLite. A session gets a model
+ * only when all its replies agree; mixed sessions stay unknown here and are
+ * split per reply by openCodeAttribution.
+ */
+function openCodeReplyModels(db) {
+  const bySession = new Map();
+  try {
+    const rows = db.prepare(`SELECT session_id,
+        json_extract(data, '$.model.id') AS id,
+        json_extract(data, '$.model.providerID') AS provider
+      FROM session_message WHERE type = 'assistant'
+      GROUP BY 1, 2, 3`).all();
+    for (const row of rows) {
+      if (!row.id) continue;
+      const models = bySession.get(String(row.session_id)) ?? new Set();
+      models.add(row.provider ? `${row.id} (${row.provider})` : String(row.id));
+      bySession.set(String(row.session_id), models);
+    }
+  } catch {
+    // Older databases have no session_message table or no JSON data column.
+  }
+  return bySession;
+}
+
+function sessionModel(session, replyModels) {
+  const model = decodeModel(session.model);
+  if (model !== 'unknown-model') return model;
+  const replies = replyModels.get(String(session.id));
+  return replies?.size === 1 ? [...replies][0] : model;
+}
+
 function tableColumns(db, table) {
   try {
     return new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name));
@@ -272,6 +306,7 @@ export function collectOpenCodeUsage({
     const groups = new Map();
     const dates = [];
     const sessions = new Map();
+    const replyModels = openCodeReplyModels(db);
     for (const session of rowsInDb) {
       const { date, hour } = epochParts(session.time_created);
       if (!date) continue;
@@ -281,7 +316,7 @@ export function collectOpenCodeUsage({
         hour,
         source: 'opencode',
         agent: 'opencode',
-        model: decodeModel(session.model),
+        model: sessionModel(session, replyModels),
         project: projectLabel(session.directory, workspaceRoot),
       };
       const tokens = {
@@ -316,6 +351,24 @@ export function collectOpenCodeUsage({
 }
 
 /** Read response metadata only; don't assign a switched session's whole total to its final model. */
+function estimateShares(replyModels, sessionModel) {
+  const known = [...(replyModels ?? new Map())].filter(([model, work]) => model !== 'unknown-model' && work > 0);
+  if (known.length) return known.map(([model, weight]) => ({ model, weight }));
+  return sessionModel && sessionModel !== 'unknown-model' ? [{ model: sessionModel, weight: 1 }] : null;
+}
+
+/** Integer split proportional to weights that still sums to `total` (largest remainder). */
+function splitInteger(total, weights) {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (!total || !sum) return weights.map(() => 0);
+  const exact = weights.map((w) => (total * w) / sum);
+  const out = exact.map(Math.floor);
+  let left = total - out.reduce((a, b) => a + b, 0);
+  const order = exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]);
+  for (let k = 0; left > 0; k += 1, left -= 1) out[order[k % order.length][1]] += 1;
+  return out;
+}
+
 function openCodeAttribution(db, sessions, dates) {
   const columns = tableColumns(db, 'session_message');
   if (!['session_id', 'type', 'time_created', 'data'].every((k) => columns.has(k)) || !dates.length) return null;
@@ -332,18 +385,34 @@ function openCodeAttribution(db, sessions, dates) {
     const s = sessions.get(String(msg.session_id));
     if (!s || !TOKEN_FIELDS.some((f) => numeric(msg[f]) > 0)) continue;
     const model = msg.model && msg.provider ? `${msg.model} (${msg.provider})` : 'unknown-model';
+    (s.replyModels ??= new Map()).set(model, (s.replyModels.get(model) ?? 0) + workTokens(msg));
     for (const f of TOKEN_FIELDS) s.measured[f] += numeric(msg[f]);
     const at = epochParts(msg.time_created);
     addObservation(groups, { ...s.dimensions, ...(at.date ? at : {}), model }, msg, String(msg.session_id));
   }
+  const estimated = new Map();
   for (const [id, s] of sessions) {
     const remainder = Object.fromEntries(TOKEN_FIELDS.map((f) => [f, Math.max(0, s.tokens[f] - s.measured[f])]));
     if (!TOKEN_FIELDS.some((f) => remainder[f] > 0)) continue;
-    // Totals without response metadata cannot tell which model was billed.
-    addObservation(groups, { ...s.dimensions, model: 'unknown-model' }, remainder, id);
+    // The session total also counts calls stored as no reply (titles,
+    // compaction, aborted turns). That rest is an estimate, flagged inferred:
+    // all of it to the one model the replies used, or to the session's model
+    // when there are no replies, or split by each model's share of the
+    // replies' work when the session switched models.
+    const shares = estimateShares(s.replyModels, s.dimensions.model);
+    if (!shares) {
+      addObservation(groups, { ...s.dimensions, model: 'unknown-model' }, remainder, id);
+      continue;
+    }
+    const parts = shares.map(() => ({ ...EMPTY_TOKENS() }));
+    for (const f of TOKEN_FIELDS) splitInteger(remainder[f], shares.map((x) => x.weight)).forEach((v, i) => { parts[i][f] = v; });
+    shares.forEach(({ model }, i) => {
+      if (TOKEN_FIELDS.some((f) => parts[i][f] > 0)) addObservation(estimated, { ...s.dimensions, model }, parts[i], id);
+    });
   }
   const first = dates.reduce((a, b) => a < b ? a : b);
-  return { first, rows: finishGroups(groups) };
+  const inferred = finishGroups(estimated).map((row) => ({ ...row, inferred: true }));
+  return { first, rows: [...finishGroups(groups), ...inferred] };
 }
 
 /** Reconcile response-based history with the older aggregate, without adding both. */
@@ -365,7 +434,21 @@ export function subscriptionHistory(ledger) {
     return groups;
   };
   const covered = groupCoarse(openCodeAttribution.covered);
-  const previous = groupCoarse(rows.filter((r) => r.source === 'opencode' && r.date >= openCodeAttribution.first));
+  const recent = rows.filter((r) => r.source === 'opencode' && r.date >= openCodeAttribution.first);
+  // Buckets with no current session (deleted from OpenCode) have nothing to
+  // reconcile against. When all their labels share one provider, that
+  // provider billed them: keep the rows with their own model labels. Mixed
+  // providers still go through the coarse path below and stay unattributed.
+  const coarseKey = (r) => rowKey({ ...r, model: 'unknown-model' });
+  const providers = new Map();
+  for (const r of recent) {
+    const provider = /\(([^()]+)\)$/.exec(r.model ?? '')?.[1] ?? '?';
+    (providers.get(coarseKey(r)) ?? providers.set(coarseKey(r), new Set()).get(coarseKey(r))).add(provider);
+  }
+  const keepsLabels = (r) => !covered.has(coarseKey(r)) && providers.get(coarseKey(r)).size === 1
+    && !providers.get(coarseKey(r)).has('?');
+  const retained = recent.filter(keepsLabels);
+  const previous = groupCoarse(recent.filter((r) => !keepsLabels(r)));
   for (const [key, row] of previous) {
     for (const f of TOKEN_FIELDS) row[f] = Math.max(0, row[f] - numeric(covered.get(key)?.[f]));
     if (!TOKEN_FIELDS.some((f) => row[f] > 0)) {
@@ -382,7 +465,7 @@ export function subscriptionHistory(ledger) {
     }
     delete row.models;
   }
-  return [...legacy, ...openCodeAttribution.rows, ...finishGroups(previous)];
+  return [...legacy, ...retained, ...openCodeAttribution.rows, ...finishGroups(previous)];
 }
 
 function findCodexDatabases(codexDir) {
@@ -745,6 +828,16 @@ export function mergeCostLedger(previous, incoming, generatedAt = new Date().toI
     if (hasRemainder) rows.set(key, { ...remainder, legacyDaily: false });
     else rows.delete(key);
   }
+  // OpenCode stores one total per session under the session's current model,
+  // and that label changes when the model is switched mid-session. A bucket
+  // the fresh scan still sees is therefore replaced, not merged per model:
+  // otherwise every past label would keep its own copy of the same session.
+  const bucketOf = (row) => [row.date, row.hour ?? '?', row.source, row.agent, row.project].join('\u001f');
+  const freshOpenCode = new Set(incoming.rows.filter((row) => row.source === 'opencode').map(bucketOf));
+  for (const [key, row] of [...rows.entries()]) {
+    if (row.source === 'opencode' && freshOpenCode.has(bucketOf(row))) rows.delete(key);
+  }
+
   for (const fresh of incoming.rows) {
     const key = rowKey(fresh);
     const old = rows.get(key);

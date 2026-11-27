@@ -111,7 +111,8 @@ test('OpenCode session DB maps provider/model and keeps token categories separat
     );
     const detailed = subscriptionHistory({ rows: result.rows, openCodeAttribution: result.attribution });
     assert.deepEqual(detailed.map(({ hour, model, output_tokens }) => [hour, model, output_tokens]), [
-      [12, 'unknown-model', 3], [13, 'm-go (opencode-go)', 1], [14, 'm-gpt (openai)', 1],
+      // The 3 output tokens no reply explains are split by the replies' share (tie: 2 + 1).
+      [13, 'm-go (opencode-go)', 1], [14, 'm-gpt (openai)', 1], [12, 'm-go (opencode-go)', 2], [12, 'm-gpt (openai)', 1],
     ]);
     assert.ok(!JSON.stringify(detailed).includes('must not be copied'));
   } finally {
@@ -143,6 +144,118 @@ test('Codex records only its recoverable per-thread total, not guessed categorie
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('an OpenCode session without a model takes the one its replies used, never a guess', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'projects-costs-opencode-model-'));
+  const dbPath = join(dir, 'opencode.db');
+  const db = new DatabaseSync(dbPath);
+  db.exec(`CREATE TABLE session_v2 (
+    id TEXT, directory TEXT, agent TEXT, model TEXT, time_created INTEGER,
+    tokens_input INTEGER, tokens_output INTEGER, tokens_reasoning INTEGER,
+    tokens_cache_read INTEGER, tokens_cache_write INTEGER
+  )`);
+  const session = db.prepare('INSERT INTO session_v2 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  session.run('one-model', dir, null, null, Date.parse('2026-11-22T00:41:00Z'), 10, 1, 0, 5, 0);
+  session.run('two-models', dir, null, null, Date.parse('2026-11-22T01:00:00Z'), 4, 1, 0, 0, 0);
+  session.run('no-replies', dir, null, null, Date.parse('2026-11-22T02:00:00Z'), 3, 1, 0, 0, 0);
+  db.exec('CREATE TABLE session_message (session_id TEXT, type TEXT, time_created INTEGER, data TEXT)');
+  const message = db.prepare('INSERT INTO session_message VALUES (?, ?, ?, ?)');
+  const reply = (id, model, providerID, at) => message.run(id, 'assistant', Date.parse(at), JSON.stringify({
+    model: { id: model, providerID }, content: 'must not be copied',
+  }));
+  reply('one-model', 'deepseek-flash', 'opencode-go', '2026-11-22T00:41:01Z');
+  reply('one-model', 'deepseek-flash', 'opencode-go', '2026-11-22T00:41:02Z');
+  reply('two-models', 'a', 'opencode-go', '2026-11-22T01:00:01Z');
+  reply('two-models', 'b', 'openai', '2026-11-22T01:00:02Z');
+  message.run('one-model', 'user', Date.parse('2026-11-22T00:41:00Z'), JSON.stringify({ text: 'hi' }));
+  db.close();
+  try {
+    const { rows } = collectOpenCodeUsage({ dbPath, workspaceRoot: dir });
+    assert.deepEqual(rows.map((row) => [row.hour, row.model]), [
+      [0, 'deepseek-flash (opencode-go)'], [1, 'unknown-model'], [2, 'unknown-model'],
+    ]);
+    assert.ok(!JSON.stringify(rows).includes('must not be copied'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('OpenCode tokens no reply explains are an estimate: the one model, or split by each model share', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'projects-costs-opencode-rest-'));
+  const dbPath = join(dir, 'opencode.db');
+  const db = new DatabaseSync(dbPath);
+  db.exec(`CREATE TABLE session_v2 (
+    id TEXT, directory TEXT, agent TEXT, model TEXT, time_created INTEGER,
+    tokens_input INTEGER, tokens_output INTEGER, tokens_reasoning INTEGER,
+    tokens_cache_read INTEGER, tokens_cache_write INTEGER
+  )`);
+  const session = db.prepare('INSERT INTO session_v2 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  session.run('single', dir, null, null, Date.parse('2026-11-25T18:00:00Z'), 100, 10, 0, 0, 0);
+  session.run('mixed', dir, null, null, Date.parse('2026-11-25T19:00:00Z'), 100, 10, 0, 0, 0);
+  session.run('silent', dir, null, JSON.stringify({ id: 'big', providerID: 'opencode-go' }), Date.parse('2026-11-25T20:00:00Z'), 30, 3, 0, 0, 0);
+  db.exec('CREATE TABLE session_message (session_id TEXT, type TEXT, time_created INTEGER, data TEXT)');
+  const message = db.prepare('INSERT INTO session_message VALUES (?, ?, ?, ?)');
+  const reply = (id, model, providerID, at, input, output) => message.run(id, 'assistant', Date.parse(at), JSON.stringify({
+    model: { id: model, providerID }, tokens: { input, output },
+  }));
+  reply('single', 'flash', 'opencode-go', '2026-11-25T18:01:00Z', 60, 6);
+  reply('mixed', 'a', 'opencode-go', '2026-11-25T19:01:00Z', 45, 5);
+  reply('mixed', 'b', 'openai', '2026-11-25T19:02:00Z', 15, 1);
+  db.close();
+  try {
+    const { attribution } = collectOpenCodeUsage({ dbPath, workspaceRoot: dir });
+    const pick = (row) => [row.hour, row.model, row.input_tokens, row.output_tokens, row.inferred === true];
+    assert.deepEqual(attribution.rows.map(pick).sort((x, y) => x[0] - y[0] || String(x[1]).localeCompare(y[1]) || x[4] - y[4]), [
+      [18, 'flash (opencode-go)', 60, 6, false],
+      [18, 'flash (opencode-go)', 40, 4, true],
+      [19, 'a (opencode-go)', 45, 5, false],
+      [19, 'a (opencode-go)', 30, 3, true],
+      [19, 'b (openai)', 15, 1, false],
+      [19, 'b (openai)', 10, 1, true],
+      [20, 'big (opencode-go)', 30, 3, true],
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an OpenCode session whose label changed is not kept twice in the ledger', () => {
+  const now = '2026-11-27T00:00:00.000Z';
+  const base = {
+    date: '2026-11-25', hour: 18, source: 'opencode', agent: 'opencode', project: 'root',
+    input_tokens: 0, cache_write_tokens: 0, cache_read_tokens: 0, output_tokens: 0, reasoning_tokens: 0,
+    unknown_tokens: 0, observations: 1, sessions: 1,
+  };
+  const previous = {
+    schemaVersion: 2, generatedAt: null, sources: {}, rows: [
+      // Earlier snapshots of the same session, each under the model it had then.
+      { ...base, model: 'deepseek (opencode-go)', input_tokens: 900 },
+      { ...base, model: 'mimo (opencode)', input_tokens: 950 },
+      // A bucket the current scan no longer sees (session deleted): kept.
+      { ...base, hour: 3, model: 'deepseek (opencode-go)', input_tokens: 40 },
+    ],
+  };
+  const incoming = { sources: {}, rows: [{ ...base, model: 'gpt (openai)', input_tokens: 1000 }] };
+  const merged = mergeCostLedger(previous, incoming, now);
+  assert.deepEqual(merged.rows.map((row) => [row.hour, row.model, row.input_tokens]), [
+    [3, 'deepseek (opencode-go)', 40],
+    [18, 'gpt (openai)', 1000],
+  ]);
+});
+
+test('retained OpenCode buckets with no current session keep their model labels', () => {
+  const row = (model, output_tokens, hour = 0) => ({
+    date: '2026-11-24', hour, source: 'opencode', agent: 'opencode', project: 'root', model,
+    input_tokens: 0, cache_write_tokens: 0, cache_read_tokens: 0, output_tokens, reasoning_tokens: 0, unknown_tokens: 0,
+  });
+  const result = subscriptionHistory({
+    rows: [row('deepseek (opencode-go)', 20), row('haiku (opencode-go)', 5)],
+    openCodeAttribution: { first: '2026-11-16', rows: [], covered: [row('other (opencode-go)', 1, 9)] },
+  });
+  assert.deepEqual(result.map(({ model, output_tokens }) => [model, output_tokens]).sort(), [
+    ['deepseek (opencode-go)', 20], ['haiku (opencode-go)', 5],
+  ]);
 });
 
 const rolloutLine = (timestamp, type, payload) => JSON.stringify({ timestamp, type, payload });
