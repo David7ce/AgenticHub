@@ -4,7 +4,7 @@
 // stash list and remote get-url. It never fetches or writes.
 
 import { existsSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 
 import { ACCOUNTS, AI_PROVIDERS, classifyCommit } from './accounts.mjs';
 import { git } from './git.mjs';
@@ -55,8 +55,9 @@ export function filterExcludedRepos(repos, root, exclusions, caseInsensitive = p
 /**
  * Real changes only. WSL's DrvFs makes every file look 755 and a CRLF checkout
  * of LF blobs is not an edit, so both are ignored. Staged and untracked count.
+ * `ignore` lists exact repo-relative paths that never count (generated files).
  */
-async function worktreeChanges(repo) {
+async function worktreeChanges(repo, ignore = []) {
   const changed = new Set();
   for (const args of [
     ['-c', 'core.filemode=false', 'diff', '--ignore-cr-at-eol', '--name-only'],
@@ -65,6 +66,7 @@ async function worktreeChanges(repo) {
   ]) {
     for (const line of ((await git(repo, args)) ?? '').split('\n')) if (line) changed.add(line);
   }
+  for (const path of ignore) changed.delete(path);
   return changed.size;
 }
 
@@ -73,7 +75,7 @@ async function worktreeChanges(repo) {
  * answers all of it; the exact diff commands run only when it reports a change,
  * because status still counts CRLF/filemode noise. `sync` calls this live.
  */
-export async function readState(repo) {
+export async function readState(repo, { ignoreChanges = [] } = {}) {
   const out = await git(repo, ['-c', 'core.filemode=false', 'status', '--porcelain=v2', '--branch']);
   if (out === null) return null;
 
@@ -88,7 +90,7 @@ export async function readState(repo) {
     } else if (line && !line.startsWith('#')) touched = true;
   }
   if (!state.branch) return null; // bare, broken, or not a working tree
-  if (touched) state.dirty = await worktreeChanges(repo);
+  if (touched) state.dirty = await worktreeChanges(repo, ignoreChanges);
   return state;
 }
 
@@ -172,8 +174,11 @@ function webAccount(webUrl) {
 
 /** One repo -> `{ row, days, accounts, ai }`, or null when it is not a usable working tree. */
 async function describe(repo, root) {
+  // Overrides are keyed by folder name. `ignoreChanges` only shapes the dirty
+  // count shown here; `sync` reads state without it, so it never pulls over them.
+  const { ignoreChanges = [], ...override } = OVERRIDES[basename(repo)] ?? {};
   const [state, hidden, remoteRaw, roots, lastCommit, commits, activity] = await Promise.all([
-    readState(repo),
+    readState(repo, { ignoreChanges }),
     hiddenWork(repo),
     git(repo, ['remote', 'get-url', 'origin']),
     git(repo, ['log', '--max-parents=0', '--format=%ad', DATE_FORMAT]),
@@ -219,7 +224,7 @@ async function describe(repo, root) {
     otherBranches,
     working: dirty > 0 || ahead > 0 || behind > 0 || stashes > 0 || otherBranches.length > 0,
   };
-  return { row: { ...row, ...(OVERRIDES[row.name] ?? {}) }, ...activity };
+  return { row: { ...row, ...override }, ...activity };
 }
 
 /** A fork whose upstream account names a project of the same owner joins it (example-fork -> Example Fork). */

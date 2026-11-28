@@ -42,12 +42,17 @@ The environment wins over this file: `AGENTHUB_GITHUB_USER` and
 {
   "some-repo": { "project": "Some Project" },
   "another-repo": { "working": false },
-  "third-repo": { "owner": "Upstream-Owner" }
+  "third-repo": { "owner": "Upstream-Owner" },
+  "working": { "name": "AgenticHub-private", "ignoreChanges": ["COSTS.md", "costs.json"] }
 }
 ```
 
-Keys are repository folder names; values may set `owner`, `project` or
-`working`. Anything absent is derived from the folder layout.
+Keys are repository folder names; values may set `owner`, `project`, `name`
+(the name shown, without renaming the folder) or `working`. Anything absent is
+derived from the folder layout. `ignoreChanges` lists exact repo-relative paths
+that never count as pending changes — for files a scheduled job rewrites, such
+as the hourly costs refresh. Unpushed commits and any other file still count,
+and `sync` ignores this list: it never pulls over those files.
 
 `exclusions.json` is an array such as `["Git-clones/example"]`. Entries match
 the complete root-relative path, not the repository name, so another clone with

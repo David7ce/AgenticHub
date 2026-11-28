@@ -49,7 +49,7 @@ if (!AUTHORS.length) AUTHORS.push('local@localhost');
 export const AUTHOR = config.authorName || config.githubUser || 'local-user';
 /** `git log --author` takes a basic regex: escape it so an email matches literally. */
 export const authorPattern = (email) => email.replace(/[.*^$[\]\\]/g, '\\$&');
-/** Per-repo `owner` / `project` / `working` exceptions, keyed by folder name. */
+/** Per-repo `owner` / `project` / `name` / `working` / `ignoreChanges` exceptions, keyed by folder name. */
 export const OVERRIDES = readLocalJson('overrides.json', {});
 /** Pinned owner avatars, keyed by normalised owner name. */
 export const OWNER_ICON_PINS = readLocalJson('icons.json', {});
