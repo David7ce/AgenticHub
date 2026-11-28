@@ -303,3 +303,15 @@ test('folder labels: owner and project are the folder names on disk, not re-case
   assert.deepEqual(folderLabels(['MediaHub-Org', 'rss-reader']), { owner: 'MediaHub-Org', project: '' });
   assert.deepEqual(folderLabels(['solo']), { owner: 'solo', project: '' });
 });
+
+
+test('git badges use letters with counts and keep full translated tooltips', () => {
+  const c = loadClient();
+  vm.runInNewContext(clientFile('repos.js'), c);
+  const row = { dirty: 9, changes: { modified: 2, untracked: 3, added: 1, deleted: 1, renamed: 1, conflicted: 1 } };
+  const parts = c.gitChangeParts(row);
+  assert.deepEqual(Array.from(parts, (part) => part[0]), ['C 1', 'M 2', 'A 1', 'D 1', 'R 1', 'U 3']);
+  assert.equal(parts.find((part) => part[2] === 'untracked')[1], '3 untracked files (new, not added)');
+  assert.equal(c.gitChangeParts({ dirty: 0 }).length, 0);
+  assert.equal(c.gitChangeParts({ dirty: 2 })[0][0], '2 changed');
+});

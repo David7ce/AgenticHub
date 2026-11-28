@@ -13,6 +13,19 @@ function commitsIn(days, range) {
   return { count, last };
 }
 
+/** Git letters and counts stay compact; tooltips explain each status. */
+function gitChangeParts(r) {
+  if (!(r.dirty > 0)) return [];
+  const codes = { conflicted: 'C', modified: 'M', added: 'A', deleted: 'D', renamed: 'R', untracked: 'U' };
+  const kinds = Object.keys(codes).filter((kind) => r.changes && r.changes[kind] > 0);
+  if (!kinds.length) return [[plural(r.dirty, 'changedOne', 'changed'), plural(r.dirty, 'changedOne', 'changed')]];
+  return kinds.map((kind) => {
+    const n = r.changes[kind];
+    const key = 'git' + kind[0].toUpperCase() + kind.slice(1);
+    return [codes[kind] + ' ' + n, plural(n, key + 'One', key), kind];
+  });
+}
+
 function initRepos(icons, selectedRange) {
   const rows = DATA.repos;
   const CLONE = 'Git Clone';
@@ -39,27 +52,11 @@ function initRepos(icons, selectedRange) {
     render();
   };
 
-  /**
-   * Uncommitted files by git's own word, coloured like git and VS Code. A
-   * repos.json from before the breakdown still shows the single "changed" tag.
-   */
-  const GIT_KINDS = ['conflicted', 'modified', 'added', 'deleted', 'renamed', 'untracked'];
-  function changeParts(r) {
-    if (!(r.dirty > 0)) return [];
-    const kinds = GIT_KINDS.filter((kind) => r.changes && r.changes[kind] > 0);
-    if (!kinds.length) return [[plural(r.dirty, 'changedOne', 'changed'), plural(r.dirty, 'changedOne', 'changed')]];
-    return kinds.map((kind) => {
-      const n = r.changes[kind];
-      const key = 'git' + kind[0].toUpperCase() + kind.slice(1);
-      return [n + ' ' + kind, plural(n, key + 'One', key), kind];
-    });
-  }
-
   /** Pending work as short tags; the tooltip spells it out. */
   function status(r) {
     const branches = r.otherBranches || [];
     const parts = [
-      ...changeParts(r),
+      ...gitChangeParts(r),
       r.hasUpstream && r.ahead > 0 && ['↑' + r.ahead, t('toPush', { n: r.ahead })],
       r.hasUpstream && r.behind > 0 && ['↓' + r.behind, t('toPull', { n: r.behind })],
       r.stashes > 0 && [plural(r.stashes, 'stashOne', 'stashMany'), plural(r.stashes, 'stashOne', 'stashMany')],
