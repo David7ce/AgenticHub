@@ -291,17 +291,26 @@ test('authorPattern: an email matches git log --author literally', () => {
   assert.ok(!re.test('A <aXb@c.com>'));
 });
 
-test('folder labels: owner and project are the folder names on disk, not re-cased', () => {
+test('folder labels: friendly project names preserve owners and physical paths', () => {
   assert.deepEqual(folderLabels(['Pkg-lab', 'GymLab-Cloud']), { owner: 'Pkg-lab', project: '' });
-  assert.deepEqual(folderLabels(['David7ce-user', 'Pkg-lab', 'GymLab-Cloud']), { owner: 'David7ce', project: 'Pkg-lab' });
+  assert.deepEqual(folderLabels(['David7ce-user', 'Pkg-lab', 'GymLab-Cloud']), { owner: 'David7ce', project: 'PKG Lab' });
   assert.deepEqual(
     folderLabels(['David7ce-user', 'David7ce-code', 'web-app', 'charstudio']),
-    { owner: 'David7ce', project: 'David7ce-code/web-app' },
+    { owner: 'David7ce', project: 'Web App' },
   );
   assert.deepEqual(folderLabels(['Curiosity432-user', 'curiosity432-blog']), { owner: 'Curiosity432', project: '' });
-  assert.deepEqual(folderLabels(['AgenticHub', 'workspace-panel', 'working']), { owner: 'AgenticHub', project: 'workspace-panel' });
+  assert.deepEqual(folderLabels(['AgenticHub', 'workspace-panel', 'working']), { owner: 'AgenticHub', project: 'Workspaces Panel' });
   assert.deepEqual(folderLabels(['MediaHub-Org', 'rss-reader']), { owner: 'MediaHub-Org', project: '' });
   assert.deepEqual(folderLabels(['solo']), { owner: 'solo', project: '' });
+  for (const [folder, label] of Object.entries({ 'cli-app': 'CLI App', 'desktop-app': 'Desktop App', 'web-app': 'Web App', 'website-example': 'Website' })) {
+    const parts = ['Example-user', 'Example-code', folder, 'repo'];
+    assert.deepEqual(folderLabels(parts), { owner: 'Example', project: label });
+    assert.equal(parts[1], 'Example-code', 'input path is not mutated');
+  }
+  for (const [folder, label] of Object.entries({ 'Obsidian-pkm-vault': 'Obsidian PKM Vault', 'Pkg-lab': 'PKG Lab', 'Calendar-xyz': 'Calendar XYZ', wikiterra: 'WikiTerra', Compuwiki: 'CompuWiki' })) {
+    assert.equal(folderLabels(['Owner-user', folder, 'repo']).project, label);
+  }
+  assert.equal(folderLabels(['Owner-user', 'Unknown-folder', 'repo']).project, 'Unknown-folder');
 });
 
 

@@ -167,19 +167,27 @@ async function commitActivity(repo) {
   return { days, accounts, ai, accountAi };
 }
 
-/**
- * Owner and project come straight from the folders, exactly as spelled on disk:
- * the page is searched by literal name, and re-casing them ("Pkg Lab",
- * "Arksys Os") made labels that match nothing you would type. Only the
- * account suffix `-user` is dropped. The project is every folder between the
- * owner and the repository, so `David7ce-code/web-app` keeps its type.
- */
+/** Friendly labels for known project folders; physical paths stay unchanged. */
+const PROJECT_LABELS = {
+  'cli-app': 'CLI App',
+  'desktop-app': 'Desktop App',
+  'web-app': 'Web App',
+  'obsidian-pkm-vault': 'Obsidian PKM Vault',
+  'pkg-lab': 'PKG Lab',
+  'calendar-xyz': 'Calendar XYZ',
+  'wikiterra': 'WikiTerra',
+  'compuwiki': 'CompuWiki',
+  'workspace-panel': 'Workspaces Panel',
+};
+
 export function folderLabels(parts) {
   const first = parts[0] ?? '';
-  return {
-    owner: first.replace(/[-_]user$/i, '') || first,
-    project: parts.length >= 3 ? parts.slice(1, -1).join('/') : '',
-  };
+  const folders = parts.length >= 3 ? parts.slice(1, -1) : [];
+  // The account's code container is storage layout, not a project category.
+  if (folders.length > 1 && /-code$/i.test(folders[0])) folders.shift();
+  const project = folders.map((folder) => PROJECT_LABELS[folder.toLowerCase()]
+    ?? (/^website-/i.test(folder) ? 'Website' : folder)).join('/');
+  return { owner: first.replace(/[-_]user$/i, '') || first, project };
 }
 
 const normalizeName = (value) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');

@@ -237,3 +237,8 @@ Page CSS and classic scripts are copied to `dist/shared/` and linked with a cont
 hash. Repositories keeps its script order in `CLIENT_SCRIPTS`; data loads first, then
 shared helpers, then page scripts. The build validates page data and scripts together
 before publishing. No module loader or server is required.
+
+Project labels use friendly names for known folders (CLI App, Desktop App, Web App,
+Obsidian PKM Vault, PKG Lab, Calendar XYZ, WikiTerra, CompuWiki and Workspaces Panel).
+The account code-container prefix is omitted, while disk paths and per-repo
+overrides remain unchanged. Website folders are shown as Website.
