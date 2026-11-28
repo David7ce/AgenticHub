@@ -7,5 +7,5 @@ This folder holds the AgenticHub clone and optional client configurations.
 - [Workspace agent instructions](AGENTS.md)
 
 The hub clone is `__HUB_DIR__/`. Its local grants and registry stay inside the
-clone; runtime state defaults to `workspace-panel/`, beside it. No separate inventory
+clone; runtime state defaults to `workspaces-panel/`, beside it. No separate inventory
 repository or personal knowledge vault is required. Keep runtime state private.

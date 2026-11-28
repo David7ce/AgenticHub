@@ -5,7 +5,7 @@ When working in another repository, read that repository's own AGENTS.md first.
 
 Call the hub MCP `brief` tool when available to inspect local state. Do not launch
 an agent without a task. Optional personal handoff and roadmap files live under
-`workspace-panel/working/`; absence of those files is normal in a new workspace.
+`workspaces-panel/working/`; absence of those files is normal in a new workspace.
 
 One writing orchestrator per working tree. Give simultaneous writers separate
 worktrees; do not edit a tree while a delegated write run is active. Never widen

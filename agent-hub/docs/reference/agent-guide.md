@@ -36,7 +36,7 @@ node hubctl/hubctl.mjs handoff codex --cwd <repo> --note "what to do next"
 ```
 
 From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
-`route`. Everything is logged to `workspace-panel/logs/runs.jsonl`.
+`route`. Everything is logged to `workspaces-panel/logs/runs.jsonl`.
 
 ## When something looks wrong
 
@@ -45,9 +45,9 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 | An agent was refused | `hubctl doctor` — consent expired, path outside `writeTrees`, daily cap |
 | Costs look off | `hubctl spend` and `hubctl usage` |
 | End of a session: draft the JOURNAL entry | `hubctl wrap` prints it; `--write --yes` files it and moves the marker; `--mark` moves only the marker |
-| Did we already hit this before | `hubctl search "text"` (runs, notes, git; `--since`, `--source`; index `workspace-panel/logs/index.db` rebuilds itself) |
+| Did we already hit this before | `hubctl search "text"` (runs, notes, git; `--since`, `--source`; index `workspaces-panel/logs/index.db` rebuilds itself) |
 | Verify a diff an agent could not test | `hubctl verify <worktree>` (runs the repo's own tests; `--cmd` overrides) |
-| Start of a session: what is the state | `hubctl brief` (≤40 lines; `--json`; watch more repos in `workspace-panel/working/repos-vigilados.txt`) |
+| Start of a session: what is the state | `hubctl brief` (≤40 lines; `--json`; watch more repos in `workspaces-panel/working/repos-vigilados.txt`) |
 | Which agent is working right now | `hubctl live` |
 | Leftover checkouts and old backups | `hubctl clean` (dry run) |
 | Too many old conversations | the `/chats` panel in OpenCode |
@@ -56,5 +56,5 @@ From inside a chat, the same thing is the MCP tools `ask_agent`, `fanout` and
 ## What does not belong here
 
 Personal state (the owner's roadmap, handoff and journal) lives in the git-ignored
-`workspace-panel/working/` folder, so a fork gets a clean, generic repo. General notes and research
+`workspaces-panel/working/` folder, so a fork gets a clean, generic repo. General notes and research
 live in the external knowledge vault, not in this repository.

@@ -191,7 +191,7 @@ is only the new turn). Both need the agent's matching capability — all
 three agents advertised `loadSession` and `sessionCapabilities.resume`
 on 2026-10-29. Use the same `--cwd`, and pass `--model`/`--config` again
 if the session doesn't retain its config. Session ids are in each result
-header and in `workspace-panel/logs/runs.jsonl`.
+header and in `workspaces-panel/logs/runs.jsonl`.
 
 ## Registry
 
@@ -251,7 +251,7 @@ its own `git worktree add --detach` checkout under
 there, so two agents cannot overwrite each other's files. After the run, a
 worktree with changes is **kept** and reported (JSON `worktree` /
 `worktreeKept`, a "Kept worktrees" section in the merged file, stderr, and
-`workspace-panel/logs/runs.jsonl`); a clean one is removed. Worktrees start from `HEAD`, so
+`workspaces-panel/logs/runs.jsonl`); a clean one is removed. Worktrees start from `HEAD`, so
 uncommitted changes in the main working tree are not copied in, and the
 starting cwd must be inside a git repository. Worktrees are not OS sandboxes:
 agents may be able to access other files and services. The synthesizer, if
@@ -299,7 +299,7 @@ work to the weekly Claude quota. Scope and consequence survived because
 they are about what a mistake costs, not about how hard the ask looks.
 
 On top of the prompt rules, `router.mjs` reads the last 24 h of
-`workspace-panel/logs/runs.jsonl`: an agent with recent failures/timeouts (15 min) is
+`workspaces-panel/logs/runs.jsonl`: an agent with recent failures/timeouts (15 min) is
 skipped in favour of a healthy one, and a prompt that would escalate to
 `claude` stays on `opencode` once claude's 24 h spend passes
 `--cost-ceiling` (default $2.00; `--force claude` overrides). Live
@@ -383,10 +383,10 @@ the tool's `HUB_MCP_OK`.
 - **Consent gate.** The `../consent.json` check —
   enabled, overseer-acknowledged, unexpired — and it runs
   before anything spawns, including `--probe`.
-- **Audit.** One JSON line per run in `workspace-panel/logs/runs.jsonl` (shared
+- **Audit.** One JSON line per run in `workspaces-panel/logs/runs.jsonl` (shared
   by every entry point). Records include status, session id, stop reason,
   duration, cost when reported, permission decisions, and a truncated
-  prompt/output. `workspace-panel/logs/*.jsonl` and `results/` are gitignored.
+  prompt/output. `workspaces-panel/logs/*.jsonl` and `results/` are gitignored.
 - **Tokens per turn.** ACP reports `cost`, not a token breakdown, so `usage`
   in the audit line is the difference between two reads of the agent's own
   store, keyed by session id: Claude's transcript messages, OpenCode's
@@ -394,7 +394,7 @@ the tool's `HUB_MCP_OK`.
   `exact`, `turn`, `delta`, `session-total`, `time-window` — or `unavailable` with a
   `reason`, never a silent zero. `context_peak`/`context_size` come from
   `usage_update`. Attribution only: the provider scan in
-  `workspace-panel/tool/lib/costs.mjs` remains the volume of record and the two join
+  `workspaces-panel/tool/lib/costs.mjs` remains the volume of record and the two join
   by `sessionId`; they are never added. See
   `acp/usage-capture.mjs`; `probe` runs record no `usage`.
 - **Results.** Non-empty answers are saved to

@@ -40,7 +40,7 @@ const num = (value) => {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 };
 
-/** The token fields the audit line and `workspace-panel/tool/lib/costs.mjs` share. */
+/** The token fields the audit line and `workspaces-panel/tool/lib/costs.mjs` share. */
 export function emptyUsage(source, confidence = 'unavailable') {
   return {
     input_tokens: 0,

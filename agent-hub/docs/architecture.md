@@ -64,7 +64,7 @@ host. See [Getting started](getting-started.md) for launcher setup.
 ## Runtime state
 
 Configuration is local and ignored by Git. Runtime logs default to a sibling
-`workspace-panel/` directory; results, locks and inflight files live under the clone's
+`workspaces-panel/` directory; results, locks and inflight files live under the clone's
 ignored `results/`. This state does not need a separate repository. Exact paths
 and overrides are in [Workspace configuration](reference/workspace-configuration.md).
 The control room reads files and processes rather than requiring a persistent

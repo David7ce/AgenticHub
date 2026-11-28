@@ -10,12 +10,14 @@ export function resolveHubConfig({ hubDir = DEFAULT_HUB, env = process.env, cwd 
   const path = (value, fallback) => value ? resolve(cwd, value) : fallback;
   hubDir = resolve(cwd, hubDir);
   const workspaceDir = dirname(hubDir);
-  const panel = join(workspaceDir, 'workspace-panel');
+  const panel = join(workspaceDir, 'workspaces-panel');
+  const previousPanel = join(workspaceDir, 'workspace-panel');
   const legacy = join(workspaceDir, 'projects');
   const hasState = (dir) => [['logs', 'runs.jsonl'], ['logs', 'hub.db'], ['working', '.git']]
     .some((parts) => exists(join(dir, ...parts)));
   // Pulling a newer checkout must not silently abandon the old audit or notes.
-  stateDir = path(stateDir ?? env.AGENT_HUB_STATE, hasState(legacy) && !hasState(panel) ? legacy : panel);
+  const existingState = [panel, previousPanel, legacy].find(hasState) ?? panel;
+  stateDir = path(stateDir ?? env.AGENT_HUB_STATE, existingState);
   const resultsDir = path(env.AGENT_HUB_RESULTS, join(hubDir, 'results'));
   const localRegistry = join(hubDir, 'acp', 'agents.json');
   const exampleRegistry = join(hubDir, 'acp', 'agents.example.json');

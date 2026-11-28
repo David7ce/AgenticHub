@@ -9,11 +9,11 @@ AgentHub is the **control room** for this machine's agent workspace. This folder
 is one **public** repository (`David7ce/AgenticHub`) with two parts, plus the
 launcher files agents and editors read from here (`AGENTS.md`, `CLAUDE.md`,
 `.mcp.json`, `opencode.json`, `.claude/`, `.vscode/`). The only private part,
-`workspace-panel/working/`, is a separate nested repository that the public one ignores.
+`workspaces-panel/working/`, is a separate nested repository that the public one ignores.
 
 - [`agent-hub/`](agent-hub/) — the local swarm: ACP dispatcher, consent gate, MCP
   server, `hubctl` control room, conversation manager, routing and audit log.
-- [`workspace-panel/`](workspace-panel/) — the inventory of repositories under `D:\Workspaces` (one
+- [`workspaces-panel/`](workspaces-panel/) — the inventory of repositories under `D:\Workspaces` (one
   generated page: commit calendar + repo table) and the owner's working notes.
 
 It is not a general documentation workspace. General notes and research live in the
@@ -24,31 +24,31 @@ in each project repo; scripts and installers live in the toolbox repo.
 
 0. Run `node agent-hub/hubctl/hubctl.mjs brief` first: doctor, dirty repos, last runs,
    today's spend and the pending list in ≤40 lines.
-1. No task given? Read [`workspace-panel/working/ROADMAP.md`](workspace-panel/working/ROADMAP.md) for open items.
+1. No task given? Read [`workspaces-panel/working/ROADMAP.md`](workspaces-panel/working/ROADMAP.md) for open items.
 2. Touching `agent-hub/`: read [`agent-hub/AGENTS.md`](agent-hub/AGENTS.md). Touching
-   `workspace-panel/`: read [`workspace-panel/README.md`](workspace-panel/README.md).
+   `workspaces-panel/`: read [`workspaces-panel/README.md`](workspaces-panel/README.md).
 3. Touching a project repo: read **its** `AGENTS.md` first. Open work goes to
-   [`workspace-panel/working/ROADMAP.md`](workspace-panel/working/ROADMAP.md) —the only roadmap,
+   [`workspaces-panel/working/ROADMAP.md`](workspaces-panel/working/ROADMAP.md) —the only roadmap,
    with its priority— and one line to `JOURNAL.md`; a repo's `docs/agent/` files
    were retired and live in its git history.
 4. Do not recreate `categories/` here. General docs go to the vault; project docs
    stay with the project.
 
-## `workspace-panel/working/` — personal, private
+## `workspaces-panel/working/` — personal, private
 
 Everything that is the owner's and not the hub itself lives in
-[`workspace-panel/working/`](workspace-panel/working/): `ROADMAP.md`, the notes (`HANDOFF.md`,
+[`workspaces-panel/working/`](workspaces-panel/working/): `ROADMAP.md`, the notes (`HANDOFF.md`,
 `JOURNAL.md`) and `git-backup.md`. It is **ignored by the public repo** and is its own
 nested git repository with a **private** remote (`David7ce/AgenticHub-private`), so the
 notes keep their history and nothing is published. Commit notes from inside
-`workspace-panel/working/`, never from the root. The generated `workspace-panel/dist/` is ignored too.
+`workspaces-panel/working/`, never from the root. The generated `workspaces-panel/dist/` is ignored too.
 Local **config** that code reads stays next to the code and is ignored, each with a
 tracked `*.example` or README to copy from: `agent-hub/consent.json`,
-`agent-hub/acp/agents.json`, `workspace-panel/local/` (accounts, roots, config) and the root
+`agent-hub/acp/agents.json`, `workspaces-panel/local/` (accounts, roots, config) and the root
 `opencode.json`. Keep personal or machine-specific data out of tracked files: it goes in
-`workspace-panel/working/` or in one of those local files.
+`workspaces-panel/working/` or in one of those local files.
 
-Keep `workspace-panel/working/ROADMAP.md` current: add what the user mentions and you cannot do now,
+Keep `workspaces-panel/working/ROADMAP.md` current: add what the user mentions and you cannot do now,
 keep a blocked item with its blocker spelled out, and delete finished items instead
 of leaving them checked off.
 
@@ -58,12 +58,12 @@ Chat history is **not** shared between harnesses; a session that dies mid-task
 leaves a transcript the next harness cannot read. So the state goes in three central
 files, and nowhere else:
 
-- `workspace-panel/working/ROADMAP.md` — the only roadmap: open work, its state and its
+- `workspaces-panel/working/ROADMAP.md` — the only roadmap: open work, its state and its
   priority (P0 blocks revenue or has a date; P1 is the main product; P2 planned; P3
   parked). One P0 at a time. Finished items are deleted.
-- `workspace-panel/working/HANDOFF.md` — how to start: pending items, ports, environment and
+- `workspaces-panel/working/HANDOFF.md` — how to start: pending items, ports, environment and
   rules. Keep it short; it is not a log.
-- `workspace-panel/working/JOURNAL.md` — newest first, one line per fact, trimmed weekly. The
+- `workspaces-panel/working/JOURNAL.md` — newest first, one line per fact, trimmed weekly. The
   detail lives in git history.
 
 A **project repo** keeps `AGENTS.md` (entry point) and its own `README`/`docs`; it has
@@ -78,15 +78,15 @@ another session's pending work into a commit without naming it.
 ## While working
 
 - `agent-hub/` is infrastructure; do not move it into a task folder.
-- `workspace-panel/dist/` is generated: edit `workspace-panel/tool/`, rebuild with
-  `node workspace-panel/tool/cli.mjs build`, never hand-edit `dist/`.
+- `workspaces-panel/dist/` is generated: edit `workspaces-panel/tool/`, rebuild with
+  `node workspaces-panel/tool/cli.mjs build`, never hand-edit `dist/`.
 - **"Actualiza el panel" / refresh the Workspaces panel (Repos + IA + Notas):** run
-  `node workspace-panel/tool/cli.mjs refresh` from here (costs --write + build). An hourly
-  task `Workspaces-Refresh` also runs it; see `workspace-panel/tool/schedule/`. The panel
-  opens from [`workspace-panel/index.html`](workspace-panel/index.html) (Inicio: glance page, generated by `build`; tabs
+  `node workspaces-panel/tool/cli.mjs refresh` from here (costs --write + build). An hourly
+  task `Workspaces-Refresh` also runs it; see `workspaces-panel/tool/schedule/`. The panel
+  opens from [`workspaces-panel/index.html`](workspaces-panel/index.html) (Inicio: glance page, generated by `build`; tabs
   Projects, AI Usage, Roadmap); `dist/index.html`, `dist/ai-usage.html` and `dist/notes.html` link the
   shared palette and scripts under `dist/shared/`.
-- `workspace-panel/logs/` is local and never versioned (except its README). `workspace-panel/logs/runs.jsonl` is the
+- `workspaces-panel/logs/` is local and never versioned (except its README). `workspaces-panel/logs/runs.jsonl` is the
   append-only audit log; run evidence goes there named by task and date, and the
   final evidence goes to the project repo.
 - Every subdirectory gets a README saying what it is and which platform or tool it

@@ -76,10 +76,16 @@ test('runtime path resolution preserves fallback and normalizes relative overrid
   const defaults=resolveHubConfig({hubDir:hub,env:{},cwd:dir});
   assert.equal(defaults.registryPath,example);
   assert.equal(defaults.usingExampleRegistry,true);
-  assert.equal(defaults.logPath,join(dir,'workspace-panel','logs','runs.jsonl'));
+  assert.equal(defaults.logPath,join(dir,'workspaces-panel','logs','runs.jsonl'));
   const legacyLog = join(dir,'projects','logs','runs.jsonl');
   const legacy = resolveHubConfig({hubDir:hub,env:{},exists:(p) => p === legacyLog});
   assert.equal(legacy.logPath, legacyLog);
+  const previousLog = join(dir,'workspace-panel','logs','runs.jsonl');
+  const previous = resolveHubConfig({hubDir:hub,env:{},exists:(p) => p === previousLog});
+  assert.equal(previous.logPath, previousLog, 'existing ignored notes/audit remain discoverable before migration');
+  const newLog = join(dir,'workspaces-panel','logs','runs.jsonl');
+  const migrated = resolveHubConfig({hubDir:hub,env:{},exists:(p) => p === previousLog || p === newLog});
+  assert.equal(migrated.logPath, newLog, 'new directory takes priority once state is moved');
   writeFileSync(join(hub,'acp','agents.json'),'{}');
   assert.equal(resolveHubConfig({hubDir:hub,env:{},cwd:dir}).usingExampleRegistry,false);
   const selected=resolveHubConfig({hubDir:hub,cwd:dir,env:{AGENT_HUB_CONSENT:'other/consent.json',AGENT_HUB_REGISTRY:'missing.json',AGENT_HUB_STATE:'state',AGENT_HUB_RESULTS:'out',AGENT_HUB_INDEX:'index.db',AGENT_HUB_TASKS_DB:'queue.db'}});

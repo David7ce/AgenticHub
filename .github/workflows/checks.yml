@@ -30,5 +30,5 @@ jobs:
       - name: Projects - inventory and panel tests
         shell: pwsh
         run: |
-          $files = Get-ChildItem workspace-panel/tool/test -Filter *.test.mjs | ForEach-Object { $_.FullName }
+          $files = Get-ChildItem workspaces-panel/tool/test -Filter *.test.mjs | ForEach-Object { $_.FullName }
           node --test $files
