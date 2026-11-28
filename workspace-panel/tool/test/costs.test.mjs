@@ -12,6 +12,7 @@ import {
   collectOpenCodeUsage,
   collectUsage,
   mergeCostLedger,
+  mergeOpenCodeAttribution,
   projectLabel,
   readCostLedger,
   summarizeUsage,
@@ -543,4 +544,41 @@ test('reply-based OpenCode history is marked as timed per step', () => {
   const row = { date: '2026-11-20', hour: 4, source: 'opencode', agent: 'opencode', project: 'p', model: 'm (opencode-go)', output_tokens: 1 };
   const result = subscriptionHistory({ rows: [], openCodeAttribution: { first: '2026-11-20', rows: [row], covered: [] } });
   assert.deepEqual(result.map((r) => r.stepHours), [true]);
+});
+
+test('reply rows of a deleted OpenCode session survive the next scan with their own models', () => {
+  const tokens = (output_tokens) => ({
+    input_tokens: 0, cache_write_tokens: 0, cache_read_tokens: 0, output_tokens, reasoning_tokens: 0, unknown_tokens: 0,
+  });
+  const base = { date: '2026-11-24', source: 'opencode', agent: 'opencode', project: 'root' };
+  // Session started 09:00 and answered with two providers; it is gone in the next scan.
+  const deletedReplies = [
+    { ...base, hour: 9, model: 'kimi (opencode-go)', sessionAt: '2026-11-24|9', ...tokens(6) },
+    { ...base, hour: 10, model: 'gpt (openai)', sessionAt: '2026-11-24|9', ...tokens(4) },
+  ];
+  const keptReply = { ...base, date: '2026-11-25', hour: 8, model: 'kimi (opencode-go)', sessionAt: '2026-11-25|8', ...tokens(3) };
+  const previous = {
+    first: '2026-11-24',
+    rows: [...deletedReplies, keptReply],
+    covered: [{ ...base, hour: 9, model: 'gpt (openai)', ...tokens(10) }, { ...base, date: '2026-11-25', hour: 8, model: 'kimi (opencode-go)', ...tokens(3) }],
+  };
+  const incoming = {
+    first: '2026-11-25',
+    rows: [keptReply],
+    covered: [{ ...base, date: '2026-11-25', hour: 8, model: 'kimi (opencode-go)', ...tokens(3) }],
+  };
+
+  const merged = mergeOpenCodeAttribution(previous, incoming);
+  assert.equal(merged.first, '2026-11-24');
+  assert.deepEqual(merged.retained, deletedReplies);
+  assert.deepEqual(mergeOpenCodeAttribution(merged, incoming).retained, deletedReplies, 'kept across later scans');
+
+  // The ledger still holds the deleted session's total under its last label.
+  const ledgerRows = [{ ...base, hour: 9, model: 'gpt (openai)', ...tokens(10) }, previous.covered[1]];
+  const history = subscriptionHistory({ rows: ledgerRows, openCodeAttribution: merged });
+  assert.deepEqual(history.map(({ date, hour, model, output_tokens }) => [date, hour, model, output_tokens]).sort(), [
+    ['2026-11-24', 10, 'gpt (openai)', 4],
+    ['2026-11-24', 9, 'kimi (opencode-go)', 6],
+    ['2026-11-25', 8, 'kimi (opencode-go)', 3],
+  ]);
 });

@@ -111,13 +111,14 @@ export function projectLabel(cwd, workspaceRoot = resolveRoot()) {
 }
 
 function addObservation(groups, dimensions, tokens, sessionId = null) {
-  const { date, hour = null, source, agent, model, project } = dimensions;
+  const { date, hour = null, source, agent, model, project, sessionAt } = dimensions;
   if (!date) return;
-  const key = [date, hour ?? '?', source, agent, model, project].join('\u001f');
+  const key = [date, hour ?? '?', source, agent, model, project, ...(sessionAt ? [sessionAt] : [])].join('\u001f');
   let row = groups.get(key);
   if (!row) {
     row = {
       date, hour: Number.isInteger(hour) ? hour : null, source, agent, model, project,
+      ...(sessionAt ? { sessionAt } : {}),
       ...EMPTY_TOKENS(),
       observations: 0,
       sessions: 0,
@@ -381,6 +382,9 @@ function openCodeAttribution(db, sessions, dates) {
     FROM session_message WHERE type = 'assistant' AND json_valid(data) AND json_type(data, '$.tokens') = 'object'
   `);
   const groups = new Map();
+  // Each reply row remembers its session's start bucket, so a later scan can
+  // tell which rows belong to sessions OpenCode has since deleted.
+  const sessionAt = (s) => `${s.dimensions.date}|${s.dimensions.hour ?? '?'}`;
   for (const msg of messages.iterate()) {
     const s = sessions.get(String(msg.session_id));
     if (!s || !TOKEN_FIELDS.some((f) => numeric(msg[f]) > 0)) continue;
@@ -388,7 +392,7 @@ function openCodeAttribution(db, sessions, dates) {
     (s.replyModels ??= new Map()).set(model, (s.replyModels.get(model) ?? 0) + workTokens(msg));
     for (const f of TOKEN_FIELDS) s.measured[f] += numeric(msg[f]);
     const at = epochParts(msg.time_created);
-    addObservation(groups, { ...s.dimensions, ...(at.date ? at : {}), model }, msg, String(msg.session_id));
+    addObservation(groups, { ...s.dimensions, ...(at.date ? at : {}), model, sessionAt: sessionAt(s) }, msg, String(msg.session_id));
   }
   const estimated = new Map();
   for (const [id, s] of sessions) {
@@ -401,13 +405,13 @@ function openCodeAttribution(db, sessions, dates) {
     // replies' work when the session switched models.
     const shares = estimateShares(s.replyModels, s.dimensions.model);
     if (!shares) {
-      addObservation(groups, { ...s.dimensions, model: 'unknown-model' }, remainder, id);
+      addObservation(groups, { ...s.dimensions, model: 'unknown-model', sessionAt: sessionAt(s) }, remainder, id);
       continue;
     }
     const parts = shares.map(() => ({ ...EMPTY_TOKENS() }));
     for (const f of TOKEN_FIELDS) splitInteger(remainder[f], shares.map((x) => x.weight)).forEach((v, i) => { parts[i][f] = v; });
     shares.forEach(({ model }, i) => {
-      if (TOKEN_FIELDS.some((f) => parts[i][f] > 0)) addObservation(estimated, { ...s.dimensions, model }, parts[i], id);
+      if (TOKEN_FIELDS.some((f) => parts[i][f] > 0)) addObservation(estimated, { ...s.dimensions, model, sessionAt: sessionAt(s) }, parts[i], id);
     });
   }
   const first = dates.reduce((a, b) => a < b ? a : b);
@@ -424,7 +428,7 @@ export function subscriptionHistory(ledger) {
   const groupCoarse = (items) => {
     const groups = new Map();
     for (const row of items) {
-      const dimensions = { ...row, model: 'unknown-model' };
+      const dimensions = { ...row, model: 'unknown-model', sessionAt: undefined };
       addObservation(groups, dimensions, row);
       if (TOKEN_FIELDS.some((f) => numeric(row[f]) > 0)) {
         const coarse = groups.get(rowKey(dimensions));
@@ -433,7 +437,14 @@ export function subscriptionHistory(ledger) {
     }
     return groups;
   };
-  const covered = groupCoarse(openCodeAttribution.covered);
+  // Reply rows kept from sessions OpenCode deleted stand in for their session
+  // totals: grouped back at the session's start, they are subtracted below.
+  const retainedReplies = openCodeAttribution.retained ?? [];
+  const atSessionStart = (r) => {
+    const [date, hour] = r.sessionAt.split('|');
+    return { ...r, date, hour: hour === '?' ? null : Number(hour) };
+  };
+  const covered = groupCoarse([...openCodeAttribution.covered, ...retainedReplies.map(atSessionStart)]);
   const recent = rows.filter((r) => r.source === 'opencode' && r.date >= openCodeAttribution.first);
   // Buckets with no current session (deleted from OpenCode) have nothing to
   // reconcile against. When all their labels share one provider, that
@@ -466,7 +477,7 @@ export function subscriptionHistory(ledger) {
     delete row.models;
   }
   // Reply-based rows carry each reply's own time; session totals only their start.
-  const replies = openCodeAttribution.rows.map((row) => ({ ...row, stepHours: true }));
+  const replies = [...openCodeAttribution.rows, ...retainedReplies].map((row) => ({ ...row, stepHours: true }));
   return [...legacy, ...retained, ...replies, ...finishGroups(previous)];
 }
 
@@ -764,6 +775,24 @@ export function readCostLedger(path = COST_LEDGER_PATH) {
     : parsed;
 }
 
+/**
+ * A scan only sees sessions still in OpenCode's database. Reply rows of a
+ * session bucket the new scan no longer covers (deleted or rotated) are kept
+ * as `retained`, so their per-reply model and provider survive. Rows from
+ * before `sessionAt` existed cannot be matched and are dropped as before.
+ */
+export function mergeOpenCodeAttribution(previous, incoming) {
+  if (!incoming) return previous ?? null;
+  if (!previous) return incoming;
+  const bucket = (date, hour, project) => `${date}|${hour ?? '?'}\u001f${project}`;
+  const seen = new Set((incoming.covered ?? []).map((r) => bucket(r.date, r.hour, r.project)));
+  const retained = [...(previous.rows ?? []), ...(previous.retained ?? [])]
+    .filter((r) => r.sessionAt && !seen.has(`${r.sessionAt}\u001f${r.project}`));
+  if (!retained.length) return incoming;
+  const first = retained.map((r) => r.sessionAt.split('|')[0]).reduce((a, b) => (a < b ? a : b), incoming.first);
+  return { ...incoming, first, retained };
+}
+
 /** Merge by date+hour+source+agent+model+project; never delete older buckets after source retention/purge. */
 export function mergeCostLedger(previous, incoming, generatedAt = new Date().toISOString()) {
   if (!validPreviousLedger(previous)) throw new Error('Ledger previo incompatible.');
@@ -857,7 +886,7 @@ export function mergeCostLedger(previous, incoming, generatedAt = new Date().toI
     schemaVersion: COST_LEDGER_VERSION,
     generatedAt,
     sources: { ...previous.sources, ...incoming.sources },
-    openCodeAttribution: incoming.openCodeAttribution ?? previous.openCodeAttribution ?? null,
+    openCodeAttribution: mergeOpenCodeAttribution(previous.openCodeAttribution, incoming.openCodeAttribution),
     rows: [...rows.values()].sort((a, b) => a.date.localeCompare(b.date)
       || ((a.hour ?? -1) - (b.hour ?? -1))
       || a.source.localeCompare(b.source)
@@ -1001,7 +1030,7 @@ Buckets horarios: ${number(ledger.rows.filter((row) => Number.isInteger(row.hour
 ## Límites del histórico
 
 - Claude Code: solo los transcripts que aún existen en \`~/.claude/projects\`; el más antiguo recuperable se indica arriba. Los archivos ya purgados no se pueden reconstruir.
-- OpenCode: cada respuesta del SQLite local con su modelo y hora; lo que el total de la sesión no explica con respuestas (títulos, compactación) se estima para el modelo de la sesión o se reparte por modelos, marcado como provisional. La columna monetaria se ignora.
+- OpenCode: cada respuesta del SQLite local con su modelo y hora; lo que el total de la sesión no explica con respuestas (títulos, compactación) se estima para el modelo de la sesión o se reparte por modelos, marcado como provisional. Las respuestas de sesiones que OpenCode borra se conservan con su modelo y proveedor. La columna monetaria se ignora.
 - Codex: cada llamada de los rollouts con su hora y desglose; el total por hilo del estado local solo cubre hilos sin rollout.
 - Agent Hub: \`logs/runs.jsonl\` trae tokens por turno solo en algunas ejecuciones; es atribución, no se suma a los proveedores.
 - Los proyectos fuera del workspace se etiquetan como \`temporary\` o \`external/<carpeta>\`; no se persisten rutas absolutas, prompts ni respuestas.
