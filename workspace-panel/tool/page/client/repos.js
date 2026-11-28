@@ -39,11 +39,27 @@ function initRepos(icons, selectedRange) {
     render();
   };
 
+  /**
+   * Uncommitted files by git's own word, coloured like git and VS Code. A
+   * repos.json from before the breakdown still shows the single "changed" tag.
+   */
+  const GIT_KINDS = ['conflicted', 'modified', 'added', 'deleted', 'renamed', 'untracked'];
+  function changeParts(r) {
+    if (!(r.dirty > 0)) return [];
+    const kinds = GIT_KINDS.filter((kind) => r.changes && r.changes[kind] > 0);
+    if (!kinds.length) return [[plural(r.dirty, 'changedOne', 'changed'), plural(r.dirty, 'changedOne', 'changed')]];
+    return kinds.map((kind) => {
+      const n = r.changes[kind];
+      const key = 'git' + kind[0].toUpperCase() + kind.slice(1);
+      return [n + ' ' + kind, plural(n, key + 'One', key), kind];
+    });
+  }
+
   /** Pending work as short tags; the tooltip spells it out. */
   function status(r) {
     const branches = r.otherBranches || [];
     const parts = [
-      r.dirty > 0 && [plural(r.dirty, 'changedOne', 'changed'), plural(r.dirty, 'changedOne', 'changed')],
+      ...changeParts(r),
       r.hasUpstream && r.ahead > 0 && ['↑' + r.ahead, t('toPush', { n: r.ahead })],
       r.hasUpstream && r.behind > 0 && ['↓' + r.behind, t('toPull', { n: r.behind })],
       r.stashes > 0 && [plural(r.stashes, 'stashOne', 'stashMany'), plural(r.stashes, 'stashOne', 'stashMany')],
@@ -60,7 +76,11 @@ function initRepos(icons, selectedRange) {
     if (!r.working) title = t('notCounted', { why: title });
     if (notes.length) title += '. ' + notes.join('. ');
     return '<span class="status" title="' + esc(title) + '">'
-      + parts.map((p) => '<span class="chip' + (r.working ? ' pending' : '') + '">' + esc(p[0]) + '</span>').join('') + '</span>';
+      + parts.map((p) => {
+        // A git kind keeps its colour; the rest (↑ ↓ stashes branches) stay the green "pending" chip.
+        const cls = p[2] ? ' git git-' + p[2] + (r.working ? '' : ' muted') : (r.working ? ' pending' : '');
+        return '<span class="chip' + cls + '" title="' + esc(p[1]) + '">' + esc(p[0]) + '</span>';
+      }).join('') + '</span>';
   }
 
   function cells(r) {

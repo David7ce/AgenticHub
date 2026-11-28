@@ -64,6 +64,16 @@ td.nowrap { white-space: nowrap; }
   white-space: nowrap; color: var(--muted); border: 1px solid var(--line); background: var(--panel); }
 .chip.pending { color: #fff; background: var(--ok); border-color: var(--ok); }
 .chip.clean { font-weight: 400; color: var(--faint); }
+/* Uncommitted files by git kind: coloured text on a faint tint of the same colour. */
+.chip.git { color: var(--kind); border-color: color-mix(in srgb, var(--kind) 45%, transparent);
+  background: color-mix(in srgb, var(--kind) 12%, var(--panel)); }
+.chip.git.muted { opacity: .6; }
+.git-modified { --kind: var(--git-modified); }
+.git-untracked { --kind: var(--git-untracked); }
+.git-added { --kind: var(--git-added); }
+.git-deleted { --kind: var(--git-deleted); }
+.git-renamed { --kind: var(--git-renamed); }
+.git-conflicted { --kind: var(--git-conflicted); }
 .star { color: var(--star); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .star.zero { color: var(--muted); opacity: .65; }
 img.acct { width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; margin-right: 6px; object-fit: cover; }

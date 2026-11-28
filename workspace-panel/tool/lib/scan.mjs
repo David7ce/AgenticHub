@@ -56,18 +56,38 @@ export function filterExcludedRepos(repos, root, exclusions, caseInsensitive = p
  * Real changes only. WSL's DrvFs makes every file look 755 and a CRLF checkout
  * of LF blobs is not an edit, so both are ignored. Staged and untracked count.
  * `ignore` lists exact repo-relative paths that never count (generated files).
+ *
+ * Returns git's own words, one per path: a file both staged and edited again
+ * counts once, under the kind that matters most (conflicted > deleted >
+ * renamed > added > modified). Copies and type changes count as modified.
  */
+export const CHANGE_KINDS = ['conflicted', 'deleted', 'renamed', 'added', 'modified', 'untracked'];
+const KIND_BY_LETTER = { U: 'conflicted', D: 'deleted', R: 'renamed', A: 'added', M: 'modified', C: 'modified', T: 'modified' };
+
 async function worktreeChanges(repo, ignore = []) {
-  const changed = new Set();
+  const kinds = new Map();
+  const note = (path, kind) => {
+    const current = kinds.get(path);
+    if (!current || CHANGE_KINDS.indexOf(kind) < CHANGE_KINDS.indexOf(current)) kinds.set(path, kind);
+  };
   for (const args of [
-    ['-c', 'core.filemode=false', 'diff', '--ignore-cr-at-eol', '--name-only'],
-    ['-c', 'core.filemode=false', 'diff', '--cached', '--ignore-cr-at-eol', '--name-only'],
-    ['ls-files', '--others', '--exclude-standard'],
+    ['-c', 'core.filemode=false', 'diff', '--ignore-cr-at-eol', '--name-status'],
+    ['-c', 'core.filemode=false', 'diff', '--cached', '--ignore-cr-at-eol', '--name-status'],
   ]) {
-    for (const line of ((await git(repo, args)) ?? '').split('\n')) if (line) changed.add(line);
+    for (const line of ((await git(repo, args)) ?? '').split('\n')) {
+      if (!line) continue;
+      const fields = line.split('\t');
+      // R100<TAB>old<TAB>new: the file now lives at the new path.
+      note(fields[fields.length - 1], KIND_BY_LETTER[fields[0][0]] ?? 'modified');
+    }
   }
-  for (const path of ignore) changed.delete(path);
-  return changed.size;
+  for (const line of ((await git(repo, ['ls-files', '--others', '--exclude-standard'])) ?? '').split('\n')) {
+    if (line) note(line, 'untracked');
+  }
+  for (const path of ignore) kinds.delete(path);
+  const changes = {};
+  for (const kind of kinds.values()) changes[kind] = (changes[kind] ?? 0) + 1;
+  return { dirty: kinds.size, changes };
 }
 
 /**
@@ -79,7 +99,7 @@ export async function readState(repo, { ignoreChanges = [] } = {}) {
   const out = await git(repo, ['-c', 'core.filemode=false', 'status', '--porcelain=v2', '--branch']);
   if (out === null) return null;
 
-  const state = { branch: null, upstream: null, ahead: 0, behind: 0, dirty: 0 };
+  const state = { branch: null, upstream: null, ahead: 0, behind: 0, dirty: 0, changes: {} };
   let touched = false;
   for (const line of out.split('\n')) {
     if (line.startsWith('# branch.head ')) state.branch = line.slice('# branch.head '.length).trim();
@@ -90,7 +110,7 @@ export async function readState(repo, { ignoreChanges = [] } = {}) {
     } else if (line && !line.startsWith('#')) touched = true;
   }
   if (!state.branch) return null; // bare, broken, or not a working tree
-  if (touched) state.dirty = await worktreeChanges(repo, ignoreChanges);
+  if (touched) Object.assign(state, await worktreeChanges(repo, ignoreChanges));
   return state;
 }
 
@@ -202,7 +222,7 @@ async function describe(repo, root) {
     project = Object.keys(activity.days).length ? GIT_FORK : GIT_CLONE;
   }
 
-  const { branch, ahead, behind, dirty } = state;
+  const { branch, ahead, behind, dirty, changes } = state;
   const { stashes, otherBranches } = hidden;
   const row = {
     owner,
@@ -217,6 +237,8 @@ async function describe(repo, root) {
     lastCommit: lastCommit || null,
     commits: Number(commits) || 0,
     dirty,
+    /** `dirty` by git's kind: { modified: 3, untracked: 1, … }; absent kinds are omitted. */
+    changes,
     ahead,
     behind,
     hasUpstream: Boolean(state.upstream),

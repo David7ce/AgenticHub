@@ -111,6 +111,7 @@ one file.
 | `remote`, `webUrl`, `remoteHost`   | `origin` with credentials stripped, its web page and forge label (SSH aliases resolved).                                                                    |
 | `branch`                           | Current branch, or `(detached)`.                                                                                                                            |
 | `dirty`                            | Real changes: CRLF-only and filemode-only differences are ignored.                                                                                          |
+| `changes`                          | `dirty` by git's word, one per file: `modified`, `added`, `deleted`, `renamed`, `untracked`, `conflicted` (zero kinds omitted). Shown as coloured tags.        |
 | `ahead`, `behind`, `hasUpstream`   | Against `@{u}` as of the last fetch (`sync` refreshes it).                                                                                                  |
 | `stashes`, `otherBranches`         | Work `status` cannot see: stashes, and local branches with commits on no remote.                                                                            |
 | `working`                          | Any of the above is non-zero (overridable with `working: false`).                                                                                           |
