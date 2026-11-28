@@ -42,11 +42,12 @@ node agent-hub/hubctl/hubctl.mjs brief
 node agent-hub/hubctl/hubctl.mjs status
 ```
 
-Optional: `npm link` inside `agent-hub/` installs the short `hub` command
-(`hub doctor`), and `node hub.mjs init --workspace` generates the chat-client
+Optional, from `agent-hub/`: `npm link` installs the short `hub` command
+(`hub doctor`); `node hub.mjs init --workspace` generates the chat-client
 launchers beside the clone after a `--dry-run` review.
 
 Authoritative setup guide: [agent-hub/docs/getting-started.md](../agent-hub/docs/getting-started.md).
+Project overview: [agent-hub/README.md](../agent-hub/README.md).
 Operating contract and safety rules: [agent-hub/AGENTS.md](../agent-hub/AGENTS.md)
 and [agent-hub/docs/reference/agent-contract.md](../agent-hub/docs/reference/agent-contract.md).
 
